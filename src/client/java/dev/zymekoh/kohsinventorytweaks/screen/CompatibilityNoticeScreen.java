@@ -32,6 +32,7 @@ public final class CompatibilityNoticeScreen extends Screen {
 	private int frameHeight;
 	private int bodyTop;
 	private int bodyBottom;
+	private final SmoothScroll smoothScroll = new SmoothScroll();
 	private int scroll;
 	private int maxScroll;
 	private Button continueButton;
@@ -57,7 +58,8 @@ public final class CompatibilityNoticeScreen extends Screen {
 			contentHeight += this.issueHeight(issue) + 7;
 		}
 		this.maxScroll = Math.max(0, contentHeight - Math.max(1, this.bodyBottom - this.bodyTop));
-		this.scroll = Mth.clamp(this.scroll, 0, this.maxScroll);
+		this.smoothScroll.setMaximum(this.maxScroll);
+		this.scroll = this.smoothScroll.roundedPosition();
 
 		int gap = 7;
 		int available = Math.max(1, this.frameWidth - 16);
@@ -102,6 +104,8 @@ public final class CompatibilityNoticeScreen extends Screen {
 
 	@Override
 	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		this.smoothScroll.update();
+		this.scroll = this.smoothScroll.roundedPosition();
 		for (FloatingParticle particle : this.particles) {
 			particle.draw(graphics);
 		}
@@ -135,7 +139,7 @@ public final class CompatibilityNoticeScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(final double x, final double y, final double scrollX, final double scrollY) {
 		if (x >= this.frameX && x < this.frameX + this.frameWidth && y >= this.bodyTop && y < this.bodyBottom) {
-			this.scroll = Mth.clamp(this.scroll - (int) Math.signum(scrollY) * 22, 0, this.maxScroll);
+			this.smoothScroll.scroll(scrollY, 20.0);
 			return true;
 		}
 		return super.mouseScrolled(x, y, scrollX, scrollY);

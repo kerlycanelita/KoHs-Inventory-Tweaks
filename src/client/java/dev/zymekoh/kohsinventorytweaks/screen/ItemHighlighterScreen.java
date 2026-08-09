@@ -60,10 +60,12 @@ public final class ItemHighlighterScreen extends Screen {
 	private int selectedVisibleRows;
 	private int catalogColumns;
 	private int catalogVisibleRows;
-	private int selectedScrollRows;
-	private int selectedMaxScrollRows;
-	private int catalogScrollRows;
-	private int catalogMaxScrollRows;
+	private final SmoothScroll selectedSmoothScroll = new SmoothScroll();
+	private final SmoothScroll catalogSmoothScroll = new SmoothScroll();
+	private int selectedScrollPixels;
+	private int selectedMaxScrollPixels;
+	private int catalogScrollPixels;
+	private int catalogMaxScrollPixels;
 
 	private int editorX;
 	private int editorY;
@@ -123,6 +125,10 @@ public final class ItemHighlighterScreen extends Screen {
 
 	@Override
 	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		this.selectedSmoothScroll.update();
+		this.catalogSmoothScroll.update();
+		this.selectedScrollPixels = this.selectedSmoothScroll.roundedPosition();
+		this.catalogScrollPixels = this.catalogSmoothScroll.roundedPosition();
 		float entrance = cubicProgress(this.entranceStartedAtNanos, ENTRANCE_DURATION_NANOS);
 		float entranceScale = 0.965F + entrance * 0.035F;
 		graphics.pose().pushMatrix();
@@ -159,8 +165,8 @@ public final class ItemHighlighterScreen extends Screen {
 				selectedTop,
 				this.selectedWidth - 7,
 				selectedBottom - selectedTop,
-				this.selectedScrollRows > 0,
-				this.selectedScrollRows < this.selectedMaxScrollRows
+				this.selectedSmoothScroll.canScrollUp(),
+				this.selectedSmoothScroll.canScrollDown()
 			);
 			int catalogTop = this.catalogY + 49;
 			int catalogBottom = this.catalogY + this.catalogHeight - 5;
@@ -170,8 +176,8 @@ public final class ItemHighlighterScreen extends Screen {
 				catalogTop,
 				this.catalogWidth - 7,
 				catalogBottom - catalogTop,
-				this.catalogScrollRows > 0,
-				this.catalogScrollRows < this.catalogMaxScrollRows
+				this.catalogSmoothScroll.canScrollUp(),
+				this.catalogSmoothScroll.canScrollDown()
 			);
 		}
 		graphics.pose().popMatrix();
@@ -212,19 +218,11 @@ public final class ItemHighlighterScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(final double x, final double y, final double scrollX, final double scrollY) {
 		if (this.mode == Mode.BASE && this.inside(x, y, this.selectedX, this.selectedY, this.selectedWidth, this.selectedHeight)) {
-			this.selectedScrollRows = Mth.clamp(
-				this.selectedScrollRows - (int) Math.signum(scrollY),
-				0,
-				this.selectedMaxScrollRows
-			);
+			this.selectedSmoothScroll.scroll(scrollY, CELL_SIZE);
 			return true;
 		}
 		if (this.mode == Mode.BASE && this.inside(x, y, this.catalogX, this.catalogY, this.catalogWidth, this.catalogHeight)) {
-			this.catalogScrollRows = Mth.clamp(
-				this.catalogScrollRows - (int) Math.signum(scrollY),
-				0,
-				this.catalogMaxScrollRows
-			);
+			this.catalogSmoothScroll.scroll(scrollY, CELL_SIZE);
 			return true;
 		}
 		return super.mouseScrolled(x, y, scrollX, scrollY);
@@ -277,7 +275,8 @@ public final class ItemHighlighterScreen extends Screen {
 		search.setValue(this.searchValue);
 		search.setResponder(value -> {
 			this.searchValue = value;
-			this.catalogScrollRows = 0;
+			this.catalogSmoothScroll.snapTo(0.0);
+			this.catalogScrollPixels = 0;
 			this.filterItems();
 		});
 		this.addRenderableWidget(search);
@@ -303,7 +302,8 @@ public final class ItemHighlighterScreen extends Screen {
 			Component.translatable("screen.kohs_inventory_tweaks.reset_all"),
 			button -> {
 				this.working.itemHighlights.clear();
-				this.selectedScrollRows = 0;
+				this.selectedSmoothScroll.snapTo(0.0);
+				this.selectedScrollPixels = 0;
 				this.updateScrollBounds();
 				this.persistWorking();
 			},
@@ -461,8 +461,10 @@ public final class ItemHighlighterScreen extends Screen {
 		int gridY = this.selectedY + 24;
 		int gridBottom = this.selectedY + this.selectedHeight - 5;
 		graphics.enableScissor(this.selectedX + 3, gridY, this.selectedX + this.selectedWidth - 3, gridBottom);
-		for (int visibleRow = 0; visibleRow < this.selectedVisibleRows; visibleRow++) {
-			int sourceRow = visibleRow + this.selectedScrollRows;
+		int firstRow = this.selectedScrollPixels / CELL_SIZE;
+		int rowOffset = this.selectedScrollPixels % CELL_SIZE;
+		for (int visibleRow = 0; visibleRow <= this.selectedVisibleRows; visibleRow++) {
+			int sourceRow = visibleRow + firstRow;
 			for (int column = 0; column < this.selectedColumns; column++) {
 				int index = sourceRow * this.selectedColumns + column;
 				if (index >= this.working.itemHighlights.size()) {
@@ -471,17 +473,17 @@ public final class ItemHighlighterScreen extends Screen {
 				ItemHighlight highlight = this.working.itemHighlights.get(index);
 				ItemStack stack = this.stackFor(highlight.itemId);
 				int x = gridX + column * CELL_SIZE + 3;
-				int y = gridY + visibleRow * CELL_SIZE + 3;
+				int y = gridY + visibleRow * CELL_SIZE - rowOffset + 3;
 				ItemHighlighterController.drawHighlightLayer(graphics, x, y, SLOT_SIZE, highlight, false);
 				graphics.item(stack, x + 1, y + 1);
 				ItemHighlighterController.drawHighlightLayer(graphics, x, y, SLOT_SIZE, highlight, true);
-				if (this.inside(mouseX, mouseY, x, y, SLOT_SIZE, SLOT_SIZE)) {
+				if (mouseY >= gridY && mouseY < gridBottom && this.inside(mouseX, mouseY, x, y, SLOT_SIZE, SLOT_SIZE)) {
 					graphics.setTooltipForNextFrame(this.font, stack, mouseX, mouseY);
 				}
 			}
 		}
 		graphics.disableScissor();
-		this.drawScrollbar(graphics, this.selectedX + this.selectedWidth - 4, gridY, gridBottom, this.selectedScrollRows, this.selectedMaxScrollRows);
+		this.drawScrollbar(graphics, this.selectedX + this.selectedWidth - 4, gridY, gridBottom, this.selectedScrollPixels, this.selectedMaxScrollPixels);
 		if (this.working.itemHighlights.isEmpty()) {
 			graphics.textWithWordWrap(
 				this.font,
@@ -499,8 +501,10 @@ public final class ItemHighlighterScreen extends Screen {
 		int gridY = this.catalogY + 49;
 		int gridBottom = this.catalogY + this.catalogHeight - 5;
 		graphics.enableScissor(this.catalogX + 3, gridY, this.catalogX + this.catalogWidth - 3, gridBottom);
-		for (int visibleRow = 0; visibleRow < this.catalogVisibleRows; visibleRow++) {
-			int sourceRow = visibleRow + this.catalogScrollRows;
+		int firstRow = this.catalogScrollPixels / CELL_SIZE;
+		int rowOffset = this.catalogScrollPixels % CELL_SIZE;
+		for (int visibleRow = 0; visibleRow <= this.catalogVisibleRows; visibleRow++) {
+			int sourceRow = visibleRow + firstRow;
 			for (int column = 0; column < this.catalogColumns; column++) {
 				int index = sourceRow * this.catalogColumns + column;
 				if (index >= this.filteredItems.size()) {
@@ -508,18 +512,18 @@ public final class ItemHighlighterScreen extends Screen {
 				}
 				ItemEntry entry = this.filteredItems.get(index);
 				int x = gridX + column * CELL_SIZE + 3;
-				int y = gridY + visibleRow * CELL_SIZE + 3;
+				int y = gridY + visibleRow * CELL_SIZE - rowOffset + 3;
 				boolean selected = this.working.findItemHighlight(entry.itemId()) != null;
 				UiRender.roundedRect(graphics, x, y, SLOT_SIZE, SLOT_SIZE, 3, selected ? UiTheme.GLASS_SELECTED : 0xB0271838);
 				graphics.outline(x, y, SLOT_SIZE, SLOT_SIZE, selected ? UiTheme.ACCENT : UiTheme.BORDER_SOFT);
 				graphics.item(entry.stack(), x + 1, y + 1);
-				if (this.inside(mouseX, mouseY, x, y, SLOT_SIZE, SLOT_SIZE)) {
+				if (mouseY >= gridY && mouseY < gridBottom && this.inside(mouseX, mouseY, x, y, SLOT_SIZE, SLOT_SIZE)) {
 					graphics.setTooltipForNextFrame(this.font, entry.stack(), mouseX, mouseY);
 				}
 			}
 		}
 		graphics.disableScissor();
-		this.drawScrollbar(graphics, this.catalogX + this.catalogWidth - 4, gridY, gridBottom, this.catalogScrollRows, this.catalogMaxScrollRows);
+		this.drawScrollbar(graphics, this.catalogX + this.catalogWidth - 4, gridY, gridBottom, this.catalogScrollPixels, this.catalogMaxScrollPixels);
 	}
 
 	private void drawEditor(final GuiGraphicsExtractor graphics) {
@@ -645,10 +649,14 @@ public final class ItemHighlighterScreen extends Screen {
 	private void updateScrollBounds() {
 		int selectedRows = (this.working.itemHighlights.size() + Math.max(1, this.selectedColumns) - 1) / Math.max(1, this.selectedColumns);
 		int catalogRows = (this.filteredItems.size() + Math.max(1, this.catalogColumns) - 1) / Math.max(1, this.catalogColumns);
-		this.selectedMaxScrollRows = Math.max(0, selectedRows - Math.max(1, this.selectedVisibleRows));
-		this.catalogMaxScrollRows = Math.max(0, catalogRows - Math.max(1, this.catalogVisibleRows));
-		this.selectedScrollRows = Mth.clamp(this.selectedScrollRows, 0, this.selectedMaxScrollRows);
-		this.catalogScrollRows = Mth.clamp(this.catalogScrollRows, 0, this.catalogMaxScrollRows);
+		int selectedViewportHeight = Math.max(1, this.selectedHeight - 29);
+		int catalogViewportHeight = Math.max(1, this.catalogHeight - 54);
+		this.selectedMaxScrollPixels = Math.max(0, selectedRows * CELL_SIZE - selectedViewportHeight);
+		this.catalogMaxScrollPixels = Math.max(0, catalogRows * CELL_SIZE - catalogViewportHeight);
+		this.selectedSmoothScroll.setMaximum(this.selectedMaxScrollPixels);
+		this.catalogSmoothScroll.setMaximum(this.catalogMaxScrollPixels);
+		this.selectedScrollPixels = this.selectedSmoothScroll.roundedPosition();
+		this.catalogScrollPixels = this.catalogSmoothScroll.roundedPosition();
 	}
 
 	private void ensureParticles() {
@@ -679,23 +687,23 @@ public final class ItemHighlighterScreen extends Screen {
 	private int selectedIndexAt(final double mouseX, final double mouseY) {
 		int gridX = this.selectedX + 6;
 		int gridY = this.selectedY + 24;
-		if (!this.inside(mouseX, mouseY, gridX, gridY, this.selectedColumns * CELL_SIZE, this.selectedVisibleRows * CELL_SIZE)) {
+		int gridBottom = this.selectedY + this.selectedHeight - 5;
+		if (!this.inside(mouseX, mouseY, gridX, gridY, this.selectedColumns * CELL_SIZE, gridBottom - gridY)) {
 			return -1;
 		}
 		int column = (int) (mouseX - gridX) / CELL_SIZE;
-		int row = (int) (mouseY - gridY) / CELL_SIZE;
-		return (row + this.selectedScrollRows) * this.selectedColumns + column;
+		return ((int) (mouseY - gridY + this.selectedScrollPixels) / CELL_SIZE) * this.selectedColumns + column;
 	}
 
 	private int catalogIndexAt(final double mouseX, final double mouseY) {
 		int gridX = this.catalogX + 7;
 		int gridY = this.catalogY + 49;
-		if (!this.inside(mouseX, mouseY, gridX, gridY, this.catalogColumns * CELL_SIZE, this.catalogVisibleRows * CELL_SIZE)) {
+		int gridBottom = this.catalogY + this.catalogHeight - 5;
+		if (!this.inside(mouseX, mouseY, gridX, gridY, this.catalogColumns * CELL_SIZE, gridBottom - gridY)) {
 			return -1;
 		}
 		int column = (int) (mouseX - gridX) / CELL_SIZE;
-		int row = (int) (mouseY - gridY) / CELL_SIZE;
-		return (row + this.catalogScrollRows) * this.catalogColumns + column;
+		return ((int) (mouseY - gridY + this.catalogScrollPixels) / CELL_SIZE) * this.catalogColumns + column;
 	}
 
 	private void drawScrollbar(
@@ -711,7 +719,7 @@ public final class ItemHighlighterScreen extends Screen {
 		}
 		graphics.fill(x, top, x + 2, bottom, UiTheme.SCROLL_TRACK);
 		int height = bottom - top;
-		int thumb = Math.max(14, height / (maximum + 1));
+		int thumb = Math.max(14, height * height / Math.max(height, height + maximum));
 		int y = top + scroll * Math.max(1, height - thumb) / maximum;
 		graphics.fill(x - 1, y, x + 3, y + thumb, UiTheme.ACCENT_SOFT);
 	}

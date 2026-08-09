@@ -13,7 +13,15 @@ import org.lwjgl.glfw.GLFW;
 
 public final class SuperFastInventoryController {
 	private static final long OPENING_COMBO_WINDOW_NANOS = 125_000_000L;
+	private static final long OPENING_TIMEOUT_NANOS = 750_000_000L;
+	private static final long CLOSE_REOPEN_GUARD_NANOS = 45_000_000L;
+	private static final long DUPLICATE_OPEN_GUARD_NANOS = 25_000_000L;
+	private static final long SERVER_OPEN_GUARD_NANOS = 500_000_000L;
 	private static long lastWorldOffhandPressNanos;
+	private static long lastInventoryCloseNanos;
+	private static long lastInventoryOpenRequestNanos;
+	private static long openingStartedNanos;
+	private static long serverOpenGuardUntilNanos;
 	private static @Nullable InventoryScreen openingInventory;
 	private static boolean pendingInventoryOffhand;
 
@@ -41,6 +49,12 @@ public final class SuperFastInventoryController {
 		if (minecraft.screen instanceof InventoryScreen inventoryScreen) {
 			if (inventoryScreen == openingInventory && minecraft.options.keySwapOffhand.matches(event)) {
 				pendingInventoryOffhand = true;
+				// The screen has not settled its hovered slot yet. Consume only this
+				// queued key click so the normal world handler cannot swap the hotbar
+				// before the first inventory render resolves the actual hovered slot.
+				while (minecraft.options.keySwapOffhand.consumeClick()) {
+					pendingInventoryOffhand = true;
+				}
 			}
 			return;
 		}
@@ -54,10 +68,22 @@ public final class SuperFastInventoryController {
 			return;
 		}
 
-		if (minecraft.options.keyInventory.matches(event)
-			&& minecraft.options.keyInventory.consumeClick()) {
+		if (minecraft.options.keyInventory.matches(event)) {
+			boolean requested = false;
+			while (minecraft.options.keyInventory.consumeClick()) {
+				requested = true;
+			}
+			if (!requested
+				|| (lastInventoryCloseNanos != 0L && now - lastInventoryCloseNanos <= CLOSE_REOPEN_GUARD_NANOS)
+				|| (lastInventoryOpenRequestNanos != 0L && now - lastInventoryOpenRequestNanos <= DUPLICATE_OPEN_GUARD_NANOS)
+				|| (serverOpenGuardUntilNanos != 0L && now < serverOpenGuardUntilNanos)
+				|| openingInventory != null) {
+				return;
+			}
+			lastInventoryOpenRequestNanos = now;
 			if (minecraft.gameMode.isServerControlledInventory()) {
 				clearOpeningTransaction();
+				serverOpenGuardUntilNanos = now + SERVER_OPEN_GUARD_NANOS;
 				minecraft.player.sendOpenInventory();
 				return;
 			}
@@ -65,9 +91,21 @@ public final class SuperFastInventoryController {
 			boolean queuedOffhand = consumeRecentOffhandClick(minecraft, now);
 			InventoryScreen inventoryScreen = new InventoryScreen(minecraft.player);
 			openingInventory = inventoryScreen;
+			openingStartedNanos = now;
 			pendingInventoryOffhand = queuedOffhand;
 			minecraft.getTutorial().onOpenInventory();
 			minecraft.setScreen(inventoryScreen);
+		}
+	}
+
+	public static void onClientTick(final Minecraft minecraft) {
+		if (openingInventory == null) {
+			return;
+		}
+		if (!ConfigStore.get().superFastInventory
+			|| minecraft.screen != openingInventory
+			|| System.nanoTime() - openingStartedNanos > OPENING_TIMEOUT_NANOS) {
+			clearOpeningTransaction();
 		}
 	}
 
@@ -101,6 +139,13 @@ public final class SuperFastInventoryController {
 	}
 
 	public static void onScreenRequested(final @Nullable Screen screen) {
+		Screen current = Minecraft.getInstance().screen;
+		if (current instanceof InventoryScreen && !(screen instanceof InventoryScreen)) {
+			lastInventoryCloseNanos = System.nanoTime();
+		}
+		if (screen instanceof InventoryScreen) {
+			serverOpenGuardUntilNanos = 0L;
+		}
 		if (screen != openingInventory) {
 			clearOpeningTransaction();
 		}
@@ -127,5 +172,6 @@ public final class SuperFastInventoryController {
 	private static void clearOpeningTransaction() {
 		openingInventory = null;
 		pendingInventoryOffhand = false;
+		openingStartedNanos = 0L;
 	}
 }

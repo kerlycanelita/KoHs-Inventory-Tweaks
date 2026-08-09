@@ -40,14 +40,14 @@ public final class CursorLandingController {
 	public static @Nullable double[] overrideReleasePosition(final Minecraft minecraft) {
 		Screen screen = minecraft == null ? null : minecraft.screen;
 		CursorTarget target = screen == openingScreen ? openingTarget : classify(screen);
-		return target == null || !ConfigStore.get().isCursorEnabled(target)
+		return target == null || !shouldPlaceCursor(target)
 			? null
 			: resolvePhysicalPosition(minecraft, screen, target, false);
 	}
 
 	public static void onContainerScreenInitialized(final Minecraft minecraft, final Screen screen) {
 		CursorTarget target = classify(screen);
-		if (target == null || !ConfigStore.get().isCursorEnabled(target)) {
+		if (target == null || !shouldPlaceCursor(target)) {
 			openingScreen = null;
 			openingTarget = null;
 			return;
@@ -74,7 +74,7 @@ public final class CursorLandingController {
 		}
 
 		CursorTarget target = classify(minecraft.screen);
-		if (target != null && ConfigStore.get().isCursorEnabled(target)) {
+		if (target != null && shouldPlaceCursor(target)) {
 			warp(minecraft, resolvePhysicalPosition(minecraft, minecraft.screen, target, true));
 		}
 	}
@@ -88,7 +88,7 @@ public final class CursorLandingController {
 		}
 
 		CursorTarget target = classify(minecraft.screen);
-		if (target == null || !ConfigStore.get().isCursorEnabled(target)) {
+		if (target == null || !shouldPlaceCursor(target)) {
 			return false;
 		}
 
@@ -125,7 +125,12 @@ public final class CursorLandingController {
 		final boolean initialized
 	) {
 		Window window = minecraft.getWindow();
-		CursorPoint point = ConfigStore.get().getPosition(target);
+		// A disabled custom landing target must remain truly vanilla. Center Mouse
+		// Fix may still verify the vanilla centered position, but it never reuses a
+		// saved custom point while that container's switch is off.
+		CursorPoint point = ConfigStore.get().isCursorEnabled(target)
+			? ConfigStore.get().getPosition(target)
+			: null;
 		if (point == null) {
 			return new double[] {window.getScreenWidth() * 0.5, window.getScreenHeight() * 0.5};
 		}
@@ -155,6 +160,10 @@ public final class CursorLandingController {
 		double x = logicalX * window.getScreenWidth() / Math.max(1.0, guiWidth);
 		double y = logicalY * window.getScreenHeight() / Math.max(1.0, guiHeight);
 		return new double[] {x, y};
+	}
+
+	private static boolean shouldPlaceCursor(final CursorTarget target) {
+		return ConfigStore.get().isCursorEnabled(target) || ConfigStore.get().centerMouseFix;
 	}
 
 	private static @Nullable CursorTarget classify(final @Nullable Screen screen) {

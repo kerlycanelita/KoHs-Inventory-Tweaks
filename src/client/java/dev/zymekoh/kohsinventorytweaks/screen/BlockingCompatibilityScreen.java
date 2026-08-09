@@ -27,6 +27,7 @@ public final class BlockingCompatibilityScreen extends Screen {
 	private int bodyTop;
 	private int bodyWidth;
 	private int bodyHeight;
+	private final SmoothScroll smoothScroll = new SmoothScroll();
 	private int scroll;
 	private int maxScroll;
 
@@ -80,6 +81,8 @@ public final class BlockingCompatibilityScreen extends Screen {
 
 	@Override
 	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		this.smoothScroll.update();
+		this.scroll = this.smoothScroll.roundedPosition();
 		for (FloatingParticle particle : this.particles) {
 			particle.draw(graphics);
 		}
@@ -113,7 +116,7 @@ public final class BlockingCompatibilityScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(final double x, final double y, final double scrollX, final double scrollY) {
 		if (x >= this.bodyX && x < this.bodyX + this.bodyWidth && y >= this.bodyTop && y < this.bodyTop + this.bodyHeight) {
-			this.scroll = Mth.clamp(this.scroll - (int) Math.round(scrollY * 18.0), 0, this.maxScroll);
+			this.smoothScroll.scroll(scrollY, 18.0);
 			return true;
 		}
 		return super.mouseScrolled(x, y, scrollX, scrollY);
@@ -161,7 +164,8 @@ public final class BlockingCompatibilityScreen extends Screen {
 		this.addWrapped(Component.translatable("screen.kohs_inventory_tweaks.blocking.shutdown"), textWidth);
 		int contentHeight = this.lines.size() * 10 + 10;
 		this.maxScroll = Math.max(0, contentHeight - Math.max(1, this.bodyHeight - 10));
-		this.scroll = Mth.clamp(this.scroll, 0, this.maxScroll);
+		this.smoothScroll.setMaximum(this.maxScroll);
+		this.scroll = this.smoothScroll.roundedPosition();
 	}
 
 	private void addWrapped(final Component text, final int width) {

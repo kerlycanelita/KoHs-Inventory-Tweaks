@@ -1,6 +1,7 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.CursorPoint;
@@ -8,6 +9,7 @@ import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.TextureSourc
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorTarget;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
 import dev.zymekoh.kohsinventorytweaks.integration.HerziumIntegration;
+import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.CropSettings;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.PreparedMedia;
@@ -21,6 +23,7 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.function.BooleanSupplier;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
@@ -62,6 +65,9 @@ public final class InventoryTweaksScreen extends Screen {
 
 	private final Screen parent;
 	private final List<FloatingParticle> particles = new ArrayList<>();
+	private final List<AbstractWidget> mainLeftScrollingWidgets = new ArrayList<>();
+	private final List<AbstractWidget> mainRightScrollingWidgets = new ArrayList<>();
+	private final List<AbstractWidget> customizationScrollingWidgets = new ArrayList<>();
 	private final long entranceStartedAtNanos = System.nanoTime();
 	private InventoryTweaksConfig working;
 	private Modal modal = Modal.NONE;
@@ -76,6 +82,11 @@ public final class InventoryTweaksScreen extends Screen {
 	private int mainPreviewWidth;
 	private int mainPreviewHeight;
 	private float mainPreviewScale;
+	private int mainKeybindX;
+	private int mainKeybindY;
+	private int mainKeybindWidth;
+	private GlassButton menuKeyButton;
+	private boolean awaitingMenuKey;
 	private int cursorCardX;
 	private int cursorCardY;
 	private int tweakCardX;
@@ -104,6 +115,8 @@ public final class InventoryTweaksScreen extends Screen {
 	private int mainRightRailY;
 	private int mainRightRailWidth;
 	private int mainRightRailHeight;
+	private final SmoothScroll mainLeftSmoothScroll = new SmoothScroll();
+	private final SmoothScroll mainRightSmoothScroll = new SmoothScroll();
 	private int mainLeftScroll;
 	private int mainRightScroll;
 	private int mainLeftMaxScroll;
@@ -148,6 +161,7 @@ public final class InventoryTweaksScreen extends Screen {
 	private int customizationOptionsY;
 	private int customizationOptionsWidth;
 	private int customizationOptionsHeight;
+	private final SmoothScroll customizationSmoothScroll = new SmoothScroll();
 	private int customizationScroll;
 	private int customizationMaxScroll;
 	private int customizationSelectorX;
@@ -218,6 +232,9 @@ public final class InventoryTweaksScreen extends Screen {
 
 	@Override
 	protected void init() {
+		this.mainLeftScrollingWidgets.clear();
+		this.mainRightScrollingWidgets.clear();
+		this.customizationScrollingWidgets.clear();
 		this.ensureParticles();
 		this.calculateMainLayout();
 		this.calculateModalLayout();
@@ -254,6 +271,7 @@ public final class InventoryTweaksScreen extends Screen {
 
 	@Override
 	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		this.updateSmoothWidgetPositions();
 		float entrance = this.entranceProgress();
 		float entranceScale = 0.965F + entrance * 0.035F;
 		graphics.pose().pushMatrix();
@@ -375,33 +393,18 @@ public final class InventoryTweaksScreen extends Screen {
 	public boolean mouseScrolled(final double x, final double y, final double scrollX, final double scrollY) {
 		if (this.modal == Modal.NONE) {
 			if (this.isInsideMainRail(x, y, true) && this.mainLeftMaxScroll > 0) {
-				this.mainLeftScroll = Mth.clamp(
-					this.mainLeftScroll - (int) Math.round(scrollY * 24.0),
-					0,
-					this.mainLeftMaxScroll
-				);
-				this.rebuildWidgets();
+				this.mainLeftSmoothScroll.scroll(scrollY, 20.0);
 				return true;
 			}
 			if (this.isInsideMainRail(x, y, false) && this.mainRightMaxScroll > 0) {
-				this.mainRightScroll = Mth.clamp(
-					this.mainRightScroll - (int) Math.round(scrollY * 24.0),
-					0,
-					this.mainRightMaxScroll
-				);
-				this.rebuildWidgets();
+				this.mainRightSmoothScroll.scroll(scrollY, 20.0);
 				return true;
 			}
 		}
 		if (this.modal == Modal.CUSTOMIZATION
 			&& this.isInsideCustomizationOptions(x, y)
 			&& this.customizationMaxScroll > 0) {
-			this.customizationScroll = Mth.clamp(
-				this.customizationScroll - (int) Math.round(scrollY * 18.0),
-				0,
-				this.customizationMaxScroll
-			);
-			this.rebuildWidgets();
+			this.customizationSmoothScroll.scroll(scrollY, 18.0);
 			return true;
 		}
 		return super.mouseScrolled(x, y, scrollX, scrollY);
@@ -409,6 +412,16 @@ public final class InventoryTweaksScreen extends Screen {
 
 	@Override
 	public boolean keyPressed(final KeyEvent event) {
+		if (this.awaitingMenuKey) {
+			this.awaitingMenuKey = false;
+			if (!event.isEscape()) {
+				ConfigMenuKeyBinding.assign(this.minecraft, InputConstants.getKey(event));
+			}
+			if (this.menuKeyButton != null) {
+				this.menuKeyButton.setMessage(this.menuKeybindLabel());
+			}
+			return true;
+		}
 		if (!event.isEscape()) {
 			return super.keyPressed(event);
 		}
@@ -454,6 +467,22 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void addMainButtons() {
+		this.menuKeyButton = this.addRenderableWidget(new GlassButton(
+			this.mainKeybindX,
+			this.mainKeybindY,
+			this.mainKeybindWidth,
+			20,
+			this.menuKeybindLabel(),
+			button -> {
+				this.awaitingMenuKey = true;
+				button.setMessage(Component.translatable("screen.kohs_inventory_tweaks.keybind.prompt"));
+			},
+			GlassButton.Variant.TAB
+		));
+		this.menuKeyButton.setTooltip(Tooltip.create(Component.translatable(
+			"screen.kohs_inventory_tweaks.keybind.description"
+		)));
+		this.menuKeyButton.setTooltipDelay(Duration.ofMillis(220));
 		this.addMainFeatureButton(
 			this.cursorCardX,
 			this.cursorCardY,
@@ -560,11 +589,10 @@ public final class InventoryTweaksScreen extends Screen {
 	) {
 		int railY = leftRail ? this.mainLeftRailY : this.mainRightRailY;
 		int railHeight = leftRail ? this.mainLeftRailHeight : this.mainRightRailHeight;
+		int railX = leftRail ? this.mainLeftRailX : this.mainRightRailX;
+		int railWidth = leftRail ? this.mainLeftRailWidth : this.mainRightRailWidth;
 		int visibleTop = railY + 22;
 		int visibleBottom = railY + railHeight - 5;
-		if (y < visibleTop || y + this.mainCardHeight > visibleBottom) {
-			return;
-		}
 		GlassButton button = new GlassButton(
 			x,
 			y,
@@ -573,18 +601,18 @@ public final class InventoryTweaksScreen extends Screen {
 			Component.translatable(titleKey),
 			onPress,
 			variant
-		).setSubtitle(Component.translatable(descriptionKey));
+		).setSubtitle(Component.translatable(descriptionKey))
+			.setClipBounds(railX + 2, visibleTop, railX + railWidth - 2, visibleBottom);
 		button.setTooltip(Tooltip.create(Component.translatable(descriptionKey)));
 		button.setTooltipDelay(Duration.ofMillis(220));
+		button.visible = y + this.mainCardHeight > visibleTop && y < visibleBottom;
 		this.addRenderableWidget(button);
+		(leftRail ? this.mainLeftScrollingWidgets : this.mainRightScrollingWidgets).add(button);
 	}
 
 	private void addHerziumButton() {
 		int visibleTop = this.mainLeftRailY + 22;
 		int visibleBottom = this.mainLeftRailY + this.mainLeftRailHeight - 5;
-		if (this.herziumCardY < visibleTop || this.herziumCardY + this.mainCardHeight > visibleBottom) {
-			return;
-		}
 		boolean installed = HerziumIntegration.installed();
 		HerziumButton button = new HerziumButton(
 			this.herziumCardX,
@@ -594,12 +622,20 @@ public final class InventoryTweaksScreen extends Screen {
 			Component.translatable("screen.kohs_inventory_tweaks.herzium"),
 			pressed -> this.openHerzium(),
 			installed
+		).setClipBounds(
+			this.mainLeftRailX + 2,
+			visibleTop,
+			this.mainLeftRailX + this.mainLeftRailWidth - 2,
+			visibleBottom
 		);
 		button.setTooltip(Tooltip.create(Component.translatable(installed
 			? "screen.kohs_inventory_tweaks.herzium.description.installed"
 			: "screen.kohs_inventory_tweaks.herzium.description.missing")));
 		button.setTooltipDelay(Duration.ofMillis(220));
+		button.visible = this.herziumCardY + this.mainCardHeight > visibleTop
+			&& this.herziumCardY < visibleBottom;
 		this.addRenderableWidget(button);
+		this.mainLeftScrollingWidgets.add(button);
 	}
 
 	private void addCursorModalButtons() {
@@ -875,10 +911,7 @@ public final class InventoryTweaksScreen extends Screen {
 		final java.util.function.IntSupplier color,
 		final java.util.function.IntConsumer consumer
 	) {
-		if (!this.isCustomizationWidgetVisible(y, 64)) {
-			return;
-		}
-		this.addRenderableWidget(new ColorPaletteWidget(
+		ColorPaletteWidget palette = new ColorPaletteWidget(
 			x,
 			y,
 			width,
@@ -889,7 +922,16 @@ public final class InventoryTweaksScreen extends Screen {
 				consumer.accept(value);
 				this.persistWorking();
 			}
-		));
+		).setClipBounds(
+			this.customizationOptionsX,
+			this.customizationOptionsY + 21,
+			this.customizationOptionsX + this.customizationOptionsWidth,
+			this.customizationOptionsY + this.customizationOptionsHeight
+		);
+		palette.visible = y + 64 > this.customizationOptionsY + 21
+			&& y < this.customizationOptionsY + this.customizationOptionsHeight;
+		this.addRenderableWidget(palette);
+		this.customizationScrollingWidgets.add(palette);
 	}
 
 	private void addCropModalButtons() {
@@ -1147,13 +1189,20 @@ public final class InventoryTweaksScreen extends Screen {
 		final int initialValue,
 		final java.util.function.IntConsumer consumer
 	) {
-		if (!this.isCustomizationWidgetVisible(y, 20)) {
-			return;
-		}
-		this.addRenderableWidget(new GlassSlider(x, y, width, translationKey, initialValue, value -> {
+		GlassSlider slider = new GlassSlider(x, y, width, translationKey, initialValue, value -> {
 			consumer.accept(value);
 			this.persistWorking();
-		}));
+		});
+		slider.setClipBounds(
+			this.customizationOptionsX,
+			this.customizationOptionsY + 21,
+			this.customizationOptionsX + this.customizationOptionsWidth,
+			this.customizationOptionsY + this.customizationOptionsHeight
+		);
+		slider.visible = y + 20 > this.customizationOptionsY + 21
+			&& y < this.customizationOptionsY + this.customizationOptionsHeight;
+		this.addRenderableWidget(slider);
+		this.customizationScrollingWidgets.add(slider);
 	}
 
 	private void addCustomizationButton(
@@ -1165,12 +1214,18 @@ public final class InventoryTweaksScreen extends Screen {
 		final boolean active,
 		final GlassButton.Variant variant
 	) {
-		if (!this.isCustomizationWidgetVisible(y, 20)) {
-			return;
-		}
 		GlassButton button = new GlassButton(x, y, width, 20, label, onPress, variant);
 		button.active = active;
+		button.setClipBounds(
+			this.customizationOptionsX,
+			this.customizationOptionsY + 21,
+			this.customizationOptionsX + this.customizationOptionsWidth,
+			this.customizationOptionsY + this.customizationOptionsHeight
+		);
+		button.visible = y + 20 > this.customizationOptionsY + 21
+			&& y < this.customizationOptionsY + this.customizationOptionsHeight;
 		this.addRenderableWidget(button);
+		this.customizationScrollingWidgets.add(button);
 	}
 
 	private void addFooterButtons(final Modal modalType) {
@@ -2260,6 +2315,10 @@ public final class InventoryTweaksScreen extends Screen {
 		this.textureSelectorY = Math.max(titleSpace + 24, this.height - margin - 19);
 
 		int previewTop = titleSpace + 4;
+		this.mainKeybindY = previewTop;
+		this.mainKeybindWidth = Math.max(20, Math.min(190, centerWidth - 10));
+		this.mainKeybindX = centerLeft + (centerWidth - this.mainKeybindWidth) / 2;
+		previewTop = this.mainKeybindY + 25;
 		int previewBottom = this.height - margin - 3;
 		int availableHeight = Math.max(24, previewBottom - previewTop);
 		int availableWidth = Math.max(24, centerWidth - 10);
@@ -2281,8 +2340,10 @@ public final class InventoryTweaksScreen extends Screen {
 		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 27);
 		this.mainLeftMaxScroll = Math.max(0, leftRailContentHeight - railVisibleHeight);
 		this.mainRightMaxScroll = Math.max(0, rightRailContentHeight - railVisibleHeight);
-		this.mainLeftScroll = Mth.clamp(this.mainLeftScroll, 0, this.mainLeftMaxScroll);
-		this.mainRightScroll = Mth.clamp(this.mainRightScroll, 0, this.mainRightMaxScroll);
+		this.mainLeftSmoothScroll.setMaximum(this.mainLeftMaxScroll);
+		this.mainRightSmoothScroll.setMaximum(this.mainRightMaxScroll);
+		this.mainLeftScroll = this.mainLeftSmoothScroll.roundedPosition();
+		this.mainRightScroll = this.mainRightSmoothScroll.roundedPosition();
 		int railContentTop = this.mainLeftRailY + 22
 			+ Math.max(0, (railVisibleHeight - Math.max(leftRailContentHeight, rightRailContentHeight)) / 2);
 		this.cursorCardX = this.mainLeftRailX + 5;
@@ -2457,7 +2518,8 @@ public final class InventoryTweaksScreen extends Screen {
 
 		int visibleOptionsContent = Math.max(1, contentHeight - 25);
 		this.customizationMaxScroll = Math.max(0, CUSTOM_CONTENT_HEIGHT - visibleOptionsContent + 4);
-		this.customizationScroll = Mth.clamp(this.customizationScroll, 0, this.customizationMaxScroll);
+		this.customizationSmoothScroll.setMaximum(this.customizationMaxScroll);
+		this.customizationScroll = this.customizationSmoothScroll.roundedPosition();
 	}
 
 	private void calculateCropLayout() {
@@ -2520,9 +2582,57 @@ public final class InventoryTweaksScreen extends Screen {
 		return 1.0F - remaining * remaining * remaining;
 	}
 
+	private void updateSmoothWidgetPositions() {
+		if (this.modal == Modal.NONE) {
+			this.mainLeftSmoothScroll.update();
+			this.mainRightSmoothScroll.update();
+			int nextLeft = this.mainLeftSmoothScroll.roundedPosition();
+			int nextRight = this.mainRightSmoothScroll.roundedPosition();
+			moveWidgets(
+				this.mainLeftScrollingWidgets,
+				this.mainLeftScroll - nextLeft,
+				this.mainLeftRailY + 22,
+				this.mainLeftRailY + this.mainLeftRailHeight - 5
+			);
+			moveWidgets(
+				this.mainRightScrollingWidgets,
+				this.mainRightScroll - nextRight,
+				this.mainRightRailY + 22,
+				this.mainRightRailY + this.mainRightRailHeight - 5
+			);
+			this.mainLeftScroll = nextLeft;
+			this.mainRightScroll = nextRight;
+		} else if (this.modal == Modal.CUSTOMIZATION) {
+			this.customizationSmoothScroll.update();
+			int next = this.customizationSmoothScroll.roundedPosition();
+			moveWidgets(
+				this.customizationScrollingWidgets,
+				this.customizationScroll - next,
+				this.customizationOptionsY + 21,
+				this.customizationOptionsY + this.customizationOptionsHeight
+			);
+			this.customizationScroll = next;
+		}
+	}
+
+	private static void moveWidgets(
+		final List<AbstractWidget> widgets,
+		final int deltaY,
+		final int visibleTop,
+		final int visibleBottom
+	) {
+		for (AbstractWidget widget : widgets) {
+			if (deltaY != 0) {
+				widget.setY(widget.getY() + deltaY);
+			}
+			widget.visible = widget.getBottom() > visibleTop && widget.getY() < visibleBottom;
+		}
+	}
+
 	private void openModal(final Modal nextModal) {
 		this.working = ConfigStore.get().copy();
 		if (nextModal == Modal.CUSTOMIZATION) {
+			this.customizationSmoothScroll.snapTo(0.0);
 			this.customizationScroll = 0;
 			this.backgroundStatus = Component.empty();
 			InventoryTextureManager.invalidateConfiguration();
@@ -2646,10 +2756,14 @@ public final class InventoryTweaksScreen extends Screen {
 			: "screen.kohs_inventory_tweaks.gui_scaler.switch.off");
 	}
 
-	private boolean isCustomizationWidgetVisible(final int y, final int height) {
-		int top = this.customizationOptionsY + 21;
-		int bottom = this.customizationOptionsY + this.customizationOptionsHeight;
-		return y >= top && y + height <= bottom;
+	private Component menuKeybindLabel() {
+		if (this.awaitingMenuKey) {
+			return Component.translatable("screen.kohs_inventory_tweaks.keybind.prompt");
+		}
+		return Component.translatable(
+			"screen.kohs_inventory_tweaks.keybind",
+			ConfigMenuKeyBinding.mapping().getTranslatedKeyMessage()
+		);
 	}
 
 	private boolean isInsideCustomizationOptions(final double x, final double y) {

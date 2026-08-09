@@ -5,6 +5,8 @@ import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.network.chat.Component;
 
 abstract class ThemedSlider extends AbstractSliderButton {
+	private final WidgetClip clip = new WidgetClip();
+
 	protected ThemedSlider(
 		final int x,
 		final int y,
@@ -16,6 +18,21 @@ abstract class ThemedSlider extends AbstractSliderButton {
 		super(x, y, width, height, message, initialValue);
 	}
 
+	public ThemedSlider setClipBounds(final int left, final int top, final int right, final int bottom) {
+		this.clip.set(left, top, right, bottom);
+		return this;
+	}
+
+	@Override
+	public boolean isMouseOver(final double x, final double y) {
+		return this.clip.contains(x, y) && super.isMouseOver(x, y);
+	}
+
+	@Override
+	public boolean isHovered() {
+		return this.clip.permitsHover(super.isHovered());
+	}
+
 	@Override
 	public void extractWidgetRenderState(
 		final GuiGraphicsExtractor graphics,
@@ -23,6 +40,8 @@ abstract class ThemedSlider extends AbstractSliderButton {
 		final int mouseY,
 		final float a
 	) {
+		this.clip.trackPointer(mouseX, mouseY);
+		this.clip.begin(graphics);
 		int fill = this.active
 			? (this.isHoveredOrFocused() ? UiTheme.GLASS_HOVER : UiTheme.GLASS_LIGHT)
 			: 0x99211631;
@@ -49,5 +68,6 @@ abstract class ThemedSlider extends AbstractSliderButton {
 			3
 		);
 		this.handleCursor(graphics);
+		this.clip.end(graphics);
 	}
 }

@@ -24,6 +24,7 @@ public final class GlassButton extends Button {
 	private final Variant variant;
 	private final @Nullable BooleanSupplier selected;
 	private final long createdAtNanos = System.nanoTime();
+	private final WidgetClip clip = new WidgetClip();
 	private @Nullable Component subtitle;
 	private float hoverAmount;
 
@@ -59,8 +60,25 @@ public final class GlassButton extends Button {
 		return this;
 	}
 
+	public GlassButton setClipBounds(final int left, final int top, final int right, final int bottom) {
+		this.clip.set(left, top, right, bottom);
+		return this;
+	}
+
+	@Override
+	public boolean isMouseOver(final double x, final double y) {
+		return this.clip.contains(x, y) && super.isMouseOver(x, y);
+	}
+
+	@Override
+	public boolean isHovered() {
+		return this.clip.permitsHover(super.isHovered());
+	}
+
 	@Override
 	protected void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		this.clip.trackPointer(mouseX, mouseY);
+		this.clip.begin(graphics);
 		boolean isSelected = this.selected != null && this.selected.getAsBoolean();
 		boolean highlighted = this.isHoveredOrFocused();
 		this.hoverAmount += ((highlighted ? 1.0F : 0.0F) - this.hoverAmount) * HOVER_SPEED;
@@ -113,6 +131,7 @@ public final class GlassButton extends Button {
 		}
 		renderText(graphics, x, y, text);
 		graphics.pose().popMatrix();
+		this.clip.end(graphics);
 	}
 
 	private void renderText(final GuiGraphicsExtractor graphics, final int x, final int y, final int textColor) {

@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 
 public final class HerziumButton extends Button {
 	private final boolean installed;
+	private final WidgetClip clip = new WidgetClip();
 
 	public HerziumButton(
 		final int x,
@@ -21,8 +22,25 @@ public final class HerziumButton extends Button {
 		this.installed = installed;
 	}
 
+	public HerziumButton setClipBounds(final int left, final int top, final int right, final int bottom) {
+		this.clip.set(left, top, right, bottom);
+		return this;
+	}
+
+	@Override
+	public boolean isMouseOver(final double x, final double y) {
+		return this.clip.contains(x, y) && super.isMouseOver(x, y);
+	}
+
+	@Override
+	public boolean isHovered() {
+		return this.clip.permitsHover(super.isHovered());
+	}
+
 	@Override
 	protected void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		this.clip.trackPointer(mouseX, mouseY);
+		this.clip.begin(graphics);
 		long time = System.nanoTime() / 1_000_000L;
 		float pulse = 0.5F + 0.5F * (float) Math.sin(time / 280.0F);
 		int fill = this.installed
@@ -77,5 +95,6 @@ public final class HerziumButton extends Button {
 				this.installed ? UiTheme.TEXT : UiTheme.TEXT_DISABLED
 			);
 		}
+		this.clip.end(graphics);
 	}
 }

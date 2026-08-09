@@ -25,6 +25,7 @@ public final class IssuesTrackerScreen extends Screen {
 	private int panelHeight;
 	private int bodyTop;
 	private int bodyBottom;
+	private final SmoothScroll smoothScroll = new SmoothScroll();
 	private int scroll;
 	private int maxScroll;
 
@@ -49,7 +50,8 @@ public final class IssuesTrackerScreen extends Screen {
 			contentHeight += this.cardHeight(issue) + 8;
 		}
 		this.maxScroll = Math.max(0, contentHeight - Math.max(1, this.bodyBottom - this.bodyTop - 4));
-		this.scroll = Mth.clamp(this.scroll, 0, this.maxScroll);
+		this.smoothScroll.setMaximum(this.maxScroll);
+		this.scroll = this.smoothScroll.roundedPosition();
 		this.addRenderableWidget(new GlassButton(
 			this.panelX + this.panelWidth - Math.min(104, this.panelWidth - 16),
 			this.panelY + this.panelHeight - 29,
@@ -75,6 +77,8 @@ public final class IssuesTrackerScreen extends Screen {
 
 	@Override
 	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		this.smoothScroll.update();
+		this.scroll = this.smoothScroll.roundedPosition();
 		for (FloatingParticle particle : this.particles) {
 			particle.draw(graphics);
 		}
@@ -105,7 +109,7 @@ public final class IssuesTrackerScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(final double x, final double y, final double scrollX, final double scrollY) {
 		if (x >= this.panelX && x < this.panelX + this.panelWidth && y >= this.bodyTop && y < this.bodyBottom) {
-			this.scroll = Mth.clamp(this.scroll - (int) Math.signum(scrollY) * 24, 0, this.maxScroll);
+			this.smoothScroll.scroll(scrollY, 22.0);
 			return true;
 		}
 		return super.mouseScrolled(x, y, scrollX, scrollY);

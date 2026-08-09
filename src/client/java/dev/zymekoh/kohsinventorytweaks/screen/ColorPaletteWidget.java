@@ -16,6 +16,7 @@ public final class ColorPaletteWidget extends AbstractWidget {
 	private static final int[] COLORS = createColors();
 	private final IntSupplier color;
 	private final IntConsumer onColorChanged;
+	private final WidgetClip clip = new WidgetClip();
 
 	public ColorPaletteWidget(
 		final int x,
@@ -31,6 +32,21 @@ public final class ColorPaletteWidget extends AbstractWidget {
 		this.onColorChanged = onColorChanged;
 	}
 
+	public ColorPaletteWidget setClipBounds(final int left, final int top, final int right, final int bottom) {
+		this.clip.set(left, top, right, bottom);
+		return this;
+	}
+
+	@Override
+	public boolean isMouseOver(final double x, final double y) {
+		return this.clip.contains(x, y) && super.isMouseOver(x, y);
+	}
+
+	@Override
+	public boolean isHovered() {
+		return this.clip.permitsHover(super.isHovered());
+	}
+
 	@Override
 	protected void extractWidgetRenderState(
 		final GuiGraphicsExtractor graphics,
@@ -38,6 +54,8 @@ public final class ColorPaletteWidget extends AbstractWidget {
 		final int mouseY,
 		final float a
 	) {
+		this.clip.trackPointer(mouseX, mouseY);
+		this.clip.begin(graphics);
 		UiRender.panel(
 			graphics,
 			this.getX(),
@@ -76,6 +94,7 @@ public final class ColorPaletteWidget extends AbstractWidget {
 			}
 		}
 		this.handleCursor(graphics);
+		this.clip.end(graphics);
 	}
 
 	@Override
