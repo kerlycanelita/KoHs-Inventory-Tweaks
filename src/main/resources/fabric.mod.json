@@ -5,7 +5,7 @@
   "name": "KoHs Inventory Tweaks",
   "description": "Successor to KoHs Inv Cursor. Client-side inventory control for deterministic cursor landing, guarded fast input, GUI scaling, resource-pack-aware customization, and per-item highlighting.",
   "authors": ["zymekoh"],
-  "license": "All-Rights-Reserved",
+  "license": "MIT",
   "icon": "assets/kohs_inventory_tweaks/icon.png",
   "contact": {
     "homepage": "https://github.com/kerlycanelita/KoHs-Inventory-Tweaks",

@@ -67,4 +67,4 @@ El JAR generado aparece en `build/libs/`.
 
 ## Licencia
 
-Copyright © 2026 zymekoh. Todos los derechos reservados. Consulta [LICENSE](LICENSE).
+Distribuido bajo la licencia [MIT](LICENSE). Copyright © 2026 zymekoh.
