@@ -37,9 +37,11 @@ public final class GuiScalerScreen extends Screen {
 	@Override
 	protected void init() {
 		int outerMargin = this.width < 360 ? 5 : 9;
-		int toggleWidth = Math.min(240, Math.max(96, this.width - outerMargin * 2));
+		int toggleWidth = Math.min(320, Math.max(132, (int) (this.width * 0.56F)));
+		toggleWidth = Math.min(toggleWidth, Math.max(1, this.width - outerMargin * 2));
+		int toggleX = (this.width - toggleWidth) / 2;
 		this.enabledButton = this.addRenderableWidget(new GlassButton(
-			outerMargin,
+			toggleX,
 			outerMargin,
 			toggleWidth,
 			22,

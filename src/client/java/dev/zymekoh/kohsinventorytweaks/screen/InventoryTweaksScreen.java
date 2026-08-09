@@ -82,6 +82,8 @@ public final class InventoryTweaksScreen extends Screen {
 	private int tweakCardY;
 	private int herziumCardX;
 	private int herziumCardY;
+	private int issuesCardX;
+	private int issuesCardY;
 	private int customizationCardX;
 	private int customizationCardY;
 	private int itemHighlighterCardX;
@@ -472,6 +474,15 @@ public final class InventoryTweaksScreen extends Screen {
 			GlassButton.Variant.NORMAL
 		);
 		this.addMainFeatureButton(
+			this.issuesCardX,
+			this.issuesCardY,
+			true,
+			"screen.kohs_inventory_tweaks.issues_tracker",
+			"screen.kohs_inventory_tweaks.issues_tracker.description",
+			button -> this.minecraft.setScreen(new IssuesTrackerScreen(this)),
+			GlassButton.Variant.NORMAL
+		);
+		this.addMainFeatureButton(
 			this.customizationCardX,
 			this.customizationCardY,
 			false,
@@ -726,15 +737,36 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void addCustomizationModalButtons() {
-		GlassButton previewButton = new GlassButton(
+		int arrowWidth = Math.min(24, Math.max(18, this.customizationSelectorWidth / 6));
+		int selectorGap = 3;
+		int labelWidth = Math.max(1, this.customizationSelectorWidth - arrowWidth * 2 - selectorGap * 2);
+		GlassButton previousButton = new GlassButton(
 			this.customizationSelectorX,
 			this.customizationSelectorY,
-			this.customizationSelectorWidth,
+			arrowWidth,
+			20,
+			Component.literal("\u2190"),
+			button -> {
+				this.cycleCustomizationPreview(-1);
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.TAB
+		);
+		previousButton.setTooltip(Tooltip.create(Component.translatable(
+			"screen.kohs_inventory_tweaks.customization.preview.previous"
+		)));
+		previousButton.setTooltipDelay(Duration.ofMillis(220));
+		this.addRenderableWidget(previousButton);
+
+		GlassButton previewButton = new GlassButton(
+			this.customizationSelectorX + arrowWidth + selectorGap,
+			this.customizationSelectorY,
+			labelWidth,
 			20,
 			this.customizationPreviewLabel(),
 			button -> {
-				this.cycleCustomizationPreview();
-				button.setMessage(this.customizationPreviewLabel());
+				this.cycleCustomizationPreview(1);
+				this.rebuildWidgets();
 			},
 			GlassButton.Variant.TAB
 		);
@@ -743,6 +775,24 @@ public final class InventoryTweaksScreen extends Screen {
 		)));
 		previewButton.setTooltipDelay(Duration.ofMillis(220));
 		this.addRenderableWidget(previewButton);
+
+		GlassButton nextButton = new GlassButton(
+			this.customizationSelectorX + arrowWidth + selectorGap + labelWidth + selectorGap,
+			this.customizationSelectorY,
+			arrowWidth,
+			20,
+			Component.literal("\u2192"),
+			button -> {
+				this.cycleCustomizationPreview(1);
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.TAB
+		);
+		nextButton.setTooltip(Tooltip.create(Component.translatable(
+			"screen.kohs_inventory_tweaks.customization.preview.next"
+		)));
+		nextButton.setTooltipDelay(Duration.ofMillis(220));
+		this.addRenderableWidget(nextButton);
 
 		int contentY = this.customizationOptionsY + 22 - this.customizationScroll;
 		int controlX = this.customizationOptionsX + 8;
@@ -1212,7 +1262,6 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void drawMainScreen(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY) {
-		UiRender.glow(graphics, this.width / 2 - 72, 6, 144, 20, 8, 18);
 		graphics.centeredText(this.font, this.title, this.width / 2, 10, UiTheme.TEXT);
 		if (!this.compactMain && this.height >= 230) {
 			graphics.centeredText(
@@ -1829,7 +1878,7 @@ public final class InventoryTweaksScreen extends Screen {
 		final int color,
 		final int opacity
 	) {
-		UiRender.panel(graphics, x, y, width, CUSTOM_LAYER_CARD_HEIGHT, 7, UiTheme.GLASS_LIGHT, UiTheme.BORDER_SOFT);
+		graphics.fill(x + 6, y, x + width - 6, y + 1, UiTheme.BORDER_SOFT);
 		graphics.text(this.font, title, x + 8, y + 8, UiTheme.TEXT);
 		int swatchX = x + width - 27;
 		graphics.fill(swatchX, y + 6, swatchX + 19, y + 21, 0xFF303030);
@@ -1842,7 +1891,7 @@ public final class InventoryTweaksScreen extends Screen {
 		final int width,
 		final int y
 	) {
-		UiRender.panel(graphics, x, y, width, CUSTOM_BACKGROUND_CARD_HEIGHT, 7, UiTheme.GLASS_LIGHT, UiTheme.BORDER_SOFT);
+		graphics.fill(x + 6, y, x + width - 6, y + 1, UiTheme.BORDER_SOFT);
 		graphics.text(
 			this.font,
 			Component.translatable("screen.kohs_inventory_tweaks.custom_background"),
@@ -1870,7 +1919,7 @@ public final class InventoryTweaksScreen extends Screen {
 		final int width,
 		final int y
 	) {
-		UiRender.panel(graphics, x, y, width, CUSTOM_BACKDROP_CARD_HEIGHT, 7, UiTheme.GLASS_LIGHT, UiTheme.BORDER_SOFT);
+		graphics.fill(x + 6, y, x + width - 6, y + 1, UiTheme.BORDER_SOFT);
 		graphics.text(
 			this.font,
 			Component.translatable("screen.kohs_inventory_tweaks.backdrop.title"),
@@ -2227,7 +2276,7 @@ public final class InventoryTweaksScreen extends Screen {
 		this.mainCardWidth = Math.max(1, railWidth - 10);
 		this.mainCardHeight = this.compactMain ? 23 : 36;
 		int cardGap = this.compactMain ? 5 : 7;
-		int leftRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
+		int leftRailContentHeight = this.mainCardHeight * 4 + cardGap * 3;
 		int rightRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
 		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 27);
 		this.mainLeftMaxScroll = Math.max(0, leftRailContentHeight - railVisibleHeight);
@@ -2241,7 +2290,9 @@ public final class InventoryTweaksScreen extends Screen {
 		this.tweakCardX = this.cursorCardX;
 		this.tweakCardY = this.cursorCardY + this.mainCardHeight + cardGap;
 		this.herziumCardX = this.cursorCardX;
-		this.herziumCardY = this.tweakCardY + this.mainCardHeight + cardGap;
+		this.issuesCardX = this.cursorCardX;
+		this.issuesCardY = this.tweakCardY + this.mainCardHeight + cardGap;
+		this.herziumCardY = this.issuesCardY + this.mainCardHeight + cardGap;
 		this.customizationCardX = this.mainRightRailX + 5;
 		this.customizationCardY = railContentTop - this.mainRightScroll;
 		this.itemHighlighterCardX = this.customizationCardX;
@@ -2435,7 +2486,7 @@ public final class InventoryTweaksScreen extends Screen {
 			return;
 		}
 		Random random = new Random(0x4B4F4853L);
-		int count = Mth.clamp(this.width * this.height / 12000, 14, 22);
+		int count = Mth.clamp(this.width * this.height / 7600, 24, 42);
 		for (int i = 0; i < count; i++) {
 			this.particles.add(new FloatingParticle(
 				random.nextFloat() * Math.max(1, this.width),
@@ -2443,7 +2494,7 @@ public final class InventoryTweaksScreen extends Screen {
 				0.08F + random.nextFloat() * 0.18F,
 				0.008F + random.nextFloat() * 0.025F,
 				1 + random.nextInt(2),
-				45 + random.nextInt(80),
+				72 + random.nextInt(112),
 				random.nextFloat() * 6.28318F
 			));
 		}
@@ -2615,10 +2666,12 @@ public final class InventoryTweaksScreen extends Screen {
 		);
 	}
 
-	private void cycleCustomizationPreview() {
+	private void cycleCustomizationPreview(final int direction) {
 		for (int i = 0; i < CUSTOMIZATION_PREVIEWS.length; i++) {
 			if (CUSTOMIZATION_PREVIEWS[i] == this.customizationPreviewTarget) {
-				this.customizationPreviewTarget = CUSTOMIZATION_PREVIEWS[(i + 1) % CUSTOMIZATION_PREVIEWS.length];
+				this.customizationPreviewTarget = CUSTOMIZATION_PREVIEWS[
+					Math.floorMod(i + direction, CUSTOMIZATION_PREVIEWS.length)
+				];
 				this.calculateCustomizationLayout();
 				return;
 			}

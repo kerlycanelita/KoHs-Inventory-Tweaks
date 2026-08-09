@@ -1,0 +1,342 @@
+package dev.zymekoh.kohsinventorytweaks.compat;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import dev.zymekoh.kohsinventorytweaks.KoHsInventoryTweaksClient;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
+import net.fabricmc.loader.api.metadata.Person;
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+
+public final class CompatibilityIssueManager {
+	private static final String INTERNAL_PACKAGE = "dev.zymekoh.kohsinventorytweaks.";
+	private static final String MIXIN_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Mixin;";
+	private static final String OVERWRITE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Overwrite;";
+	private static volatile boolean initialized;
+	private static volatile boolean adaptationActive;
+	private static volatile List<CompatibilityIssue> issues = List.of();
+
+	private CompatibilityIssueManager() {
+	}
+
+	public static synchronized void initialize() {
+		if (initialized) {
+			return;
+		}
+		initialized = true;
+		try {
+			ModContainer ownContainer = FabricLoader.getInstance()
+				.getModContainer(KoHsInventoryTweaksClient.MOD_ID)
+				.orElse(null);
+			if (ownContainer == null) {
+				return;
+			}
+			Set<TargetMethod> ownHooks = new HashSet<>();
+			for (MixinInspection inspection : inspectMixins(ownContainer)) {
+				for (String target : inspection.targets()) {
+					for (String method : inspection.injectedMethods()) {
+						ownHooks.add(new TargetMethod(target, method));
+					}
+				}
+			}
+
+			List<CompatibilityIssue> detected = new ArrayList<>();
+			for (ModContainer container : FabricLoader.getInstance().getAllMods()) {
+				String modId = container.getMetadata().getId();
+				if (modId.equals(KoHsInventoryTweaksClient.MOD_ID) || modId.startsWith("fabric-") || modId.equals("minecraft")) {
+					continue;
+				}
+				CompatibilityIssue issue = inspectForeignMod(container, ownHooks);
+				if (issue != null) {
+					detected.add(issue);
+				}
+			}
+			detected.sort(Comparator.comparing(CompatibilityIssue::modName, String.CASE_INSENSITIVE_ORDER));
+			issues = List.copyOf(detected);
+			if (!issues.isEmpty()) {
+				KoHsInventoryTweaksClient.LOGGER.warn("Detected {} confirmed KoHs Inventory Tweaks compatibility issue(s)", issues.size());
+				for (CompatibilityIssue issue : issues) {
+					KoHsInventoryTweaksClient.LOGGER.warn(
+						"Compatibility issue: {} ({}) {} at {}",
+						issue.modName(),
+						issue.modId(),
+						issue.version(),
+						issue.conflictPoints()
+					);
+				}
+			}
+		} catch (RuntimeException exception) {
+			KoHsInventoryTweaksClient.LOGGER.warn("Compatibility scan failed open; normal startup will continue", exception);
+			issues = List.of();
+		}
+	}
+
+	public static List<CompatibilityIssue> issues() {
+		initialize();
+		return issues;
+	}
+
+	public static boolean hasIssues() {
+		return !issues().isEmpty();
+	}
+
+	public static void enableAdaptation() {
+		adaptationActive = true;
+	}
+
+	public static boolean isAdaptationActive() {
+		return adaptationActive;
+	}
+
+	private static CompatibilityIssue inspectForeignMod(
+		final ModContainer container,
+		final Set<TargetMethod> ownHooks
+	) {
+		Set<String> directPoints = new LinkedHashSet<>();
+		Set<String> overwritePoints = new LinkedHashSet<>();
+		for (MixinInspection inspection : inspectMixins(container)) {
+			for (String target : inspection.targets()) {
+				if (target.startsWith(INTERNAL_PACKAGE)) {
+					if (inspection.injectedMethods().isEmpty() && inspection.overwrittenMethods().isEmpty()) {
+						directPoints.add(target);
+					}
+					for (String method : inspection.injectedMethods()) {
+						directPoints.add(target + "#" + method);
+					}
+					for (String method : inspection.overwrittenMethods()) {
+						directPoints.add(target + "#" + method);
+					}
+				}
+				for (String method : inspection.overwrittenMethods()) {
+					TargetMethod point = new TargetMethod(target, method);
+					if (ownHooks.contains(point)) {
+						overwritePoints.add(target + "#" + method);
+					}
+				}
+			}
+		}
+		CompatibilityIssue.Reason reason;
+		List<String> points;
+		if (!directPoints.isEmpty()) {
+			reason = CompatibilityIssue.Reason.DIRECT_MUTATION;
+			points = directPoints.stream().limit(8).toList();
+		} else if (!overwritePoints.isEmpty()) {
+			reason = CompatibilityIssue.Reason.CRITICAL_OVERWRITE;
+			points = overwritePoints.stream().limit(8).toList();
+		} else {
+			return null;
+		}
+		String creators = container.getMetadata().getAuthors().stream()
+			.map(Person::getName)
+			.filter(name -> !name.isBlank())
+			.reduce((left, right) -> left + ", " + right)
+			.orElse("Unknown");
+		return new CompatibilityIssue(
+			container.getMetadata().getId(),
+			container.getMetadata().getName(),
+			container.getMetadata().getVersion().getFriendlyString(),
+			creators,
+			reason,
+			points
+		);
+	}
+
+	private static List<MixinInspection> inspectMixins(final ModContainer container) {
+		List<MixinInspection> inspections = new ArrayList<>();
+		for (Path root : container.getRootPaths()) {
+			Path metadataPath = root.resolve("fabric.mod.json");
+			if (!Files.isRegularFile(metadataPath)) {
+				continue;
+			}
+			try {
+				JsonObject metadata = JsonParser.parseString(Files.readString(metadataPath)).getAsJsonObject();
+				JsonElement mixinsElement = metadata.get("mixins");
+				if (mixinsElement == null || !mixinsElement.isJsonArray()) {
+					continue;
+				}
+				for (JsonElement entry : mixinsElement.getAsJsonArray()) {
+					String configPath = entry.isJsonPrimitive()
+						? entry.getAsString()
+						: stringMember(entry.getAsJsonObject(), "config");
+					if (configPath == null || configPath.isBlank()) {
+						continue;
+					}
+					inspectMixinConfig(container.getRootPaths(), root, configPath, inspections);
+				}
+			} catch (IOException | RuntimeException exception) {
+				KoHsInventoryTweaksClient.LOGGER.debug(
+					"Could not inspect mixins for {} at {}",
+					container.getMetadata().getId(),
+					root,
+					exception
+				);
+			}
+		}
+		return inspections;
+	}
+
+	private static void inspectMixinConfig(
+		final List<Path> roots,
+		final Path resourceRoot,
+		final String configPath,
+		final List<MixinInspection> inspections
+	) throws IOException {
+		Path path = resourceRoot.resolve(configPath);
+		if (!Files.isRegularFile(path)) {
+			return;
+		}
+		JsonObject config = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
+		String mixinPackage = stringMember(config, "package");
+		if (mixinPackage == null) {
+			mixinPackage = "";
+		}
+		for (String key : List.of("mixins", "client")) {
+			JsonArray classes = config.has(key) && config.get(key).isJsonArray() ? config.getAsJsonArray(key) : new JsonArray();
+			for (JsonElement classNameElement : classes) {
+				String className = classNameElement.getAsString();
+				String qualified = mixinPackage.isBlank() ? className : mixinPackage + "." + className;
+				Path classPath = null;
+				for (Path root : roots) {
+					Path candidate = root.resolve(qualified.replace('.', '/') + ".class");
+					if (Files.isRegularFile(candidate)) {
+						classPath = candidate;
+						break;
+					}
+				}
+				if (classPath == null) {
+					continue;
+				}
+				try (InputStream input = Files.newInputStream(classPath)) {
+					MixinClassVisitor visitor = new MixinClassVisitor();
+					new ClassReader(input).accept(visitor, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+					if (!visitor.targets.isEmpty()) {
+						inspections.add(new MixinInspection(visitor.targets, visitor.injectedMethods, visitor.overwrittenMethods));
+					}
+				}
+			}
+		}
+	}
+
+	private static String stringMember(final JsonObject object, final String name) {
+		JsonElement value = object.get(name);
+		return value != null && value.isJsonPrimitive() ? value.getAsString() : null;
+	}
+
+	private static String normalizeMethod(final String selector) {
+		String method = selector;
+		int ownerEnd = method.lastIndexOf(';');
+		if (ownerEnd >= 0 && ownerEnd + 1 < method.length()) {
+			method = method.substring(ownerEnd + 1);
+		}
+		int descriptor = method.indexOf('(');
+		if (descriptor >= 0) {
+			method = method.substring(0, descriptor);
+		}
+		int quantifier = method.indexOf('{');
+		if (quantifier >= 0) {
+			method = method.substring(0, quantifier);
+		}
+		return method.trim();
+	}
+
+	private static final class MixinClassVisitor extends ClassVisitor {
+		private final Set<String> targets = new LinkedHashSet<>();
+		private final Set<String> injectedMethods = new LinkedHashSet<>();
+		private final Set<String> overwrittenMethods = new LinkedHashSet<>();
+
+		private MixinClassVisitor() {
+			super(Opcodes.ASM9);
+		}
+
+		@Override
+		public AnnotationVisitor visitAnnotation(final String descriptor, final boolean visible) {
+			if (!MIXIN_DESCRIPTOR.equals(descriptor)) {
+				return null;
+			}
+			return new AnnotationVisitor(Opcodes.ASM9) {
+				@Override
+				public AnnotationVisitor visitArray(final String name) {
+					if (!"value".equals(name) && !"targets".equals(name)) {
+						return null;
+					}
+					return new AnnotationVisitor(Opcodes.ASM9) {
+						@Override
+						public void visit(final String ignored, final Object value) {
+							if (value instanceof Type type) {
+								targets.add(type.getClassName());
+							} else if (value instanceof String target) {
+								targets.add(target.replace('/', '.'));
+							}
+						}
+					};
+				}
+			};
+		}
+
+		@Override
+		public MethodVisitor visitMethod(
+			final int access,
+			final String name,
+			final String descriptor,
+			final String signature,
+			final String[] exceptions
+		) {
+			return new MethodVisitor(Opcodes.ASM9) {
+				@Override
+				public AnnotationVisitor visitAnnotation(final String annotationDescriptor, final boolean visible) {
+					if (OVERWRITE_DESCRIPTOR.equals(annotationDescriptor)) {
+						overwrittenMethods.add(normalizeMethod(name));
+						return null;
+					}
+					if (!annotationDescriptor.startsWith("Lorg/spongepowered/asm/mixin/injection/")) {
+						return null;
+					}
+					return new AnnotationVisitor(Opcodes.ASM9) {
+						@Override
+						public AnnotationVisitor visitArray(final String annotationName) {
+							if (!"method".equals(annotationName)) {
+								return null;
+							}
+							return new AnnotationVisitor(Opcodes.ASM9) {
+								@Override
+								public void visit(final String ignored, final Object value) {
+									if (value instanceof String selector) {
+										injectedMethods.add(normalizeMethod(selector));
+									}
+								}
+							};
+						}
+					};
+				}
+			};
+		}
+	}
+
+	private record MixinInspection(Set<String> targets, Set<String> injectedMethods, Set<String> overwrittenMethods) {
+		private MixinInspection {
+			targets = Set.copyOf(targets);
+			injectedMethods = Set.copyOf(injectedMethods);
+			overwrittenMethods = Set.copyOf(overwrittenMethods);
+		}
+	}
+
+	private record TargetMethod(String target, String method) {
+	}
+}

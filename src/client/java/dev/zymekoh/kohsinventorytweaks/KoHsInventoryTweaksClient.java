@@ -1,6 +1,8 @@
 package dev.zymekoh.kohsinventorytweaks;
 
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityNoticeController;
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import net.fabricmc.api.ClientModInitializer;
@@ -18,8 +20,12 @@ public final class KoHsInventoryTweaksClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
+		CompatibilityIssueManager.initialize();
 		ConfigStore.load();
-		ClientTickEvents.END_CLIENT_TICK.register(CursorLandingController::onClientTick);
+		ClientTickEvents.END_CLIENT_TICK.register(minecraft -> {
+			CompatibilityNoticeController.onClientTick(minecraft);
+			CursorLandingController.onClientTick(minecraft);
+		});
 		ResourceLoader.get(PackType.CLIENT_RESOURCES).registerReloadListener(
 			Identifier.fromNamespaceAndPath(MOD_ID, "inventory_texture"),
 			(ResourceManagerReloadListener) resourceManager -> InventoryTextureManager.onResourcesReloaded()

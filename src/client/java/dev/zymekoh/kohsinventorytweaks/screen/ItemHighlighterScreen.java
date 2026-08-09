@@ -656,7 +656,7 @@ public final class ItemHighlighterScreen extends Screen {
 			return;
 		}
 		Random random = new Random(0x4954454DL);
-		int count = Mth.clamp(this.width * this.height / 12000, 14, 22);
+		int count = Mth.clamp(this.width * this.height / 7600, 24, 42);
 		for (int i = 0; i < count; i++) {
 			this.particles.add(new FloatingParticle(
 				random.nextFloat() * Math.max(1, this.width),
@@ -664,7 +664,7 @@ public final class ItemHighlighterScreen extends Screen {
 				0.08F + random.nextFloat() * 0.18F,
 				0.008F + random.nextFloat() * 0.025F,
 				1 + random.nextInt(2),
-				45 + random.nextInt(80),
+				72 + random.nextInt(112),
 				random.nextFloat() * 6.28318F
 			));
 		}
