@@ -1,0 +1,30 @@
+# Gradle and generated output
+.gradle/
+build/
+bin/
+out/
+
+# Local Minecraft development instance
+run/
+logs/
+crash-reports/
+
+# Legacy KoHs Inv Cursor projects and artifacts
+versions/
+builds/
+modrinth/
+scripts/
+
+# IDE and operating-system files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+*.bak

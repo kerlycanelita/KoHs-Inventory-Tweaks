@@ -1,0 +1,29 @@
+package dev.zymekoh.kohsinventorytweaks;
+
+import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
+import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public final class KoHsInventoryTweaksClient implements ClientModInitializer {
+	public static final String MOD_ID = "kohs_inventory_tweaks";
+	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+
+	@Override
+	public void onInitializeClient() {
+		ConfigStore.load();
+		ClientTickEvents.END_CLIENT_TICK.register(CursorLandingController::onClientTick);
+		ResourceLoader.get(PackType.CLIENT_RESOURCES).registerReloadListener(
+			Identifier.fromNamespaceAndPath(MOD_ID, "inventory_texture"),
+			(ResourceManagerReloadListener) resourceManager -> InventoryTextureManager.onResourcesReloaded()
+		);
+		LOGGER.info("KoHs Inventory Tweaks initialized for Minecraft 26.1.2");
+	}
+}
