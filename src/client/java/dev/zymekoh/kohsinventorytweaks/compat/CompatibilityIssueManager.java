@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import dev.zymekoh.kohsinventorytweaks.KoHsInventoryTweaksClient;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -24,12 +23,17 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class CompatibilityIssueManager {
+	private static final String MOD_ID = "kohs_inventory_tweaks";
+	private static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID + "/compatibility");
 	private static final String INTERNAL_PACKAGE = "dev.zymekoh.kohsinventorytweaks.";
 	private static final String MIXIN_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Mixin;";
 	private static final String OVERWRITE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Overwrite;";
 	private static volatile boolean initialized;
+	private static volatile boolean earlyMixinGateActive;
 	private static volatile boolean adaptationActive;
 	private static volatile List<CompatibilityIssue> issues = List.of();
 
@@ -43,16 +47,20 @@ public final class CompatibilityIssueManager {
 		initialized = true;
 		try {
 			ModContainer ownContainer = FabricLoader.getInstance()
-				.getModContainer(KoHsInventoryTweaksClient.MOD_ID)
+				.getModContainer(MOD_ID)
 				.orElse(null);
 			if (ownContainer == null) {
 				return;
 			}
 			Set<TargetMethod> ownHooks = new HashSet<>();
+			Set<TargetMethod> criticalOwnHooks = new HashSet<>();
 			for (MixinInspection inspection : inspectMixins(ownContainer)) {
 				for (String target : inspection.targets()) {
 					for (String method : inspection.injectedMethods()) {
 						ownHooks.add(new TargetMethod(target, method));
+					}
+					for (String method : inspection.criticalInjectedMethods()) {
+						criticalOwnHooks.add(new TargetMethod(target, method));
 					}
 				}
 			}
@@ -60,10 +68,10 @@ public final class CompatibilityIssueManager {
 			List<CompatibilityIssue> detected = new ArrayList<>();
 			for (ModContainer container : FabricLoader.getInstance().getAllMods()) {
 				String modId = container.getMetadata().getId();
-				if (modId.equals(KoHsInventoryTweaksClient.MOD_ID) || modId.startsWith("fabric-") || modId.equals("minecraft")) {
+				if (modId.equals(MOD_ID) || modId.startsWith("fabric-") || modId.equals("minecraft")) {
 					continue;
 				}
-				CompatibilityIssue issue = inspectForeignMod(container, ownHooks);
+				CompatibilityIssue issue = inspectForeignMod(container, ownHooks, criticalOwnHooks);
 				if (issue != null) {
 					detected.add(issue);
 				}
@@ -71,19 +79,20 @@ public final class CompatibilityIssueManager {
 			detected.sort(Comparator.comparing(CompatibilityIssue::modName, String.CASE_INSENSITIVE_ORDER));
 			issues = List.copyOf(detected);
 			if (!issues.isEmpty()) {
-				KoHsInventoryTweaksClient.LOGGER.warn("Detected {} confirmed KoHs Inventory Tweaks compatibility issue(s)", issues.size());
+				LOGGER.warn("Detected {} confirmed KoHs Inventory Tweaks compatibility issue(s)", issues.size());
 				for (CompatibilityIssue issue : issues) {
-					KoHsInventoryTweaksClient.LOGGER.warn(
-						"Compatibility issue: {} ({}) {} at {}",
+					LOGGER.warn(
+						"Compatibility issue: {} ({}) {} severity={} at {}",
 						issue.modName(),
 						issue.modId(),
 						issue.version(),
+						issue.severity(),
 						issue.conflictPoints()
 					);
 				}
 			}
 		} catch (RuntimeException exception) {
-			KoHsInventoryTweaksClient.LOGGER.warn("Compatibility scan failed open; normal startup will continue", exception);
+			LOGGER.warn("Compatibility scan failed open; normal startup will continue", exception);
 			issues = List.of();
 		}
 	}
@@ -97,6 +106,24 @@ public final class CompatibilityIssueManager {
 		return !issues().isEmpty();
 	}
 
+	public static List<CompatibilityIssue> blockingIssues() {
+		return issues().stream()
+			.filter(issue -> issue.severity() == CompatibilityIssue.Severity.BLOCKING)
+			.toList();
+	}
+
+	public static boolean hasBlockingIssues() {
+		return !blockingIssues().isEmpty();
+	}
+
+	public static void activateEarlyMixinGate() {
+		earlyMixinGateActive = true;
+	}
+
+	public static boolean isSafelyBlocked() {
+		return earlyMixinGateActive && hasBlockingIssues();
+	}
+
 	public static void enableAdaptation() {
 		adaptationActive = true;
 	}
@@ -107,10 +134,12 @@ public final class CompatibilityIssueManager {
 
 	private static CompatibilityIssue inspectForeignMod(
 		final ModContainer container,
-		final Set<TargetMethod> ownHooks
+		final Set<TargetMethod> ownHooks,
+		final Set<TargetMethod> criticalOwnHooks
 	) {
 		Set<String> directPoints = new LinkedHashSet<>();
 		Set<String> overwritePoints = new LinkedHashSet<>();
+		Set<String> blockingOverwritePoints = new LinkedHashSet<>();
 		for (MixinInspection inspection : inspectMixins(container)) {
 			for (String target : inspection.targets()) {
 				if (target.startsWith(INTERNAL_PACKAGE)) {
@@ -129,16 +158,26 @@ public final class CompatibilityIssueManager {
 					if (ownHooks.contains(point)) {
 						overwritePoints.add(target + "#" + method);
 					}
+					if (criticalOwnHooks.contains(point)) {
+						blockingOverwritePoints.add(target + "#" + method);
+					}
 				}
 			}
 		}
 		CompatibilityIssue.Reason reason;
+		CompatibilityIssue.Severity severity;
 		List<String> points;
-		if (!directPoints.isEmpty()) {
+		if (!blockingOverwritePoints.isEmpty()) {
+			reason = CompatibilityIssue.Reason.CRITICAL_OVERWRITE;
+			severity = CompatibilityIssue.Severity.BLOCKING;
+			points = blockingOverwritePoints.stream().limit(8).toList();
+		} else if (!directPoints.isEmpty()) {
 			reason = CompatibilityIssue.Reason.DIRECT_MUTATION;
+			severity = CompatibilityIssue.Severity.ADAPTABLE;
 			points = directPoints.stream().limit(8).toList();
 		} else if (!overwritePoints.isEmpty()) {
 			reason = CompatibilityIssue.Reason.CRITICAL_OVERWRITE;
+			severity = CompatibilityIssue.Severity.ADAPTABLE;
 			points = overwritePoints.stream().limit(8).toList();
 		} else {
 			return null;
@@ -153,6 +192,7 @@ public final class CompatibilityIssueManager {
 			container.getMetadata().getName(),
 			container.getMetadata().getVersion().getFriendlyString(),
 			creators,
+			severity,
 			reason,
 			points
 		);
@@ -181,7 +221,7 @@ public final class CompatibilityIssueManager {
 					inspectMixinConfig(container.getRootPaths(), root, configPath, inspections);
 				}
 			} catch (IOException | RuntimeException exception) {
-				KoHsInventoryTweaksClient.LOGGER.debug(
+					LOGGER.debug(
 					"Could not inspect mixins for {} at {}",
 					container.getMetadata().getId(),
 					root,
@@ -227,7 +267,12 @@ public final class CompatibilityIssueManager {
 					MixinClassVisitor visitor = new MixinClassVisitor();
 					new ClassReader(input).accept(visitor, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 					if (!visitor.targets.isEmpty()) {
-						inspections.add(new MixinInspection(visitor.targets, visitor.injectedMethods, visitor.overwrittenMethods));
+						inspections.add(new MixinInspection(
+							visitor.targets,
+							visitor.injectedMethods,
+							visitor.criticalInjectedMethods,
+							visitor.overwrittenMethods
+						));
 					}
 				}
 			}
@@ -259,6 +304,7 @@ public final class CompatibilityIssueManager {
 	private static final class MixinClassVisitor extends ClassVisitor {
 		private final Set<String> targets = new LinkedHashSet<>();
 		private final Set<String> injectedMethods = new LinkedHashSet<>();
+		private final Set<String> criticalInjectedMethods = new LinkedHashSet<>();
 		private final Set<String> overwrittenMethods = new LinkedHashSet<>();
 
 		private MixinClassVisitor() {
@@ -308,6 +354,7 @@ public final class CompatibilityIssueManager {
 					if (!annotationDescriptor.startsWith("Lorg/spongepowered/asm/mixin/injection/")) {
 						return null;
 					}
+					boolean critical = !annotationDescriptor.endsWith("/Inject;");
 					return new AnnotationVisitor(Opcodes.ASM9) {
 						@Override
 						public AnnotationVisitor visitArray(final String annotationName) {
@@ -318,7 +365,11 @@ public final class CompatibilityIssueManager {
 								@Override
 								public void visit(final String ignored, final Object value) {
 									if (value instanceof String selector) {
-										injectedMethods.add(normalizeMethod(selector));
+										String normalized = normalizeMethod(selector);
+										injectedMethods.add(normalized);
+										if (critical) {
+											criticalInjectedMethods.add(normalized);
+										}
 									}
 								}
 							};
@@ -329,10 +380,16 @@ public final class CompatibilityIssueManager {
 		}
 	}
 
-	private record MixinInspection(Set<String> targets, Set<String> injectedMethods, Set<String> overwrittenMethods) {
+	private record MixinInspection(
+		Set<String> targets,
+		Set<String> injectedMethods,
+		Set<String> criticalInjectedMethods,
+		Set<String> overwrittenMethods
+	) {
 		private MixinInspection {
 			targets = Set.copyOf(targets);
 			injectedMethods = Set.copyOf(injectedMethods);
+			criticalInjectedMethods = Set.copyOf(criticalInjectedMethods);
 			overwrittenMethods = Set.copyOf(overwrittenMethods);
 		}
 	}

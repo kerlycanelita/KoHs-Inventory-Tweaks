@@ -17,6 +17,8 @@
   "screen.kohs_inventory_tweaks.issues_tracker.none.description": "KoHs solo informa modificaciones directas de sus clases internas o una sobrescritura exacta de un método que necesita. Un mod no se marca únicamente por añadir funciones de inventario.",
   "screen.kohs_inventory_tweaks.issues_tracker.creator": "Creador: %s",
   "screen.kohs_inventory_tweaks.issues_tracker.points": "Puntos detectados: %s",
+  "screen.kohs_inventory_tweaks.issues_tracker.status.blocking": "BLOQUEANTE",
+  "screen.kohs_inventory_tweaks.issues_tracker.status.adaptable": "ADAPTABLE",
   "screen.kohs_inventory_tweaks.issues_tracker.reason.direct_mutation": "Este mod apunta directamente mediante un mixin a clases internas de KoHs Inventory Tweaks. Su comportamiento puede reemplazar o interceptar la lógica de KoHs.",
   "screen.kohs_inventory_tweaks.issues_tracker.reason.critical_overwrite": "Este mod sobrescribe un método de Minecraft utilizado por KoHs. El reemplazo puede eliminar un punto de inyección necesario para una función del inventario.",
   "screen.kohs_inventory_tweaks.compatibility_notice.title": "KoHs Inventory Tweaks - Aviso de compatibilidad",

@@ -7,6 +7,7 @@ public record CompatibilityIssue(
 	String modName,
 	String version,
 	String creators,
+	Severity severity,
 	Reason reason,
 	List<String> conflictPoints
 ) {
@@ -27,5 +28,10 @@ public record CompatibilityIssue(
 		public String translationKey() {
 			return "screen.kohs_inventory_tweaks.issues_tracker.reason." + this.translationSuffix;
 		}
+	}
+
+	public enum Severity {
+		ADAPTABLE,
+		BLOCKING
 	}
 }

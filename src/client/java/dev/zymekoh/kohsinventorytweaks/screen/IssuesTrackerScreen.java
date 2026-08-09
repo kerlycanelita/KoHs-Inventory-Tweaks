@@ -165,7 +165,17 @@ public final class IssuesTrackerScreen extends Screen {
 		final int width,
 		final int height
 	) {
-		UiRender.panel(graphics, x, y, width, height, 8, UiTheme.GLASS_LIGHT, UiTheme.DANGER);
+		boolean blocking = issue.severity() == CompatibilityIssue.Severity.BLOCKING;
+		UiRender.panel(
+			graphics,
+			x,
+			y,
+			width,
+			height,
+			8,
+			UiTheme.GLASS_LIGHT,
+			blocking ? UiTheme.DANGER : UiTheme.ACCENT_SOFT
+		);
 		int iconSize = width < 300 ? 30 : 40;
 		Identifier icon = this.icons.load(issue.modId());
 		if (icon != null) {
@@ -176,7 +186,20 @@ public final class IssuesTrackerScreen extends Screen {
 		}
 		int textX = x + iconSize + 18;
 		int textWidth = Math.max(48, width - iconSize - 28);
-		graphics.text(this.font, Component.literal(issue.modName()), textX, y + 9, UiTheme.TEXT, false);
+		Component status = Component.translatable(blocking
+			? "screen.kohs_inventory_tweaks.issues_tracker.status.blocking"
+			: "screen.kohs_inventory_tweaks.issues_tracker.status.adaptable");
+		int statusWidth = this.font.width(status);
+		String displayName = this.font.plainSubstrByWidth(issue.modName(), Math.max(12, textWidth - statusWidth - 10));
+		graphics.text(this.font, Component.literal(displayName), textX, y + 9, UiTheme.TEXT, false);
+		graphics.text(
+			this.font,
+			status,
+			x + width - 9 - this.font.width(status),
+			y + 9,
+			blocking ? UiTheme.DANGER : UiTheme.ACCENT_BRIGHT,
+			false
+		);
 		graphics.text(
 			this.font,
 			Component.literal(issue.modId() + "  " + issue.version()),
