@@ -142,7 +142,7 @@ public final class BlockingCompatibilityScreen extends Screen {
 		for (CompatibilityIssue issue : this.issues) {
 			this.addWrapped("• " + issue.modName() + " (" + issue.modId() + " " + issue.version() + ")", textWidth);
 			this.addWrapped("  Creator: " + issue.creators(), textWidth);
-			this.addWrapped("  Reason: A required KoHs invocation hook is inside a method overwritten by this mod. Applying both can fail during mixin transformation.", textWidth);
+			this.addWrapped("  Reason: " + englishReason(issue), textWidth);
 			this.addWrapped("  Detected points: " + String.join(", ", issue.conflictPoints()), textWidth);
 			this.lines.add(FormattedCharSequence.EMPTY);
 		}
@@ -155,7 +155,7 @@ public final class BlockingCompatibilityScreen extends Screen {
 		for (CompatibilityIssue issue : this.issues) {
 			this.addWrapped("• " + issue.modName() + " (" + issue.modId() + " " + issue.version() + ")", textWidth);
 			this.addWrapped("  Creador: " + issue.creators(), textWidth);
-			this.addWrapped("  Razón: Un hook obligatorio de KoHs está dentro de un método sobrescrito por este mod. Aplicar ambos puede fallar durante la transformación de mixins.", textWidth);
+			this.addWrapped("  Razón: " + spanishReason(issue), textWidth);
 			this.addWrapped("  Puntos detectados: " + String.join(", ", issue.conflictPoints()), textWidth);
 			this.lines.add(FormattedCharSequence.EMPTY);
 		}
@@ -167,6 +167,22 @@ public final class BlockingCompatibilityScreen extends Screen {
 
 	private void addWrapped(final String text, final int width) {
 		this.lines.addAll(this.font.split(Component.literal(text), width));
+	}
+
+	private static String englishReason(final CompatibilityIssue issue) {
+		return switch (issue.reason()) {
+			case REDIRECT_COLLISION -> "This mod and KoHs redirect the same required invocation. Mixin accepts only one redirect there, so KoHs would fail its mandatory injection check and crash startup.";
+			case CRITICAL_OVERWRITE -> "A required KoHs invocation hook is inside a method overwritten by this mod. Applying both can fail during mixin transformation.";
+			case DIRECT_MUTATION -> "This mod directly mutates internal KoHs classes before normal initialization.";
+		};
+	}
+
+	private static String spanishReason(final CompatibilityIssue issue) {
+		return switch (issue.reason()) {
+			case REDIRECT_COLLISION -> "Este mod y KoHs redirigen la misma invocación obligatoria. Mixin solo acepta una redirección en ese punto, por lo que KoHs fallaría su comprobación de inyección y cerraría el arranque.";
+			case CRITICAL_OVERWRITE -> "Un hook obligatorio de KoHs está dentro de un método sobrescrito por este mod. Aplicar ambos puede fallar durante la transformación de mixins.";
+			case DIRECT_MUTATION -> "Este mod modifica directamente clases internas de KoHs antes de la inicialización normal.";
+		};
 	}
 
 	private void drawBody(final GuiGraphicsExtractor graphics) {

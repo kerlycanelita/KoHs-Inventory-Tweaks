@@ -32,6 +32,11 @@ public final class CompatibilityIssueManager {
 	private static final String INTERNAL_PACKAGE = "dev.zymekoh.kohsinventorytweaks.";
 	private static final String MIXIN_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Mixin;";
 	private static final String OVERWRITE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Overwrite;";
+	private static final String REDIRECT_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/injection/Redirect;";
+	private static final String INVENTORY_SCALE_FIX_ID = "inventoryscalefix";
+	private static final String INVENTORY_SCALE_FIX_CRASH_VERSION = "1.0.0+mc26.1.2";
+	private static final String INVENTORY_ENTITY_INVOCATION = "Lnet/minecraft/client/gui/screens/inventory/InventoryScreen;"
+		+ "extractEntityInInventoryFollowsMouse(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIIIIFFFLnet/minecraft/world/entity/LivingEntity;)V";
 	private static volatile boolean initialized;
 	private static volatile boolean earlyMixinGateActive;
 	private static volatile boolean adaptationActive;
@@ -54,6 +59,7 @@ public final class CompatibilityIssueManager {
 			}
 			Set<TargetMethod> ownHooks = new HashSet<>();
 			Set<TargetMethod> criticalOwnHooks = new HashSet<>();
+			Set<RedirectPoint> ownRedirects = new HashSet<>();
 			for (MixinInspection inspection : inspectMixins(ownContainer)) {
 				for (String target : inspection.targets()) {
 					for (String method : inspection.injectedMethods()) {
@@ -61,6 +67,9 @@ public final class CompatibilityIssueManager {
 					}
 					for (String method : inspection.criticalInjectedMethods()) {
 						criticalOwnHooks.add(new TargetMethod(target, method));
+					}
+					for (RedirectHook redirect : inspection.redirectHooks()) {
+						ownRedirects.add(new RedirectPoint(target, redirect.method(), redirect.invocationTarget()));
 					}
 				}
 			}
@@ -71,7 +80,10 @@ public final class CompatibilityIssueManager {
 				if (modId.equals(MOD_ID) || modId.startsWith("fabric-") || modId.equals("minecraft")) {
 					continue;
 				}
-				CompatibilityIssue issue = inspectForeignMod(container, ownHooks, criticalOwnHooks);
+				CompatibilityIssue issue = explicitIssueFor(container);
+				if (issue == null) {
+					issue = inspectForeignMod(container, ownHooks, criticalOwnHooks, ownRedirects);
+				}
 				if (issue != null) {
 					detected.add(issue);
 				}
@@ -135,11 +147,13 @@ public final class CompatibilityIssueManager {
 	private static CompatibilityIssue inspectForeignMod(
 		final ModContainer container,
 		final Set<TargetMethod> ownHooks,
-		final Set<TargetMethod> criticalOwnHooks
+		final Set<TargetMethod> criticalOwnHooks,
+		final Set<RedirectPoint> ownRedirects
 	) {
 		Set<String> directPoints = new LinkedHashSet<>();
 		Set<String> overwritePoints = new LinkedHashSet<>();
 		Set<String> blockingOverwritePoints = new LinkedHashSet<>();
+		Set<String> redirectCollisionPoints = new LinkedHashSet<>();
 		for (MixinInspection inspection : inspectMixins(container)) {
 			for (String target : inspection.targets()) {
 				if (target.startsWith(INTERNAL_PACKAGE)) {
@@ -162,12 +176,22 @@ public final class CompatibilityIssueManager {
 						blockingOverwritePoints.add(target + "#" + method);
 					}
 				}
+				for (RedirectHook redirect : inspection.redirectHooks()) {
+					RedirectPoint point = new RedirectPoint(target, redirect.method(), redirect.invocationTarget());
+					if (ownRedirects.contains(point)) {
+						redirectCollisionPoints.add(target + "#" + redirect.method() + " -> " + redirect.invocationTarget());
+					}
+				}
 			}
 		}
 		CompatibilityIssue.Reason reason;
 		CompatibilityIssue.Severity severity;
 		List<String> points;
-		if (!blockingOverwritePoints.isEmpty()) {
+		if (!redirectCollisionPoints.isEmpty()) {
+			reason = CompatibilityIssue.Reason.REDIRECT_COLLISION;
+			severity = CompatibilityIssue.Severity.BLOCKING;
+			points = redirectCollisionPoints.stream().limit(8).toList();
+		} else if (!blockingOverwritePoints.isEmpty()) {
 			reason = CompatibilityIssue.Reason.CRITICAL_OVERWRITE;
 			severity = CompatibilityIssue.Severity.BLOCKING;
 			points = blockingOverwritePoints.stream().limit(8).toList();
@@ -196,6 +220,30 @@ public final class CompatibilityIssueManager {
 			reason,
 			points
 		);
+	}
+
+	private static CompatibilityIssue explicitIssueFor(final ModContainer container) {
+		if (!INVENTORY_SCALE_FIX_ID.equals(container.getMetadata().getId())
+			|| !INVENTORY_SCALE_FIX_CRASH_VERSION.equals(container.getMetadata().getVersion().getFriendlyString())) {
+			return null;
+		}
+		return new CompatibilityIssue(
+			container.getMetadata().getId(),
+			container.getMetadata().getName(),
+			container.getMetadata().getVersion().getFriendlyString(),
+			creatorsOf(container),
+			CompatibilityIssue.Severity.BLOCKING,
+			CompatibilityIssue.Reason.REDIRECT_COLLISION,
+			List.of("net.minecraft.client.gui.screens.inventory.InventoryScreen#extractBackground -> " + INVENTORY_ENTITY_INVOCATION)
+		);
+	}
+
+	private static String creatorsOf(final ModContainer container) {
+		return container.getMetadata().getAuthors().stream()
+			.map(Person::getName)
+			.filter(name -> !name.isBlank())
+			.reduce((left, right) -> left + ", " + right)
+			.orElse("Unknown");
 	}
 
 	private static List<MixinInspection> inspectMixins(final ModContainer container) {
@@ -271,6 +319,7 @@ public final class CompatibilityIssueManager {
 							visitor.targets,
 							visitor.injectedMethods,
 							visitor.criticalInjectedMethods,
+							visitor.redirectHooks,
 							visitor.overwrittenMethods
 						));
 					}
@@ -305,6 +354,7 @@ public final class CompatibilityIssueManager {
 		private final Set<String> targets = new LinkedHashSet<>();
 		private final Set<String> injectedMethods = new LinkedHashSet<>();
 		private final Set<String> criticalInjectedMethods = new LinkedHashSet<>();
+		private final Set<RedirectHook> redirectHooks = new LinkedHashSet<>();
 		private final Set<String> overwrittenMethods = new LinkedHashSet<>();
 
 		private MixinClassVisitor() {
@@ -354,29 +404,65 @@ public final class CompatibilityIssueManager {
 					if (!annotationDescriptor.startsWith("Lorg/spongepowered/asm/mixin/injection/")) {
 						return null;
 					}
-					boolean critical = !annotationDescriptor.endsWith("/Inject;");
+					return new InjectionAnnotationVisitor(annotationDescriptor);
+				}
+			};
+		}
+
+		private final class InjectionAnnotationVisitor extends AnnotationVisitor {
+			private final boolean critical;
+			private final boolean redirect;
+			private final Set<String> methods = new LinkedHashSet<>();
+			private String invocationTarget;
+
+			private InjectionAnnotationVisitor(final String descriptor) {
+				super(Opcodes.ASM9);
+				this.critical = !descriptor.endsWith("/Inject;");
+				this.redirect = REDIRECT_DESCRIPTOR.equals(descriptor);
+			}
+
+			@Override
+			public AnnotationVisitor visitArray(final String name) {
+				if ("method".equals(name)) {
 					return new AnnotationVisitor(Opcodes.ASM9) {
 						@Override
-						public AnnotationVisitor visitArray(final String annotationName) {
-							if (!"method".equals(annotationName)) {
-								return null;
+						public void visit(final String ignored, final Object value) {
+							if (value instanceof String selector) {
+								methods.add(normalizeMethod(selector));
 							}
+						}
+					};
+				}
+				if ("at".equals(name)) {
+					return new AnnotationVisitor(Opcodes.ASM9) {
+						@Override
+						public AnnotationVisitor visitAnnotation(final String ignored, final String descriptor) {
 							return new AnnotationVisitor(Opcodes.ASM9) {
 								@Override
-								public void visit(final String ignored, final Object value) {
-									if (value instanceof String selector) {
-										String normalized = normalizeMethod(selector);
-										injectedMethods.add(normalized);
-										if (critical) {
-											criticalInjectedMethods.add(normalized);
-										}
+								public void visit(final String property, final Object value) {
+									if ("target".equals(property) && value instanceof String target) {
+										invocationTarget = target.trim();
 									}
 								}
 							};
 						}
 					};
 				}
-			};
+				return null;
+			}
+
+			@Override
+			public void visitEnd() {
+				injectedMethods.addAll(this.methods);
+				if (this.critical) {
+					criticalInjectedMethods.addAll(this.methods);
+				}
+				if (this.redirect && this.invocationTarget != null && !this.invocationTarget.isBlank()) {
+					for (String method : this.methods) {
+						redirectHooks.add(new RedirectHook(method, this.invocationTarget));
+					}
+				}
+			}
 		}
 	}
 
@@ -384,16 +470,24 @@ public final class CompatibilityIssueManager {
 		Set<String> targets,
 		Set<String> injectedMethods,
 		Set<String> criticalInjectedMethods,
+		Set<RedirectHook> redirectHooks,
 		Set<String> overwrittenMethods
 	) {
 		private MixinInspection {
 			targets = Set.copyOf(targets);
 			injectedMethods = Set.copyOf(injectedMethods);
 			criticalInjectedMethods = Set.copyOf(criticalInjectedMethods);
+			redirectHooks = Set.copyOf(redirectHooks);
 			overwrittenMethods = Set.copyOf(overwrittenMethods);
 		}
 	}
 
 	private record TargetMethod(String target, String method) {
+	}
+
+	private record RedirectHook(String method, String invocationTarget) {
+	}
+
+	private record RedirectPoint(String target, String method, String invocationTarget) {
 	}
 }

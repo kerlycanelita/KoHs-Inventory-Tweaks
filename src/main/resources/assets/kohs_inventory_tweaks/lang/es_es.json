@@ -21,6 +21,7 @@
   "screen.kohs_inventory_tweaks.issues_tracker.status.adaptable": "ADAPTABLE",
   "screen.kohs_inventory_tweaks.issues_tracker.reason.direct_mutation": "Este mod apunta directamente mediante un mixin a clases internas de KoHs Inventory Tweaks. Su comportamiento puede reemplazar o interceptar la lógica de KoHs.",
   "screen.kohs_inventory_tweaks.issues_tracker.reason.critical_overwrite": "Este mod sobrescribe un método de Minecraft utilizado por KoHs. El reemplazo puede eliminar un punto de inyección necesario para una función del inventario.",
+  "screen.kohs_inventory_tweaks.issues_tracker.reason.redirect_collision": "Este mod redirige la misma invocación obligatoria que KoHs. Solo una redirección puede controlar esa llamada, por lo que la combinación fallaría la comprobación de inyección de KoHs durante el arranque.",
   "screen.kohs_inventory_tweaks.compatibility_notice.title": "KoHs Inventory Tweaks - Aviso de compatibilidad",
   "screen.kohs_inventory_tweaks.compatibility_notice.description": "Se detectó una superposición técnica confirmada. Retira el mod indicado y reinicia para el resultado más seguro, o continúa con la adaptación protegida de KoHs. No se modifican archivos ni mixins de terceros durante la ejecución.",
   "screen.kohs_inventory_tweaks.compatibility_notice.mods_folder": "Abrir carpeta de mods",

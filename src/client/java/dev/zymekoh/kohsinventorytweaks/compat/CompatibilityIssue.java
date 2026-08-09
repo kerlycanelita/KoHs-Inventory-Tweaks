@@ -17,7 +17,8 @@ public record CompatibilityIssue(
 
 	public enum Reason {
 		DIRECT_MUTATION("direct_mutation"),
-		CRITICAL_OVERWRITE("critical_overwrite");
+		CRITICAL_OVERWRITE("critical_overwrite"),
+		REDIRECT_COLLISION("redirect_collision");
 
 		private final String translationSuffix;
 
