@@ -49,7 +49,8 @@ public final class InventoryTweaksScreen extends Screen {
 	private static final int INVENTORY_WIDTH = 176;
 	private static final int INVENTORY_HEIGHT = 166;
 	private static final int SCREEN_MARGIN = 8;
-	private static final long ENTRANCE_DURATION_NANOS = 520_000_000L;
+	private static final long ENTRANCE_DURATION_NANOS = 320_000_000L;
+	private static final long MODAL_ENTRANCE_DURATION_NANOS = 240_000_000L;
 	private static final int CUSTOM_LAYER_CARD_HEIGHT = 114;
 	private static final int CUSTOM_SLOT_CARD_Y = CUSTOM_LAYER_CARD_HEIGHT + 8;
 	private static final int CUSTOM_BACKGROUND_CARD_Y = CUSTOM_SLOT_CARD_Y + CUSTOM_LAYER_CARD_HEIGHT + 8;
@@ -64,6 +65,8 @@ public final class InventoryTweaksScreen extends Screen {
 	private final long entranceStartedAtNanos = System.nanoTime();
 	private InventoryTweaksConfig working;
 	private Modal modal = Modal.NONE;
+	private Modal animatedModal = Modal.NONE;
+	private long modalOpenedAtNanos = System.nanoTime();
 	private Modal warningReturnModal = Modal.NONE;
 	private CursorTarget selectedTarget = CursorTarget.INVENTORY;
 	private boolean selectingPosition;
@@ -216,6 +219,10 @@ public final class InventoryTweaksScreen extends Screen {
 		this.ensureParticles();
 		this.calculateMainLayout();
 		this.calculateModalLayout();
+		if (this.modal != this.animatedModal) {
+			this.animatedModal = this.modal;
+			this.modalOpenedAtNanos = System.nanoTime();
+		}
 		switch (this.modal) {
 			case NONE -> this.addMainButtons();
 			case CURSOR -> this.addCursorModalButtons();
@@ -246,7 +253,7 @@ public final class InventoryTweaksScreen extends Screen {
 	@Override
 	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
 		float entrance = this.entranceProgress();
-		float entranceScale = 0.94F + entrance * 0.06F;
+		float entranceScale = 0.965F + entrance * 0.035F;
 		graphics.pose().pushMatrix();
 		graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
 		graphics.pose().scale(entranceScale, entranceScale);
@@ -259,6 +266,12 @@ public final class InventoryTweaksScreen extends Screen {
 
 		if (this.modal != Modal.NONE) {
 			graphics.fill(0, 0, this.width, this.height, UiTheme.MODAL_DIM);
+			float modalEntrance = this.modalEntranceProgress();
+			float modalScale = 0.965F + modalEntrance * 0.035F;
+			graphics.pose().pushMatrix();
+			graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
+			graphics.pose().scale(modalScale, modalScale);
+			graphics.pose().translate(-this.width / 2.0F, -this.height / 2.0F);
 			Modal visibleModal = this.modal == Modal.WARNING
 				? this.warningReturnModal
 				: this.modal == Modal.ANIMATIONS_WARNING ? Modal.TWEAKS : this.modal;
@@ -285,10 +298,13 @@ public final class InventoryTweaksScreen extends Screen {
 			} else if (this.modal == Modal.HERZIUM_WARNING) {
 				this.drawHerziumWarning(graphics);
 			}
+			super.extractRenderState(graphics, mouseX, mouseY, a);
+			this.drawActiveScrollFades(graphics);
+			graphics.pose().popMatrix();
+		} else {
+			super.extractRenderState(graphics, mouseX, mouseY, a);
+			this.drawActiveScrollFades(graphics);
 		}
-
-		super.extractRenderState(graphics, mouseX, mouseY, a);
-		this.drawActiveScrollFades(graphics);
 		graphics.pose().popMatrix();
 
 		if (entrance < 1.0F) {
@@ -512,13 +528,13 @@ public final class InventoryTweaksScreen extends Screen {
 			() -> ConfigStore.get().inventoryTextureSource == TextureSource.VANILLA
 		));
 		this.addRenderableWidget(new GlassButton(
-			Math.max(SCREEN_MARGIN, this.width - 78),
-			SCREEN_MARGIN,
+			Math.max(SCREEN_MARGIN, this.width - SCREEN_MARGIN - 70),
+			Math.max(SCREEN_MARGIN, this.height - SCREEN_MARGIN - 20),
 			70,
 			20,
-			Component.translatable("gui.back"),
+			Component.translatable("gui.done"),
 			button -> this.onClose(),
-			GlassButton.Variant.NORMAL
+			GlassButton.Variant.PRIMARY
 		));
 	}
 
@@ -546,7 +562,7 @@ public final class InventoryTweaksScreen extends Screen {
 			Component.translatable(titleKey),
 			onPress,
 			variant
-		);
+		).setSubtitle(Component.translatable(descriptionKey));
 		button.setTooltip(Tooltip.create(Component.translatable(descriptionKey)));
 		button.setTooltipDelay(Duration.ofMillis(220));
 		this.addRenderableWidget(button);
@@ -1196,6 +1212,7 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void drawMainScreen(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY) {
+		UiRender.glow(graphics, this.width / 2 - 72, 6, 144, 20, 8, 18);
 		graphics.centeredText(this.font, this.title, this.width / 2, 10, UiTheme.TEXT);
 		if (!this.compactMain && this.height >= 230) {
 			graphics.centeredText(
@@ -1235,7 +1252,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.mainPreviewHeight + 10,
 			8,
 			UiTheme.PREVIEW_GLASS,
-			UiTheme.ACCENT_SOFT
+			UiTheme.BORDER_SOFT
 		);
 
 		this.drawPlayerInventory(
@@ -1267,9 +1284,9 @@ public final class InventoryTweaksScreen extends Screen {
 		final int scroll,
 		final int maxScroll
 	) {
-		UiRender.panel(graphics, x, y, width, height, 9, UiTheme.GLASS, UiTheme.BORDER_SOFT);
-		graphics.centeredText(this.font, title, x + width / 2, y + 8, UiTheme.TEXT_MUTED);
-		graphics.fill(x + 7, y + 19, x + width - 7, y + 20, UiTheme.ACCENT_SOFT);
+		graphics.centeredText(this.font, title, x + width / 2, y + 5, UiTheme.TEXT_MUTED);
+		int accentWidth = Math.min(32, Math.max(8, width / 3));
+		graphics.fill(x + (width - accentWidth) / 2, y + 17, x + (width + accentWidth) / 2, y + 18, UiTheme.ACCENT_SOFT);
 		if (maxScroll > 0) {
 			int trackTop = y + 24;
 			int trackHeight = Math.max(8, height - 31);
@@ -2166,7 +2183,8 @@ public final class InventoryTweaksScreen extends Screen {
 		this.compactMain = this.width < 560 || this.height < 300;
 		int margin = this.width < 360 ? 4 : 8;
 		int gap = this.compactMain ? 5 : 12;
-		int titleSpace = this.height >= 230 ? 34 : 27;
+		int titleSpace = this.height >= 230 ? 38 : 27;
+		int footerSpace = this.height >= 120 ? 34 : 24;
 		int absoluteMaxRail = Math.max(1, (this.width - margin * 2 - gap * 2 - 48) / 2);
 		int minimumRail = Math.min(this.compactMain ? 68 : 108, absoluteMaxRail);
 		int maximumRail = Math.max(minimumRail, Math.min(this.compactMain ? 126 : 184, absoluteMaxRail));
@@ -2179,7 +2197,7 @@ public final class InventoryTweaksScreen extends Screen {
 		this.mainLeftRailX = margin;
 		this.mainLeftRailY = titleSpace;
 		this.mainLeftRailWidth = railWidth;
-		this.mainLeftRailHeight = Math.max(34, this.height - titleSpace - margin);
+		this.mainLeftRailHeight = Math.max(28, this.height - titleSpace - footerSpace);
 		this.mainRightRailWidth = railWidth;
 		this.mainRightRailHeight = this.mainLeftRailHeight;
 		this.mainRightRailX = this.width - margin - railWidth;
@@ -2188,12 +2206,12 @@ public final class InventoryTweaksScreen extends Screen {
 		int centerLeft = this.mainLeftRailX + railWidth + gap;
 		int centerRight = this.mainRightRailX - gap;
 		int centerWidth = Math.max(24, centerRight - centerLeft);
-		this.textureSelectorWidth = Math.min(INVENTORY_WIDTH, Math.max(48, centerWidth - 8));
-		this.textureSelectorX = centerLeft + (centerWidth - this.textureSelectorWidth) / 2;
+		this.textureSelectorWidth = railWidth;
+		this.textureSelectorX = this.mainLeftRailX;
 		this.textureSelectorY = Math.max(titleSpace + 24, this.height - margin - 19);
 
 		int previewTop = titleSpace + 4;
-		int previewBottom = this.textureSelectorY - 16;
+		int previewBottom = this.height - margin - 3;
 		int availableHeight = Math.max(24, previewBottom - previewTop);
 		int availableWidth = Math.max(24, centerWidth - 10);
 		this.mainPreviewScale = Math.min(1.0F, Math.min(
@@ -2207,16 +2225,17 @@ public final class InventoryTweaksScreen extends Screen {
 		this.mainPreviewY = previewTop + Math.max(0, (availableHeight - this.mainPreviewHeight) / 2);
 
 		this.mainCardWidth = Math.max(1, railWidth - 10);
-		this.mainCardHeight = this.compactMain ? 23 : 28;
+		this.mainCardHeight = this.compactMain ? 23 : 36;
 		int cardGap = this.compactMain ? 5 : 7;
 		int leftRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
 		int rightRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
-		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 29);
+		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 27);
 		this.mainLeftMaxScroll = Math.max(0, leftRailContentHeight - railVisibleHeight);
 		this.mainRightMaxScroll = Math.max(0, rightRailContentHeight - railVisibleHeight);
 		this.mainLeftScroll = Mth.clamp(this.mainLeftScroll, 0, this.mainLeftMaxScroll);
 		this.mainRightScroll = Mth.clamp(this.mainRightScroll, 0, this.mainRightMaxScroll);
-		int railContentTop = titleSpace + 24;
+		int railContentTop = this.mainLeftRailY + 22
+			+ Math.max(0, (railVisibleHeight - Math.max(leftRailContentHeight, rightRailContentHeight)) / 2);
 		this.cursorCardX = this.mainLeftRailX + 5;
 		this.cursorCardY = railContentTop - this.mainLeftScroll;
 		this.tweakCardX = this.cursorCardX;
@@ -2416,7 +2435,7 @@ public final class InventoryTweaksScreen extends Screen {
 			return;
 		}
 		Random random = new Random(0x4B4F4853L);
-		int count = Mth.clamp(this.width * this.height / 9000, 14, 32);
+		int count = Mth.clamp(this.width * this.height / 12000, 14, 22);
 		for (int i = 0; i < count; i++) {
 			this.particles.add(new FloatingParticle(
 				random.nextFloat() * Math.max(1, this.width),
@@ -2433,6 +2452,16 @@ public final class InventoryTweaksScreen extends Screen {
 	private float entranceProgress() {
 		float linear = Mth.clamp(
 			(System.nanoTime() - this.entranceStartedAtNanos) / (float) ENTRANCE_DURATION_NANOS,
+			0.0F,
+			1.0F
+		);
+		float remaining = 1.0F - linear;
+		return 1.0F - remaining * remaining * remaining;
+	}
+
+	private float modalEntranceProgress() {
+		float linear = Mth.clamp(
+			(System.nanoTime() - this.modalOpenedAtNanos) / (float) MODAL_ENTRANCE_DURATION_NANOS,
 			0.0F,
 			1.0F
 		);

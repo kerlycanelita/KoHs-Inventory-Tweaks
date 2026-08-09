@@ -28,12 +28,16 @@ import org.jspecify.annotations.Nullable;
 public final class ItemHighlighterScreen extends Screen {
 	private static final int CELL_SIZE = 24;
 	private static final int SLOT_SIZE = 18;
+	private static final long ENTRANCE_DURATION_NANOS = 320_000_000L;
+	private static final long EDITOR_ENTRANCE_DURATION_NANOS = 240_000_000L;
 	private final Screen parent;
 	private final Consumer<InventoryTweaksConfig> onSave;
 	private final InventoryTweaksConfig working;
 	private final List<FloatingParticle> particles = new ArrayList<>();
 	private final List<ItemEntry> allItems = new ArrayList<>();
 	private final List<ItemEntry> filteredItems = new ArrayList<>();
+	private final long entranceStartedAtNanos = System.nanoTime();
+	private long editorOpenedAtNanos = System.nanoTime();
 	private Mode mode = Mode.BASE;
 	private String searchValue = "";
 	private @Nullable String editingItemId;
@@ -119,19 +123,33 @@ public final class ItemHighlighterScreen extends Screen {
 
 	@Override
 	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		float entrance = cubicProgress(this.entranceStartedAtNanos, ENTRANCE_DURATION_NANOS);
+		float entranceScale = 0.965F + entrance * 0.035F;
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
+		graphics.pose().scale(entranceScale, entranceScale);
+		graphics.pose().translate(-this.width / 2.0F, -this.height / 2.0F);
 		for (FloatingParticle particle : this.particles) {
 			particle.draw(graphics);
 		}
 		if (this.mode == Mode.BASE) {
 			this.drawBase(graphics, mouseX, mouseY);
+			super.extractRenderState(graphics, mouseX, mouseY, a);
 		} else {
 			// A modal must own the whole visible and interactive layer. In particular,
 			// do not extract base item tooltips here: Minecraft renders deferred
 			// tooltips after the dim layer, which made them pierce the editor.
-			graphics.fill(0, 0, this.width, this.height, 0xA00A0612);
+			graphics.fill(0, 0, this.width, this.height, UiTheme.MODAL_DIM);
+			float editorEntrance = cubicProgress(this.editorOpenedAtNanos, EDITOR_ENTRANCE_DURATION_NANOS);
+			float editorScale = 0.965F + editorEntrance * 0.035F;
+			graphics.pose().pushMatrix();
+			graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
+			graphics.pose().scale(editorScale, editorScale);
+			graphics.pose().translate(-this.width / 2.0F, -this.height / 2.0F);
 			this.drawEditor(graphics);
+			super.extractRenderState(graphics, mouseX, mouseY, a);
+			graphics.pose().popMatrix();
 		}
-		super.extractRenderState(graphics, mouseX, mouseY, a);
 		if (this.mode == Mode.BASE) {
 			int selectedTop = this.selectedY + 24;
 			int selectedBottom = this.selectedY + this.selectedHeight - 5;
@@ -156,6 +174,10 @@ public final class ItemHighlighterScreen extends Screen {
 				this.catalogScrollRows < this.catalogMaxScrollRows
 			);
 		}
+		graphics.pose().popMatrix();
+		if (entrance < 1.0F) {
+			graphics.fill(0, 0, this.width, this.height, UiRender.withAlpha(0x120824, Math.round((1.0F - entrance) * 96.0F)));
+		}
 	}
 
 	@Override
@@ -170,6 +192,7 @@ public final class ItemHighlighterScreen extends Screen {
 		if (selectedIndex >= 0 && selectedIndex < this.working.itemHighlights.size()) {
 			this.editingItemId = this.working.itemHighlights.get(selectedIndex).itemId;
 			this.mode = Mode.EDITOR;
+			this.editorOpenedAtNanos = System.nanoTime();
 			this.rebuildWidgets();
 			return true;
 		}
@@ -633,7 +656,7 @@ public final class ItemHighlighterScreen extends Screen {
 			return;
 		}
 		Random random = new Random(0x4954454DL);
-		int count = Mth.clamp(this.width * this.height / 9000, 14, 32);
+		int count = Mth.clamp(this.width * this.height / 12000, 14, 22);
 		for (int i = 0; i < count; i++) {
 			this.particles.add(new FloatingParticle(
 				random.nextFloat() * Math.max(1, this.width),
@@ -645,6 +668,12 @@ public final class ItemHighlighterScreen extends Screen {
 				random.nextFloat() * 6.28318F
 			));
 		}
+	}
+
+	private static float cubicProgress(final long startedAtNanos, final long durationNanos) {
+		float linear = Mth.clamp((System.nanoTime() - startedAtNanos) / (float) durationNanos, 0.0F, 1.0F);
+		float remaining = 1.0F - linear;
+		return 1.0F - remaining * remaining * remaining;
 	}
 
 	private int selectedIndexAt(final double mouseX, final double mouseY) {

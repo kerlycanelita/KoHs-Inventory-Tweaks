@@ -16,9 +16,35 @@ public final class UiRender {
 		final int fill,
 		final int border
 	) {
-		roundedRect(graphics, x - 2, y + 2, width + 4, height + 2, radius + 1, UiTheme.SHADOW);
+		roundedRect(graphics, x - 1, y + 1, width + 2, height + 2, radius + 1, UiTheme.SHADOW);
 		roundedRect(graphics, x, y, width, height, radius, border);
 		roundedRect(graphics, x + 1, y + 1, width - 2, height - 2, Math.max(0, radius - 1), fill);
+		int highlightInset = Math.max(2, radius);
+		if (width > highlightInset * 2 + 1 && height > 3) {
+			graphics.fill(
+				x + highlightInset,
+				y + 1,
+				x + width - highlightInset,
+				y + 2,
+				withAlpha(UiTheme.ACCENT_BRIGHT, 34)
+			);
+		}
+	}
+
+	public static void glow(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int y,
+		final int width,
+		final int height,
+		final int radius,
+		final int alpha
+	) {
+		if (alpha <= 0) {
+			return;
+		}
+		roundedRect(graphics, x - 2, y - 2, width + 4, height + 4, radius + 2, withAlpha(UiTheme.ACCENT, alpha / 3));
+		roundedRect(graphics, x - 1, y - 1, width + 2, height + 2, radius + 1, withAlpha(UiTheme.ACCENT_BRIGHT, alpha));
 	}
 
 	public static void roundedRect(
@@ -74,8 +100,8 @@ public final class UiRender {
 			return;
 		}
 		int fadeHeight = Math.min(12, Math.max(4, height / 4));
-		int opaque = 0xE6170B29;
-		int clear = 0x00170B29;
+		int opaque = 0xE6160B27;
+		int clear = 0x00160B27;
 		if (fadeTop) {
 			graphics.fillGradient(x, top, x + width, top + fadeHeight, opaque, clear);
 		}

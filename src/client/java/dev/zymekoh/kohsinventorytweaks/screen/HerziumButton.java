@@ -26,11 +26,22 @@ public final class HerziumButton extends Button {
 		long time = System.nanoTime() / 1_000_000L;
 		float pulse = 0.5F + 0.5F * (float) Math.sin(time / 280.0F);
 		int fill = this.installed
-			? (this.isHoveredOrFocused() ? 0xFF7135A4 : 0xED4C1E78)
-			: (this.isHoveredOrFocused() ? 0x75351D4A : 0x4920162B);
+			? (this.isHoveredOrFocused() ? UiTheme.GLASS_HOVER : 0xED35175A)
+			: (this.isHoveredOrFocused() ? 0x75351D4A : 0x49160B27);
 		int border = this.installed
-			? ((170 + Math.round(pulse * 85)) << 24 | 0xB760FF)
+			? ((170 + Math.round(pulse * 85)) << 24 | 0xA855F7)
 			: 0x575C3B6B;
+		if (this.installed) {
+			UiRender.glow(
+				graphics,
+				this.getX(),
+				this.getY(),
+				this.getWidth(),
+				this.getHeight(),
+				6,
+				18 + Math.round(pulse * 18)
+			);
+		}
 		UiRender.panel(graphics, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 6, fill, border);
 
 		if (this.installed) {
@@ -45,12 +56,26 @@ public final class HerziumButton extends Button {
 			}
 		}
 
-		graphics.centeredText(
-			Minecraft.getInstance().font,
-			this.getMessage(),
-			this.getX() + this.getWidth() / 2,
-			this.getY() + (this.getHeight() - 8) / 2,
-			this.installed ? 0xFFFFFFFF : 0xFF816D8C
-		);
+		var font = Minecraft.getInstance().font;
+		if (this.getHeight() >= 30) {
+			int iconX = this.getX() + 7;
+			int iconY = this.getY() + this.getHeight() / 2 - 4;
+			graphics.fill(iconX, iconY + 2, iconX + 8, iconY + 6, this.installed ? UiTheme.ACCENT_DEEP : UiTheme.BORDER_SOFT);
+			graphics.fill(iconX + 2, iconY, iconX + 6, iconY + 8, this.installed ? UiTheme.ACCENT : UiTheme.TEXT_DISABLED);
+			graphics.text(font, this.getMessage(), this.getX() + 23, this.getY() + 6, this.installed ? UiTheme.TEXT : UiTheme.TEXT_DISABLED, false);
+			Component description = Component.translatable(this.installed
+				? "screen.kohs_inventory_tweaks.herzium.description.installed"
+				: "screen.kohs_inventory_tweaks.herzium.description.missing");
+			String text = font.plainSubstrByWidth(description.getString(), Math.max(1, this.getWidth() - 30));
+			graphics.text(font, text, this.getX() + 23, this.getY() + this.getHeight() - 12, UiTheme.TEXT_MUTED, false);
+		} else {
+			graphics.centeredText(
+				font,
+				this.getMessage(),
+				this.getX() + this.getWidth() / 2,
+				this.getY() + (this.getHeight() - 8) / 2,
+				this.installed ? UiTheme.TEXT : UiTheme.TEXT_DISABLED
+			);
+		}
 	}
 }
