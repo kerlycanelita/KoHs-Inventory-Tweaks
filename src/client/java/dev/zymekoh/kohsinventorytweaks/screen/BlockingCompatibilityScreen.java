@@ -31,7 +31,7 @@ public final class BlockingCompatibilityScreen extends Screen {
 	private int maxScroll;
 
 	public BlockingCompatibilityScreen() {
-		super(Component.literal("KoHs - Incompatible Mods"));
+		super(Component.translatable("screen.kohs_inventory_tweaks.blocking.title"));
 	}
 
 	@Override
@@ -57,7 +57,7 @@ public final class BlockingCompatibilityScreen extends Screen {
 			this.panelY + this.panelHeight - 29,
 			buttonWidth,
 			21,
-			Component.literal("Close Minecraft / Cerrar Minecraft"),
+			Component.translatable("screen.kohs_inventory_tweaks.blocking.close"),
 			button -> this.beginStop(),
 			GlassButton.Variant.DANGER
 		));
@@ -96,7 +96,7 @@ public final class BlockingCompatibilityScreen extends Screen {
 		graphics.centeredText(this.font, this.title, this.width / 2, this.panelY + 11, UiTheme.WARNING);
 		graphics.centeredText(
 			this.font,
-			Component.literal("Startup blocked safely / Arranque bloqueado de forma segura"),
+			Component.translatable("screen.kohs_inventory_tweaks.blocking.subtitle"),
 			this.width / 2,
 			this.panelY + 23,
 			UiTheme.TEXT_MUTED
@@ -137,51 +137,42 @@ public final class BlockingCompatibilityScreen extends Screen {
 	private void prepareText() {
 		this.lines.clear();
 		int textWidth = Math.max(24, this.bodyWidth - 18);
-		this.addWrapped("KoHs Inventory Tweaks requires you to remove the following incompatible mod(s):", textWidth);
+		this.addWrapped(Component.translatable("screen.kohs_inventory_tweaks.blocking.intro"), textWidth);
 		this.lines.add(FormattedCharSequence.EMPTY);
 		for (CompatibilityIssue issue : this.issues) {
-			this.addWrapped("• " + issue.modName() + " (" + issue.modId() + " " + issue.version() + ")", textWidth);
-			this.addWrapped("  Creator: " + issue.creators(), textWidth);
-			this.addWrapped("  Reason: " + englishReason(issue), textWidth);
-			this.addWrapped("  Detected points: " + String.join(", ", issue.conflictPoints()), textWidth);
+			this.addWrapped(
+				Component.literal("• " + issue.modName() + " (" + issue.modId() + " " + issue.version() + ")"),
+				textWidth
+			);
+			this.addWrapped(
+				Component.translatable("screen.kohs_inventory_tweaks.blocking.creator", issue.creators()),
+				textWidth
+			);
+			this.addWrapped(Component.translatable(blockingReasonKey(issue)), textWidth);
+			this.addWrapped(
+				Component.translatable(
+					"screen.kohs_inventory_tweaks.blocking.points",
+					String.join(", ", issue.conflictPoints())
+				),
+				textWidth
+			);
 			this.lines.add(FormattedCharSequence.EMPTY);
 		}
-		this.addWrapped("KoHs disabled all of its gameplay mixins and runtime services before they could modify Minecraft. Continuing is blocked. Remove the listed mod(s), then restart Minecraft.", textWidth);
-		this.lines.add(FormattedCharSequence.EMPTY);
-		this.addWrapped("ESPAÑOL", textWidth);
-		this.lines.add(FormattedCharSequence.EMPTY);
-		this.addWrapped("KoHs Inventory Tweaks necesita que retires los siguientes mods incompatibles:", textWidth);
-		this.lines.add(FormattedCharSequence.EMPTY);
-		for (CompatibilityIssue issue : this.issues) {
-			this.addWrapped("• " + issue.modName() + " (" + issue.modId() + " " + issue.version() + ")", textWidth);
-			this.addWrapped("  Creador: " + issue.creators(), textWidth);
-			this.addWrapped("  Razón: " + spanishReason(issue), textWidth);
-			this.addWrapped("  Puntos detectados: " + String.join(", ", issue.conflictPoints()), textWidth);
-			this.lines.add(FormattedCharSequence.EMPTY);
-		}
-		this.addWrapped("KoHs desactivó todos sus mixins de jugabilidad y servicios de ejecución antes de que modificaran Minecraft. No se permite continuar. Retira los mods indicados y reinicia Minecraft.", textWidth);
+		this.addWrapped(Component.translatable("screen.kohs_inventory_tweaks.blocking.shutdown"), textWidth);
 		int contentHeight = this.lines.size() * 10 + 10;
 		this.maxScroll = Math.max(0, contentHeight - Math.max(1, this.bodyHeight - 10));
 		this.scroll = Mth.clamp(this.scroll, 0, this.maxScroll);
 	}
 
-	private void addWrapped(final String text, final int width) {
-		this.lines.addAll(this.font.split(Component.literal(text), width));
+	private void addWrapped(final Component text, final int width) {
+		this.lines.addAll(this.font.split(text, width));
 	}
 
-	private static String englishReason(final CompatibilityIssue issue) {
+	private static String blockingReasonKey(final CompatibilityIssue issue) {
 		return switch (issue.reason()) {
-			case REDIRECT_COLLISION -> "This mod and KoHs redirect the same required invocation. Mixin accepts only one redirect there, so KoHs would fail its mandatory injection check and crash startup.";
-			case CRITICAL_OVERWRITE -> "A required KoHs invocation hook is inside a method overwritten by this mod. Applying both can fail during mixin transformation.";
-			case DIRECT_MUTATION -> "This mod directly mutates internal KoHs classes before normal initialization.";
-		};
-	}
-
-	private static String spanishReason(final CompatibilityIssue issue) {
-		return switch (issue.reason()) {
-			case REDIRECT_COLLISION -> "Este mod y KoHs redirigen la misma invocación obligatoria. Mixin solo acepta una redirección en ese punto, por lo que KoHs fallaría su comprobación de inyección y cerraría el arranque.";
-			case CRITICAL_OVERWRITE -> "Un hook obligatorio de KoHs está dentro de un método sobrescrito por este mod. Aplicar ambos puede fallar durante la transformación de mixins.";
-			case DIRECT_MUTATION -> "Este mod modifica directamente clases internas de KoHs antes de la inicialización normal.";
+			case REDIRECT_COLLISION -> "screen.kohs_inventory_tweaks.blocking.reason.redirect_collision";
+			case CRITICAL_OVERWRITE -> "screen.kohs_inventory_tweaks.blocking.reason.critical_overwrite";
+			case DIRECT_MUTATION -> "screen.kohs_inventory_tweaks.blocking.reason.direct_mutation";
 		};
 	}
 
