@@ -12,7 +12,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackType;
@@ -37,6 +42,7 @@ public final class InventoryTextureManager {
 	private static @Nullable int[] containerBasePixels;
 	private static final AnimationFrame[] containerRenderedFrames = new AnimationFrame[7];
 	private static final String[] containerStyleKeys = new String[7];
+	private static final Map<String, SurfaceTextureState> surfaceTextures = new HashMap<>();
 	private static @Nullable AnimatedBackground background;
 	private static @Nullable AnimationFrame renderedFrame;
 	private static String loadedBaseKey = "";
@@ -45,6 +51,10 @@ public final class InventoryTextureManager {
 	private static String composedStyleKey = "";
 	private static int resourceGeneration;
 	private static long animationStartedAt;
+	private static int nextSurfaceTextureId;
+
+	public record SlotRegion(int x, int y) {
+	}
 
 	static {
 		for (int rows = 1; rows <= 6; rows++) {
@@ -74,7 +84,7 @@ public final class InventoryTextureManager {
 			rebuildBackground(config, backgroundKey);
 		}
 
-		AnimationFrame nextFrame = background == null ? null : background.frameAt(System.currentTimeMillis() - animationStartedAt);
+		AnimationFrame nextFrame = backgroundFrame(config);
 		String styleKey = styleKey(config, baseKey, backgroundKey);
 		if (dynamicTexture == null || nextFrame != renderedFrame || !styleKey.equals(composedStyleKey)) {
 			composeAndUpload(minecraft, config, nextFrame);
@@ -105,7 +115,7 @@ public final class InventoryTextureManager {
 		if (!backgroundKey.equals(loadedBackgroundKey)) {
 			rebuildBackground(config, backgroundKey);
 		}
-		AnimationFrame nextFrame = background == null ? null : background.frameAt(System.currentTimeMillis() - animationStartedAt);
+		AnimationFrame nextFrame = backgroundFrame(config);
 		String styleKey = styleKey(config, baseKey, backgroundKey) + ":rows=" + rows;
 		if (containerTextures[rows] == null
 			|| nextFrame != containerRenderedFrames[rows]
@@ -114,6 +124,140 @@ public final class InventoryTextureManager {
 			containerStyleKeys[rows] = styleKey;
 		}
 		return containerTextures[rows] == null ? original : GENERATED_CONTAINERS[rows];
+	}
+
+	/**
+	 * Resolves the background used by the container screen that is currently
+	 * being rendered. Slot coordinates come from the real menu, so modded slot
+	 * arrangements and every Vanilla workstation keep their functional layout.
+	 */
+	public static Identifier screenTextureFor(
+		final InventoryTweaksConfig config,
+		final Identifier original,
+		final AbstractContainerScreen<?> screen,
+		final int imageWidth,
+		final int imageHeight
+	) {
+		if (!isContainerSurface(original)) {
+			return original;
+		}
+		if (VANILLA_INVENTORY.equals(original)) {
+			return textureFor(config);
+		}
+		if (VANILLA_CONTAINER.equals(original)) {
+			return containerTextureFor(config, original, imageHeight);
+		}
+
+		List<SlotRegion> slots = new ArrayList<>(screen.getMenu().slots.size());
+		for (net.minecraft.world.inventory.Slot slot : screen.getMenu().slots) {
+			slots.add(new SlotRegion(slot.x, slot.y));
+		}
+		return surfaceTextureFor(
+			config,
+			original,
+			imageWidth,
+			imageHeight,
+			logicalTextureWidth(original),
+			256,
+			slots
+		);
+	}
+
+	/**
+	 * Uses the same resource-pack-aware compositor as real screens for the
+	 * configuration preview.
+	 */
+	public static Identifier previewTextureFor(
+		final InventoryTweaksConfig config,
+		final Identifier original,
+		final int imageWidth,
+		final int imageHeight,
+		final int logicalTextureWidth,
+		final int logicalTextureHeight,
+		final List<SlotRegion> slots
+	) {
+		return surfaceTextureFor(
+			config,
+			original,
+			imageWidth,
+			imageHeight,
+			logicalTextureWidth,
+			logicalTextureHeight,
+			slots
+		);
+	}
+
+	public static boolean hasColorCustomization(final InventoryTweaksConfig config) {
+		return config.frameColor != 0xFFFFFF
+			|| config.frameOpacity != 255
+			|| config.slotColor != 0xFFFFFF
+			|| config.slotOpacity != 255;
+	}
+
+	private static Identifier surfaceTextureFor(
+		final InventoryTweaksConfig config,
+		final Identifier original,
+		final int imageWidth,
+		final int imageHeight,
+		final int logicalTextureWidth,
+		final int logicalTextureHeight,
+		final List<SlotRegion> slots
+	) {
+		if (isUnmodifiedAppliedTexture(config)) {
+			return original;
+		}
+		String slotSignature = slotSignature(slots);
+		String cacheKey = original + ":" + imageWidth + "x" + imageHeight + ":"
+			+ logicalTextureWidth + "x" + logicalTextureHeight + ":" + slotSignature;
+		SurfaceTextureState state = surfaceTextures.computeIfAbsent(
+			cacheKey,
+			ignored -> new SurfaceTextureState(
+				Identifier.fromNamespaceAndPath(
+					KoHsInventoryTweaksClient.MOD_ID,
+					"dynamic/container_surface_" + nextSurfaceTextureId++
+				),
+				imageWidth,
+				imageHeight,
+				logicalTextureWidth,
+				logicalTextureHeight,
+				slots
+			)
+		);
+
+		Minecraft minecraft = Minecraft.getInstance();
+		String baseKey = resourceGeneration + ":surface:" + config.inventoryTextureSource + ":" + original;
+		if (!baseKey.equals(state.loadedBaseKey) || state.basePixels == null) {
+			state.loadBase(minecraft, config.inventoryTextureSource, original, baseKey);
+		}
+		String backgroundKey = backgroundKey(config);
+		if (!backgroundKey.equals(loadedBackgroundKey)) {
+			rebuildBackground(config, backgroundKey);
+		}
+		AnimationFrame nextFrame = backgroundFrame(config);
+		String styleKey = styleKey(config, baseKey, backgroundKey);
+		if (state.texture == null || nextFrame != state.renderedFrame || !styleKey.equals(state.styleKey)) {
+			state.composeAndUpload(minecraft, config, nextFrame);
+			state.styleKey = styleKey;
+		}
+		return state.texture == null ? original : state.generated;
+	}
+
+	private static boolean isContainerSurface(final Identifier texture) {
+		return "minecraft".equals(texture.getNamespace())
+			&& texture.getPath().startsWith("textures/gui/container/")
+			&& texture.getPath().endsWith(".png");
+	}
+
+	private static int logicalTextureWidth(final Identifier texture) {
+		return texture.getPath().endsWith("/villager.png") ? 512 : 256;
+	}
+
+	private static String slotSignature(final List<SlotRegion> slots) {
+		StringBuilder signature = new StringBuilder(slots.size() * 8);
+		for (SlotRegion slot : slots) {
+			signature.append(slot.x()).append(',').append(slot.y()).append(';');
+		}
+		return signature.toString();
 	}
 
 	public static void onResourcesReloaded() {
@@ -126,6 +270,11 @@ public final class InventoryTextureManager {
 		for (int rows = 1; rows <= 6; rows++) {
 			containerStyleKeys[rows] = "";
 		}
+		for (SurfaceTextureState state : surfaceTextures.values()) {
+			state.loadedBaseKey = "";
+			state.styleKey = "";
+			state.basePixels = null;
+		}
 	}
 
 	public static void invalidateConfiguration() {
@@ -133,10 +282,14 @@ public final class InventoryTextureManager {
 		for (int rows = 1; rows <= 6; rows++) {
 			containerStyleKeys[rows] = "";
 		}
+		for (SurfaceTextureState state : surfaceTextures.values()) {
+			state.styleKey = "";
+		}
 	}
 
 	private static boolean isUnmodifiedAppliedTexture(final InventoryTweaksConfig config) {
 		return config.inventoryTextureSource == TextureSource.APPLIED
+			&& !config.removeAllInventoryAnimations
 			&& config.frameColor == 0xFFFFFF
 			&& config.frameOpacity == 255
 			&& config.slotColor == 0xFFFFFF
@@ -161,7 +314,17 @@ public final class InventoryTextureManager {
 		final String backgroundKey
 	) {
 		return baseKey + ":" + backgroundKey + ":" + config.frameColor + ":" + config.frameOpacity
-			+ ":" + config.slotColor + ":" + config.slotOpacity + ":" + config.backgroundOpacity;
+			+ ":" + config.slotColor + ":" + config.slotOpacity + ":" + config.backgroundOpacity
+			+ ":static=" + config.removeAllInventoryAnimations;
+	}
+
+	private static @Nullable AnimationFrame backgroundFrame(final InventoryTweaksConfig config) {
+		if (background == null) {
+			return null;
+		}
+		return background.frameAt(
+			config.removeAllInventoryAnimations ? 0L : System.currentTimeMillis() - animationStartedAt
+		);
 	}
 
 	private static void rebuildBase(final Minecraft minecraft, final TextureSource source, final String key) {
@@ -214,7 +377,8 @@ public final class InventoryTextureManager {
 		try (InputStream input = openBaseTexture(minecraft, source, texture); NativeImage original = NativeImage.read(input)) {
 			NativeImage normalized = new NativeImage(TEXTURE_SIZE, TEXTURE_SIZE, true);
 			try {
-				original.resizeSubRectTo(0, 0, original.getWidth(), original.getHeight(), normalized);
+				int firstFrameHeight = Math.min(original.getHeight(), original.getWidth());
+				original.resizeSubRectTo(0, 0, original.getWidth(), firstFrameHeight, normalized);
 				int[] pixels = new int[TEXTURE_SIZE * TEXTURE_SIZE];
 				for (int y = 0; y < TEXTURE_SIZE; y++) {
 					for (int x = 0; x < TEXTURE_SIZE; x++) {
@@ -389,6 +553,137 @@ public final class InventoryTextureManager {
 			}
 		}
 		return inside(x, y, 153, 27, 18, 18) || inside(x, y, 76, 61, 18, 18);
+	}
+
+	private static final class SurfaceTextureState {
+		private final Identifier generated;
+		private final int imageWidth;
+		private final int imageHeight;
+		private final int logicalTextureWidth;
+		private final int logicalTextureHeight;
+		private final boolean[] slotMask;
+		private @Nullable DynamicTexture texture;
+		private @Nullable int[] basePixels;
+		private int physicalWidth;
+		private int physicalHeight;
+		private String loadedBaseKey = "";
+		private String styleKey = "";
+		private @Nullable AnimationFrame renderedFrame;
+
+		private SurfaceTextureState(
+			final Identifier generated,
+			final int imageWidth,
+			final int imageHeight,
+			final int logicalTextureWidth,
+			final int logicalTextureHeight,
+			final List<SlotRegion> slots
+		) {
+			this.generated = generated;
+			this.imageWidth = Math.max(1, imageWidth);
+			this.imageHeight = Math.max(1, imageHeight);
+			this.logicalTextureWidth = Math.max(1, logicalTextureWidth);
+			this.logicalTextureHeight = Math.max(1, logicalTextureHeight);
+			this.slotMask = new boolean[this.logicalTextureWidth * this.logicalTextureHeight];
+			for (SlotRegion slot : slots) {
+				this.markSlot(slot.x() - 1, slot.y() - 1);
+			}
+		}
+
+		private void markSlot(final int left, final int top) {
+			int right = Math.min(this.logicalTextureWidth, left + 18);
+			int bottom = Math.min(this.logicalTextureHeight, top + 18);
+			for (int y = Math.max(0, top); y < bottom; y++) {
+				for (int x = Math.max(0, left); x < right; x++) {
+					this.slotMask[x + y * this.logicalTextureWidth] = true;
+				}
+			}
+		}
+
+		private void loadBase(
+			final Minecraft minecraft,
+			final TextureSource source,
+			final Identifier original,
+			final String key
+		) {
+			try (InputStream input = openBaseTexture(minecraft, source, original); NativeImage image = NativeImage.read(input)) {
+				this.physicalWidth = image.getWidth();
+				int expectedFrameHeight = Math.max(
+					1,
+					this.physicalWidth * this.logicalTextureHeight / this.logicalTextureWidth
+				);
+				this.physicalHeight = Math.min(image.getHeight(), expectedFrameHeight);
+				this.basePixels = new int[this.physicalWidth * this.physicalHeight];
+				for (int y = 0; y < this.physicalHeight; y++) {
+					for (int x = 0; x < this.physicalWidth; x++) {
+						this.basePixels[x + y * this.physicalWidth] = image.getPixel(x, y);
+					}
+				}
+				this.texture = null;
+				this.renderedFrame = null;
+				this.styleKey = "";
+			} catch (Exception exception) {
+				KoHsInventoryTweaksClient.LOGGER.error("Could not load container surface {}", original, exception);
+				this.basePixels = null;
+			}
+			this.loadedBaseKey = key;
+		}
+
+		private void composeAndUpload(
+			final Minecraft minecraft,
+			final InventoryTweaksConfig config,
+			final @Nullable AnimationFrame frame
+		) {
+			if (this.basePixels == null || this.physicalWidth <= 0 || this.physicalHeight <= 0) {
+				return;
+			}
+			if (this.texture == null) {
+				NativeImage image = new NativeImage(this.physicalWidth, this.physicalHeight, true);
+				this.texture = new DynamicTexture(() -> "KoHs customized container surface", image);
+				minecraft.getTextureManager().register(this.generated, this.texture);
+			}
+
+			NativeImage output = this.texture.getPixels();
+			for (int physicalY = 0; physicalY < this.physicalHeight; physicalY++) {
+				int logicalY = Math.min(
+					this.logicalTextureHeight - 1,
+					physicalY * this.logicalTextureHeight / this.physicalHeight
+				);
+				for (int physicalX = 0; physicalX < this.physicalWidth; physicalX++) {
+					int logicalX = Math.min(
+						this.logicalTextureWidth - 1,
+						physicalX * this.logicalTextureWidth / this.physicalWidth
+					);
+					int pixel = this.basePixels[physicalX + physicalY * this.physicalWidth];
+					if (logicalX < this.imageWidth && logicalY < this.imageHeight) {
+						if (this.slotMask[logicalX + logicalY * this.logicalTextureWidth]) {
+							pixel = tint(pixel, config.slotColor, config.slotOpacity);
+						} else {
+							int framePixel = tint(pixel, config.frameColor, config.frameOpacity);
+							if (frame != null) {
+								int backgroundX = Math.min(
+									INVENTORY_WIDTH - 1,
+									logicalX * INVENTORY_WIDTH / this.imageWidth
+								);
+								int backgroundY = Math.min(
+									INVENTORY_HEIGHT - 1,
+									logicalY * INVENTORY_HEIGHT / this.imageHeight
+								);
+								int backgroundPixel = withOpacity(
+									frame.pixels()[backgroundX + backgroundY * INVENTORY_WIDTH],
+									config.backgroundOpacity
+								);
+								pixel = blend(backgroundPixel, framePixel);
+							} else {
+								pixel = framePixel;
+							}
+						}
+					}
+					output.setPixel(physicalX, physicalY, pixel);
+				}
+			}
+			this.texture.upload();
+			this.renderedFrame = frame;
+		}
 	}
 
 	private static boolean inside(final int x, final int y, final int left, final int top, final int width, final int height) {

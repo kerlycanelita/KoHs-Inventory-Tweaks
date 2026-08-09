@@ -41,6 +41,13 @@ processResources {
 	inputs.property 'version', project.version
 	includeEmptyDirs = false
 
+	['es_ar', 'es_cl', 'es_ec', 'es_mx', 'es_uy', 'es_ve'].each { spanishLocale ->
+		from('src/main/resources/assets/kohs_inventory_tweaks/lang/es_es.json') {
+			into 'assets/kohs_inventory_tweaks/lang'
+			rename { "${spanishLocale}.json" }
+		}
+	}
+
 	filesMatching('fabric.mod.json') {
 		expand 'version': project.version
 	}

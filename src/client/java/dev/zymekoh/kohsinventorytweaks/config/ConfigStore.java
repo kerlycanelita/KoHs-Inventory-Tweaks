@@ -91,6 +91,7 @@ public final class ConfigStore {
 		InventoryTweaksConfig sanitized = new InventoryTweaksConfig();
 		sanitized.centerMouseFix = candidate.centerMouseFix;
 		sanitized.superFastInventory = candidate.superFastInventory;
+		sanitized.removeAllInventoryAnimations = candidate.removeAllInventoryAnimations;
 		sanitized.inventoryGuiScalerEnabled = candidate.inventoryGuiScalerEnabled;
 		sanitized.inventoryGuiScale = InventoryGuiScaler.clampConfiguredScale(candidate.inventoryGuiScale);
 		sanitized.guiScalerWarningDismissed = candidate.guiScalerWarningDismissed;
@@ -105,6 +106,7 @@ public final class ConfigStore {
 		sanitized.slotColor = candidate.slotColor & 0xFFFFFF;
 		sanitized.slotOpacity = clampByte(candidate.slotOpacity);
 		sanitized.backgroundOpacity = clampByte(candidate.backgroundOpacity);
+		sanitized.inventoryBackdropOpacity = clampByte(candidate.inventoryBackdropOpacity);
 		sanitized.customBackgroundFile = sanitizeFileName(candidate.customBackgroundFile);
 		sanitized.itemHighlights.clear();
 		Set<String> seenItems = new HashSet<>();

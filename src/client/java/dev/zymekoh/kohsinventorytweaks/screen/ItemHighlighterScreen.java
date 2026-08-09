@@ -342,7 +342,7 @@ public final class ItemHighlighterScreen extends Screen {
 				button.setMessage(this.toggleLabel("screen.kohs_inventory_tweaks.item_highlighter.hotbar", editing.highlightHotbar));
 				this.persistWorking();
 			},
-			GlassButton.Variant.TOGGLE,
+			GlassButton.Variant.SWITCH,
 			() -> editing.highlightHotbar
 		));
 		GlassButton dynamicButton = new GlassButton(
@@ -356,7 +356,7 @@ public final class ItemHighlighterScreen extends Screen {
 				button.setMessage(this.toggleLabel("screen.kohs_inventory_tweaks.item_highlighter.dynamic", editing.dynamicHighlight));
 				this.persistWorking();
 			},
-			GlassButton.Variant.TOGGLE,
+			GlassButton.Variant.SWITCH,
 			() -> editing.dynamicHighlight
 		);
 		dynamicButton.setTooltip(Tooltip.create(Component.translatable("screen.kohs_inventory_tweaks.item_highlighter.dynamic.description")));

@@ -9,11 +9,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(InventoryScreen.class)
@@ -117,5 +119,42 @@ public abstract class InventoryScreenMixin {
 	)
 	private Identifier kohsInventoryTweaks$useCustomizedInventoryTexture(final Identifier original) {
 		return InventoryTextureManager.textureFor(ConfigStore.get());
+	}
+
+	@Redirect(
+		method = "extractBackground",
+		at = @At(
+			value = "INVOKE",
+			target = "Lnet/minecraft/client/gui/screens/inventory/InventoryScreen;extractEntityInInventoryFollowsMouse(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIIIIFFFLnet/minecraft/world/entity/LivingEntity;)V"
+		)
+	)
+	private void kohsInventoryTweaks$scaleInventoryEntityAtRealPosition(
+		final GuiGraphicsExtractor graphics,
+		final int x0,
+		final int y0,
+		final int x1,
+		final int y1,
+		final int size,
+		final float offsetY,
+		final float mouseX,
+		final float mouseY,
+		final LivingEntity entity
+	) {
+		InventoryScreen screen = (InventoryScreen) (Object) this;
+		float scale = (float) InventoryGuiScaler.appliedScale(screen, ConfigStore.get());
+		float centerX = screen.width * 0.5F;
+		float centerY = screen.height * 0.5F;
+		InventoryScreen.extractEntityInInventoryFollowsMouse(
+			graphics,
+			Math.round(centerX + (x0 - centerX) * scale),
+			Math.round(centerY + (y0 - centerY) * scale),
+			Math.round(centerX + (x1 - centerX) * scale),
+			Math.round(centerY + (y1 - centerY) * scale),
+			Math.max(1, Math.round(size * scale)),
+			offsetY,
+			centerX + (mouseX - centerX) * scale,
+			centerY + (mouseY - centerY) * scale,
+			entity
+		);
 	}
 }

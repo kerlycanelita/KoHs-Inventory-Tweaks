@@ -14,18 +14,20 @@ public final class InventoryTweaksConfig {
 
 	public boolean centerMouseFix = true;
 	public boolean superFastInventory = true;
+	public boolean removeAllInventoryAnimations;
 	public boolean inventoryGuiScalerEnabled;
 	public double inventoryGuiScale = 1.0;
 	public boolean guiScalerWarningDismissed;
-	public boolean chestCursorEnabled = true;
-	public boolean enderChestCursorEnabled = true;
-	public boolean barrelCursorEnabled = true;
+	public boolean chestCursorEnabled;
+	public boolean enderChestCursorEnabled;
+	public boolean barrelCursorEnabled;
 	public TextureSource inventoryTextureSource = TextureSource.APPLIED;
 	public int frameColor = 0xFFFFFF;
 	public int frameOpacity = 255;
 	public int slotColor = 0xFFFFFF;
 	public int slotOpacity = 255;
 	public int backgroundOpacity = 255;
+	public int inventoryBackdropOpacity = 208;
 	public @Nullable String customBackgroundFile;
 	public List<ItemHighlight> itemHighlights = new ArrayList<>();
 	public @Nullable CursorPoint inventory;
@@ -38,6 +40,7 @@ public final class InventoryTweaksConfig {
 		InventoryTweaksConfig copy = new InventoryTweaksConfig();
 		copy.centerMouseFix = this.centerMouseFix;
 		copy.superFastInventory = this.superFastInventory;
+		copy.removeAllInventoryAnimations = this.removeAllInventoryAnimations;
 		copy.inventoryGuiScalerEnabled = this.inventoryGuiScalerEnabled;
 		copy.inventoryGuiScale = this.inventoryGuiScale;
 		copy.guiScalerWarningDismissed = this.guiScalerWarningDismissed;
@@ -50,6 +53,7 @@ public final class InventoryTweaksConfig {
 		copy.slotColor = this.slotColor;
 		copy.slotOpacity = this.slotOpacity;
 		copy.backgroundOpacity = this.backgroundOpacity;
+		copy.inventoryBackdropOpacity = this.inventoryBackdropOpacity;
 		copy.customBackgroundFile = this.customBackgroundFile;
 		copy.itemHighlights = new ArrayList<>();
 		for (ItemHighlight highlight : this.itemHighlights) {
@@ -106,9 +110,9 @@ public final class InventoryTweaksConfig {
 	}
 
 	public void resetCursorPositions() {
-		this.chestCursorEnabled = true;
-		this.enderChestCursorEnabled = true;
-		this.barrelCursorEnabled = true;
+		this.chestCursorEnabled = false;
+		this.enderChestCursorEnabled = false;
+		this.barrelCursorEnabled = false;
 		this.inventory = null;
 		this.chestSingle = null;
 		this.chestDouble = null;
@@ -123,6 +127,7 @@ public final class InventoryTweaksConfig {
 		this.slotColor = 0xFFFFFF;
 		this.slotOpacity = 255;
 		this.backgroundOpacity = 255;
+		this.inventoryBackdropOpacity = 208;
 		this.customBackgroundFile = null;
 	}
 
@@ -163,6 +168,7 @@ public final class InventoryTweaksConfig {
 		return other != null
 			&& this.centerMouseFix == other.centerMouseFix
 			&& this.superFastInventory == other.superFastInventory
+			&& this.removeAllInventoryAnimations == other.removeAllInventoryAnimations
 			&& this.inventoryGuiScalerEnabled == other.inventoryGuiScalerEnabled
 			&& Double.compare(this.inventoryGuiScale, other.inventoryGuiScale) == 0
 			&& this.guiScalerWarningDismissed == other.guiScalerWarningDismissed
@@ -175,6 +181,7 @@ public final class InventoryTweaksConfig {
 			&& this.slotColor == other.slotColor
 			&& this.slotOpacity == other.slotOpacity
 			&& this.backgroundOpacity == other.backgroundOpacity
+			&& this.inventoryBackdropOpacity == other.inventoryBackdropOpacity
 			&& Objects.equals(this.customBackgroundFile, other.customBackgroundFile)
 			&& Objects.equals(this.itemHighlights, other.itemHighlights)
 			&& Objects.equals(this.inventory, other.inventory)

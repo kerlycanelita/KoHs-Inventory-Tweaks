@@ -1,6 +1,7 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
+import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
@@ -14,6 +15,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(AbstractContainerScreen.class)
 public abstract class AbstractContainerScreenMixin {
+	@Inject(method = "extractSnapbackItem", at = @At("HEAD"), cancellable = true)
+	private void kohsInventoryTweaks$removeTransientGhostCopy(final CallbackInfo callbackInfo) {
+		if (ConfigStore.get().removeAllInventoryAnimations) {
+			callbackInfo.cancel();
+		}
+	}
+
 	@Inject(method = "init", at = @At("TAIL"))
 	private void kohsInventoryTweaks$placeCursorAfterLayout(final CallbackInfo callbackInfo) {
 		CursorLandingController.onContainerScreenInitialized(Minecraft.getInstance(), (Screen) (Object) this);
