@@ -10,7 +10,8 @@ logs/
 crash-reports/
 
 # Legacy KoHs Inv Cursor projects and artifacts
-versions/
+versions/*
+!versions/kohs-inventory-tweaks-1.21.11/
 builds/
 modrinth/
 scripts/

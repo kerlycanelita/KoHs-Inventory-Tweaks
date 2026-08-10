@@ -1,0 +1,69 @@
+plugins {
+	id 'fabric-loom' version '1.15-SNAPSHOT'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = 'kohs-inventory-tweaks'
+}
+
+repositories {
+	mavenCentral()
+	maven {
+		name = 'Terraformers'
+		url = 'https://maven.terraformersmc.com/releases/'
+	}
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		'kohs_inventory_tweaks' {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft 'com.mojang:minecraft:' + project.minecraft_version
+	mappings loom.officialMojangMappings()
+	modImplementation 'net.fabricmc:fabric-loader:' + project.loader_version
+	modImplementation 'net.fabricmc.fabric-api:fabric-api:' + project.fabric_api_version
+	modCompileOnly 'com.terraformersmc:modmenu:' + project.modmenu_version
+	include implementation('org.jcodec:jcodec:0.2.5')
+	include implementation('org.jcodec:jcodec-javase:0.2.5')
+}
+
+processResources {
+	inputs.property 'version', project.version
+	includeEmptyDirs = false
+
+	['es_ar', 'es_cl', 'es_ec', 'es_mx', 'es_uy', 'es_ve'].each { spanishLocale ->
+		from('src/main/resources/assets/kohs_inventory_tweaks/lang/es_es.json') {
+			into 'assets/kohs_inventory_tweaks/lang'
+			rename { spanishLocale + '.json' }
+		}
+	}
+
+	filesMatching('fabric.mod.json') {
+		expand 'version': project.version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = 21
+	options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}

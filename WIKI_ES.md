@@ -4,7 +4,7 @@
 
 # Wiki de KoHs Inventory Tweaks
 
-Esta guía corresponde exclusivamente a **KoHs Inventory Tweaks 1.0.1 para Minecraft 26.1.2**. El mod es el sucesor de **KoHs Inv Cursor** y fue reconstruido para la nueva versión del juego.
+Esta guía corresponde a **KoHs Inventory Tweaks 1.0.2 para Minecraft 26.1.2 y 1.21.11**. El mod es el sucesor de **KoHs Inv Cursor**.
 
 ## Contenido
 
@@ -23,10 +23,10 @@ Esta guía corresponde exclusivamente a **KoHs Inventory Tweaks 1.0.1 para Minec
 
 ## Requisitos
 
-- Minecraft Java Edition 26.1.2.
+- Minecraft Java Edition 26.1.2 o 1.21.11.
 - Fabric Loader 0.19.3 o superior.
-- Fabric API para 26.1.2.
-- Java 25 o superior.
+- Fabric API correspondiente a la versión de Minecraft seleccionada.
+- Java 25 o superior para Minecraft 26.1.2; Java 21 o superior para Minecraft 1.21.11.
 - Mod Menu es opcional, pero recomendado para acceder a la configuración.
 
 El mod funciona del lado del cliente. Un servidor Vanilla no necesita instalarlo.
@@ -93,6 +93,12 @@ SuperFastInventory elimina la espera innecesaria al crear la pantalla local del 
 - Cancela la operación si hay un objeto transportado por el cursor, el jugador es espectador, la pantalla cambió o el servidor controla la apertura.
 
 No duplica objetos, no automatiza clicks repetidos y no modifica paquetes para exceder las reglas Vanilla.
+
+### Eliminar absolutamente todas las animaciones del inventario
+
+Esta opción utiliza un frame estático para fondos animados, elimina animaciones visuales propias del inventario y suprime el brillo animado de objetos encantados mientras se dibujan los slots.
+
+No modifica la lógica del servidor, la propiedad de objetos ni las transacciones. La hotbar del HUD, los objetos sostenidos, las entidades y el mundo conservan su render Vanilla.
 
 ## Customization
 

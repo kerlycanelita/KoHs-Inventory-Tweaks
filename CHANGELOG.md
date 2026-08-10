@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2
+
+- Added the maintained Minecraft 1.21.11 Fabric implementation and its source tree.
+- Fixed the player model's position and dimensions in the real 1.21.11 inventory when custom inventory scaling is active; mouse-follow coordinates now use the same centered transform as the inventory surface.
+- Stabilized ON/OFF controls so state changes no longer restart button scale, lift, or glow animations.
+- Kept the Inventory Tweaks panel stationary while the Remove All Inventory Animations confirmation is shown or dismissed.
+- Extended Remove All Inventory Animations to suppress animated enchantment foil while inventory slots are rendered. The HUD hotbar, held items, entities, and world rendering remain untouched.
+
 ## 1.0.1+mc26.1.2
 
 - Scoped Center Mouse Fix to `InventoryScreen`/the player inventory; custom cursor landing for enabled chest, double chest, ender chest, and barrel targets remains independent.

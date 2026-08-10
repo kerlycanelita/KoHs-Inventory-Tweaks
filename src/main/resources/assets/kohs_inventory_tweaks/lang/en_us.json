@@ -161,7 +161,7 @@
   "screen.kohs_inventory_tweaks.remove_animations": "Remove Absolutely All Inventory Animations",
   "screen.kohs_inventory_tweaks.remove_animations.description": "Freezes inventory-owned visual motion and removes transient snapback ghost copies without delaying mouse or keyboard input.",
   "screen.kohs_inventory_tweaks.remove_animations.warning.title": "Remove inventory animations?",
-  "screen.kohs_inventory_tweaks.remove_animations.warning.description": "Animated GIF or converted-video backgrounds will be held on their first frame. Furnace and brewing progress motion, recipe cycling and bounce, the enchanting book, cycling slot hints, and transient snapback item copies will also be hidden or frozen. This is client-side visual behavior only; container logic, packets, clicks, keys, and transfer speed are unchanged.",
+  "screen.kohs_inventory_tweaks.remove_animations.warning.description": "Animated backgrounds use one frame. Furnace and brewing progress, recipe cycling and bounce, the enchanting book, cycling slot hints, transient snapback copies, and animated enchantment foil inside inventory slots are hidden or frozen. HUD, held-item, entity, and world rendering stay Vanilla. Container logic, packets, clicks, keys, and transfer speed are unchanged.",
   "screen.kohs_inventory_tweaks.remove_animations.warning.enable": "Enable",
   "screen.kohs_inventory_tweaks.enabled": "Enabled",
   "screen.kohs_inventory_tweaks.disabled": "Disabled",

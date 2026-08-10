@@ -4,7 +4,7 @@
 
 # KoHs Inventory Tweaks Wiki
 
-This guide applies exclusively to **KoHs Inventory Tweaks 1.0.1 for Minecraft 26.1.2**. The mod is the successor to **KoHs Inv Cursor** and was rebuilt for the new game version.
+This guide applies to **KoHs Inventory Tweaks 1.0.2 for Minecraft 26.1.2 and 1.21.11**. The mod is the successor to **KoHs Inv Cursor**.
 
 ## Contents
 
@@ -23,10 +23,10 @@ This guide applies exclusively to **KoHs Inventory Tweaks 1.0.1 for Minecraft 26
 
 ## Requirements
 
-- Minecraft Java Edition 26.1.2.
+- Minecraft Java Edition 26.1.2 or 1.21.11.
 - Fabric Loader 0.19.3 or newer.
-- Fabric API for 26.1.2.
-- Java 25 or newer.
+- Fabric API matching the selected Minecraft version.
+- Java 25 or newer for Minecraft 26.1.2; Java 21 or newer for Minecraft 1.21.11.
 - Mod Menu is optional but recommended for convenient access to the configuration menu.
 
 KoHs Inventory Tweaks is client-side only. Vanilla servers do not need to install it.
@@ -96,9 +96,9 @@ The feature does not duplicate items, automate repeated clicks, or modify packet
 
 ### Remove absolutely all inventory animations
 
-This optional setting disables inventory-side animation work for players who prefer the most static possible interface. When enabled, animated custom backgrounds use a single static frame.
+This optional setting disables inventory-side animation work for players who prefer the most static possible interface. When enabled, animated custom backgrounds use a single static frame and enchanted item foil is suppressed while inventory slots are drawn.
 
-The option does not alter server logic, item ownership, or container transactions. Its anti-ghosting safeguards only reconcile client-side visual state with the latest vanilla slot state.
+The option does not alter server logic, item ownership, or container transactions. Its anti-ghosting safeguards only reconcile client-side visual state with the latest vanilla slot state. Enchantment rendering outside inventory slots, including the HUD hotbar, held items, entities, and the world, remains vanilla.
 
 ## Customization
 

@@ -161,7 +161,7 @@
   "screen.kohs_inventory_tweaks.remove_animations": "Eliminar absolutamente todas las animaciones",
   "screen.kohs_inventory_tweaks.remove_animations.description": "Congela el movimiento visual propio del inventario y elimina copias fantasma transitorias sin retrasar el mouse ni el teclado.",
   "screen.kohs_inventory_tweaks.remove_animations.warning.title": "¿Eliminar las animaciones del inventario?",
-  "screen.kohs_inventory_tweaks.remove_animations.warning.description": "Los fondos GIF o vídeos convertidos quedarán fijos en su primer frame. También se ocultarán o congelarán el progreso visual de hornos y pociones, el ciclo y rebote de recetas, el libro de encantamientos, los iconos cíclicos de slots y las copias transitorias de snapback. Solo cambia el render del cliente; la lógica, paquetes, clics, teclas y velocidad de transferencia no se modifican.",
+  "screen.kohs_inventory_tweaks.remove_animations.warning.description": "Los fondos animados usarán un solo frame. Se ocultarán o congelarán el progreso de hornos y pociones, recetas, libro de encantamientos, iconos cíclicos, copias snapback y el brillo encantado animado en slots del inventario. HUD, manos, entidades y mundo siguen Vanilla. La lógica, paquetes, clics, teclas y velocidad no cambian.",
   "screen.kohs_inventory_tweaks.remove_animations.warning.enable": "Activar",
   "screen.kohs_inventory_tweaks.enabled": "Activado",
   "screen.kohs_inventory_tweaks.disabled": "Desactivado",

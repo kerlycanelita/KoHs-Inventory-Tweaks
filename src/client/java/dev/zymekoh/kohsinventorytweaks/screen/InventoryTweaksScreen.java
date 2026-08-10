@@ -238,8 +238,9 @@ public final class InventoryTweaksScreen extends Screen {
 		this.ensureParticles();
 		this.calculateMainLayout();
 		this.calculateModalLayout();
-		if (this.modal != this.animatedModal) {
-			this.animatedModal = this.modal;
+		Modal visibleModal = this.modal == Modal.ANIMATIONS_WARNING ? Modal.TWEAKS : this.modal;
+		if (visibleModal != this.animatedModal) {
+			this.animatedModal = visibleModal;
 			this.modalOpenedAtNanos = System.nanoTime();
 		}
 		switch (this.modal) {

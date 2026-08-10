@@ -16,6 +16,7 @@
     "GuiMixin",
     "GuiGraphicsExtractorMixin",
     "InventoryScreenMixin",
+    "ItemStackMixin",
     "KeyboardHandlerMixin",
     "MinecraftScreenMixin",
     "MouseHandlerAccessor",

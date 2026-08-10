@@ -83,8 +83,9 @@ public final class GlassButton extends Button {
 		boolean highlighted = this.isHoveredOrFocused();
 		this.hoverAmount += ((highlighted ? 1.0F : 0.0F) - this.hoverAmount) * HOVER_SPEED;
 		float entrance = cubicOut(clamp01((System.nanoTime() - this.createdAtNanos) / (float) ENTRANCE_DURATION_NANOS));
-		float scale = 0.965F + entrance * 0.035F;
-		int lift = this.active && this.hoverAmount > 0.55F ? -1 : 0;
+		boolean stableSwitch = this.variant == Variant.SWITCH;
+		float scale = stableSwitch ? 1.0F : 0.965F + entrance * 0.035F;
+		int lift = !stableSwitch && this.active && this.hoverAmount > 0.55F ? -1 : 0;
 		int x = this.getX();
 		int y = this.getY() + lift;
 
@@ -119,7 +120,7 @@ public final class GlassButton extends Button {
 		graphics.pose().translate(x + this.getWidth() / 2.0F, y + this.getHeight() / 2.0F);
 		graphics.pose().scale(scale, scale);
 		graphics.pose().translate(-(x + this.getWidth() / 2.0F), -(y + this.getHeight() / 2.0F));
-		if (this.active && this.hoverAmount > 0.02F) {
+		if (!stableSwitch && this.active && this.hoverAmount > 0.02F) {
 			UiRender.glow(graphics, x, y, this.getWidth(), this.getHeight(), 6, (int) (34 * this.hoverAmount));
 		}
 		UiRender.panel(graphics, x, y, this.getWidth(), this.getHeight(), 6, fill, border);

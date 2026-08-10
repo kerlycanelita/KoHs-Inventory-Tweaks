@@ -3,6 +3,7 @@ package dev.zymekoh.kohsinventorytweaks.mixin;
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
+import dev.zymekoh.kohsinventorytweaks.render.InventoryAnimationController;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -35,6 +36,7 @@ public abstract class AbstractContainerScreenMixin {
 		final int mouseY,
 		final CallbackInfo callbackInfo
 	) {
+		InventoryAnimationController.beginInventoryItem();
 		ItemHighlighterController.drawContainerSlot(
 			graphics,
 			(AbstractContainerScreen<?>) (Object) this,
@@ -57,6 +59,7 @@ public abstract class AbstractContainerScreenMixin {
 			slot,
 			true
 		);
+		InventoryAnimationController.endInventoryItem();
 	}
 
 	@Inject(

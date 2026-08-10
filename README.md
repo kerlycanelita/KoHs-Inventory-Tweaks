@@ -5,7 +5,7 @@
 <h1 align="center">KoHs Inventory Tweaks</h1>
 
 <p align="center">
-  <strong>The successor to KoHs Inv Cursor, rebuilt for Minecraft Java 26.1.2.</strong>
+  <strong>The successor to KoHs Inv Cursor, rebuilt for modern Minecraft inventory rendering.</strong>
 </p>
 
 <p align="center">
@@ -18,17 +18,16 @@
 
 KoHs Inventory Tweaks is a Fabric client-side mod that hooks into inventory-screen preparation and rendering without replacing server inventory logic. It provides deterministic cursor placement, guarded rapid input, configurable visuals, and a responsive interface while preserving vanilla interactions.
 
-This repository contains only the implementation for **Minecraft 26.1.2**. Previous KoHs Inv Cursor versions are not part of this project.
+This repository contains maintained implementations for **Minecraft 26.1.2** and **Minecraft 1.21.11**. Previous KoHs Inv Cursor versions are not part of this project.
 
 ## Compatibility
 
-| Component | Version |
-|---|---:|
-| Minecraft Java Edition | **26.1.2** |
-| Fabric Loader | **0.19.3 or newer** |
-| Fabric API | **0.155.2+26.1.2** |
-| Java | **25 or newer** |
-| Mod Menu | Optional, recommended |
+| Minecraft | Fabric API | Java | Source |
+|---|---|---:|---|
+| **26.1.2** | **0.155.2+26.1.2** | **25+** | Repository root |
+| **1.21.11** | **0.141.6+1.21.11** | **21+** | `versions/kohs-inventory-tweaks-1.21.11` |
+
+Both builds require Fabric Loader 0.19.3 or newer. Mod Menu is optional and recommended.
 
 The mod does not need to be installed on the server.
 
@@ -44,9 +43,9 @@ The mod does not need to be installed on the server.
 
 ## Installation
 
-1. Install Fabric Loader for Minecraft 26.1.2.
-2. Install Fabric API.
-3. Place the KoHs Inventory Tweaks JAR in the instance's mods directory.
+1. Install Fabric Loader for your supported Minecraft version.
+2. Install the matching Fabric API release.
+3. Place the matching KoHs Inventory Tweaks JAR in the instance's mods directory.
 4. Optionally install Mod Menu to access configuration through the mod list.
 5. Join a world or server before opening the configuration menu; previews require an active player and loaded resources.
 
@@ -57,7 +56,7 @@ Read the [English wiki](WIKI.md) for complete instructions covering colors, back
     $env:JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
     .\gradlew.bat clean build
 
-The generated JAR is written to build/libs/.
+The 26.1.2 JAR is written to `build/libs/`. To build 1.21.11, run the same command from `versions/kohs-inventory-tweaks-1.21.11`; its JAR is written to that directory's `build/libs/`.
 
 ## Support
 
