@@ -1,248 +1,266 @@
-# Wiki de KoHs Inventory Tweaks
+<p align="center">
+  <a href="WIKI_ES.md"><img alt="Leer en español" src="https://img.shields.io/badge/Idioma-Espa%C3%B1ol-7c3aed?style=for-the-badge"></a>
+</p>
 
-Esta guía corresponde exclusivamente a **KoHs Inventory Tweaks 1.0.1 para Minecraft 26.1.2**. El mod es el sucesor de **KoHs Inv Cursor** y fue reconstruido para la nueva versión del juego.
+# KoHs Inventory Tweaks Wiki
 
-## Contenido
+This guide applies exclusively to **KoHs Inventory Tweaks 1.0.1 for Minecraft 26.1.2**. The mod is the successor to **KoHs Inv Cursor** and was rebuilt for the new game version.
 
-- [Requisitos](#requisitos)
-- [Abrir la configuración](#abrir-la-configuración)
-- [Interfaz principal](#interfaz-principal)
+## Contents
+
+- [Requirements](#requirements)
+- [Opening the configuration menu](#opening-the-configuration-menu)
+- [Main interface](#main-interface)
 - [Cursor Landing](#cursor-landing)
 - [Inventory Tweaks](#inventory-tweaks)
 - [Customization](#customization)
-- [Fondos personalizados](#fondos-personalizados)
+- [Custom backgrounds](#custom-backgrounds)
 - [GUI Scaler](#gui-scaler)
 - [Item Highlighter](#item-highlighter)
 - [Resource packs](#resource-packs)
-- [Guardado y archivos](#guardado-y-archivos)
-- [Solución de problemas](#solución-de-problemas)
+- [Saving and files](#saving-and-files)
+- [Troubleshooting](#troubleshooting)
 
-## Requisitos
+## Requirements
 
 - Minecraft Java Edition 26.1.2.
-- Fabric Loader 0.19.3 o superior.
-- Fabric API para 26.1.2.
-- Java 25 o superior.
-- Mod Menu es opcional, pero recomendado para acceder a la configuración.
+- Fabric Loader 0.19.3 or newer.
+- Fabric API for 26.1.2.
+- Java 25 or newer.
+- Mod Menu is optional but recommended for convenient access to the configuration menu.
 
-El mod funciona del lado del cliente. Un servidor Vanilla no necesita instalarlo.
+KoHs Inventory Tweaks is client-side only. Vanilla servers do not need to install it.
 
-## Abrir la configuración
+## Opening the configuration menu
 
-1. Entra a un mundo o servidor.
-2. Pulsa **Y**, la tecla predeterminada del menú de configuración.
-3. Puedes cambiarla desde la pantalla principal del mod o desde los controles de Minecraft.
+1. Join a world or server.
+2. Press **Y**, the default configuration-menu key.
+3. You can rebind it from the mod's main screen or Minecraft's Controls menu.
 
-También puedes abrir el menú desde **Mods → KoHs Inventory Tweaks → Configuración** si tienes Mod Menu instalado.
+If Mod Menu is installed, you can also use **Mods → KoHs Inventory Tweaks → Configure**.
 
-La configuración no se abre desde el menú principal. En ese caso se muestra un aviso porque las previews necesitan el jugador, los modelos de objetos y los resource packs ya cargados.
+The configuration screen cannot be opened from Minecraft's title screen. A notice is shown instead because the previews require an active player, item models, and loaded resource packs.
 
-## Interfaz principal
+## Main interface
 
-El inventario real del jugador aparece en el centro. Los grupos de funciones están separados en dos paneles desplazables:
+The player's real inventory is displayed in the center. Features are divided between two scrollable panels:
 
-- **Behavior:** Cursor Landing e Inventory Tweaks.
-- **Appearance:** Customization, Item Highlighter y GUI Scaler.
+- **Behavior:** Cursor Landing and Inventory Tweaks.
+- **Appearance:** Customization, Item Highlighter, and GUI Scaler.
 
-El selector inferior permite escoger la textura base:
+The selector at the bottom chooses the base inventory texture:
 
-- **Applied:** utiliza la textura suministrada por los resource packs activos.
-- **Vanilla:** utiliza directamente la textura original incluida por Minecraft.
+- **Applied:** uses the texture supplied by the active resource packs.
+- **Vanilla:** uses Minecraft's original bundled inventory texture.
 
-Los colores y fondos del mod se componen encima de la fuente elegida. Cambiar esta opción actualiza también las previews.
+The mod's colors and backgrounds are composed over the selected source. Changing this option also refreshes every preview.
 
 ## Cursor Landing
 
-Cursor Landing permite escoger el punto exacto donde aparecerá el cursor al abrir una pantalla compatible.
+Cursor Landing lets you select the exact point where the pointer appears when a supported screen opens.
 
-### Configurar una posición
+### Setting a position
 
-1. Abre **Cursor Landing**.
-2. Selecciona Inventory, Chest, Ender Chest o Barrel.
-3. Para Chest, escoge **×1** o **×2** para diferenciar cofre simple y doble.
-4. Haz clic dentro de la preview en la posición deseada.
-5. Pulsa **Save & Exit**.
+1. Open **Cursor Landing**.
+2. Select Inventory, Chest, Ender Chest, or Barrel.
+3. For Chest, choose **×1** or **×2** to distinguish single and double chests.
+4. Click the desired position inside the preview.
+5. Select **Save & Exit**.
 
-Las coordenadas se guardan de forma normalizada, por lo que se adaptan al tamaño de ventana y a la escala GUI.
+Coordinates are stored in normalized form, allowing them to adapt to the window size and GUI scale.
 
-### Activar o desactivar contenedores
+### Enabling or disabling containers
 
-Chest, Ender Chest y Barrel tienen interruptores independientes. Si uno está desactivado, ese contenedor conserva el cursor Vanilla aunque exista una posición guardada.
+Chest, Ender Chest, and Barrel have independent switches. When one is disabled, that container keeps vanilla cursor behavior even if a saved position exists.
 
-**Reset All** elimina todas las posiciones y reactiva los contenedores. Si sales con `Esc` teniendo cambios pendientes, el mod muestra una advertencia antes de descartarlos.
+**Reset All** removes every saved position and re-enables the containers. If you press **Esc** while unsaved changes exist, the mod warns you before discarding them.
 
 ## Inventory Tweaks
 
 ### Center Mouse Fix
 
-Minecraft o algún mod puede producir un evento de centrado mientras se abre el inventario del jugador. Center Mouse Fix mantiene una ventana de verificación de aproximadamente 100 ms y restaura una sola vez la posición configurada si detecta ese evento.
+Minecraft or another mod may produce an unexpected centering event while the player's inventory is opening. Center Mouse Fix keeps a verification window of approximately 100 ms and restores the configured position once if it detects that event.
 
-No genera efecto de arrastre, no bloquea los movimientos posteriores del jugador y no afecta cofres, Ender Chests, barriles ni otros contenedores. También funciona con la posición central Vanilla del inventario cuando no existe una posición personalizada.
+It does not create a dragging effect, block later mouse movement, or affect chests, Ender Chests, barrels, or other containers. If no custom inventory position exists, it also works with the inventory's normal vanilla center position.
 
 ### SuperFastInventory
 
-SuperFastInventory elimina la espera innecesaria al crear la pantalla local del inventario y protege las combinaciones rápidas de inventario y offhand:
+SuperFastInventory removes unnecessary delay while creating the local inventory screen and protects rapid inventory/offhand input combinations:
 
-- Conserva durante 125 ms una pulsación de offhand realizada casi al mismo tiempo que la tecla de inventario.
-- Espera a que Minecraft haya calculado el slot real bajo el cursor.
-- Ejecuta una única acción Vanilla `SWAP` con el botón de offhand sobre ese slot.
-- Cancela la operación si hay un objeto transportado por el cursor, el jugador es espectador, la pantalla cambió o el servidor controla la apertura.
+- It preserves an offhand key press made almost simultaneously with the inventory key for up to 125 ms.
+- It waits until Minecraft has calculated the real slot under the pointer.
+- It performs one vanilla **SWAP** action using the offhand button on that slot.
+- It cancels the operation if the cursor is carrying an item, the player is a spectator, the screen changes, or the server controls the inventory opening.
 
-No duplica objetos, no automatiza clicks repetidos y no modifica paquetes para exceder las reglas Vanilla.
+The feature does not duplicate items, automate repeated clicks, or modify packets to exceed vanilla rules.
+
+### Remove absolutely all inventory animations
+
+This optional setting disables inventory-side animation work for players who prefer the most static possible interface. When enabled, animated custom backgrounds use a single static frame.
+
+The option does not alter server logic, item ownership, or container transactions. Its anti-ghosting safeguards only reconcile client-side visual state with the latest vanilla slot state.
 
 ## Customization
 
-La preview se encuentra a la izquierda. Pulsa su selector para alternar entre:
+Before entering Customization, the mod warns that these settings affect every supported inventory and container screen.
+
+The preview appears on the left. Use its left and right arrows to cycle through:
 
 - Inventory.
 - Single Chest.
 - Double Chest.
 - Barrel.
 - Ender Chest.
+- Other supported inventory-based containers.
 
-Todas las configuraciones están en la columna desplazable derecha y afectan al inventario y a los contenedores genéricos compatibles.
+All settings are located in the scrollable right column and apply to the player inventory and compatible generic containers.
 
-### Cambiar el marco del inventario
+### Changing the inventory frame
 
-1. Localiza **Inventory frame**.
-2. Escoge un color en la paleta.
-3. Ajusta **Opacity** entre 0 y 255.
+1. Find **Inventory frame**.
+2. Choose a color from the palette.
+3. Set **Opacity** from 0 to 255.
 
-Una opacidad de `0` vuelve transparente la capa de marco; `255` la vuelve completamente visible.
+An opacity of **0** makes the frame layer transparent; **255** makes it fully visible.
 
-### Cambiar los marcos de slots
+### Changing slot frames
 
-1. Localiza **Slot frames**.
-2. Escoge el color.
-3. Ajusta su opacidad.
+1. Find **Slot frames**.
+2. Choose a color.
+3. Adjust its opacity.
 
-Esta capa modifica la apariencia del slot sin recolorear el modelo del objeto que contiene.
+This layer changes the slot's appearance without recoloring the item model inside it.
 
-### Restablecer
+### Inventory backdrop
 
-**Reset** devuelve colores, opacidades, fuente de textura y fondo personalizado a sus valores iniciales.
+The **Outside darkness** slider controls the dark overlay rendered behind inventory screens:
 
-## Fondos personalizados
+- **0** keeps the world behind the inventory clear.
+- Higher values progressively darken the area outside the inventory.
 
-Selecciona **Choose file** dentro de **Custom inventory background**. Antes de importar cualquier archivo se abre una pantalla de recorte obligatorio con proporción **176:166**.
+### Resetting customization
 
-- Arrastra la imagen para encuadrarla.
-- Usa el control de zoom.
-- Pulsa **Apply Crop** para procesarla.
+**Reset** restores colors, opacity values, the texture source, and the custom background to their defaults.
 
-### Formatos y límites
+## Custom backgrounds
 
-| Tipo | Formatos | Límites |
+Select **Choose file** under **Custom inventory background**. Before any file is imported, a mandatory crop screen opens with a **176:166** aspect ratio.
+
+- Drag the image to position it.
+- Use the zoom control to resize it.
+- Select **Apply Crop** to process it.
+
+### Formats and limits
+
+| Type | Formats | Limits |
 |---|---|---|
-| Imagen | PNG, JPG, JPEG, BMP | Máximo 32 MB y 2048 px por dimensión |
-| Animación | GIF | Máximo 32 MB, 2048 px por dimensión y 100 frames |
-| Video | MP4, MOV con contenido compatible con JCodec | 1–10 segundos, mínimo 176×166, máximo 64 MB y 2048 px |
+| Image | PNG, JPG, JPEG, BMP | Maximum 32 MB and 2048 px per dimension |
+| Animation | GIF | Maximum 32 MB, 2048 px per dimension, and 100 frames |
+| Video | MP4 or MOV with JCodec-compatible content | 1–10 seconds, minimum 176×166, maximum 64 MB and 2048 px |
 
-Los videos se decodifican localmente a 10 FPS y se guardan como un GIF en bucle. No se sube el archivo a servicios externos.
+Videos are decoded locally at 10 FPS and saved as a looping GIF. Files are not uploaded to an external service.
 
-Los fondos importados se almacenan en:
+Imported backgrounds are stored in:
 
-```text
-config/kohs_inventory_tweaks/backgrounds/
-```
+    config/kohs_inventory_tweaks/backgrounds/
 
-El slider **Background opacity** controla solamente el fondo personalizado.
+The **Background opacity** slider affects only the custom background.
 
 ## GUI Scaler
 
-GUI Scaler modifica exclusivamente el inventario del jugador. No cambia la escala global de Minecraft, la hotbar ni otros contenedores.
+GUI Scaler changes only the player's inventory. It does not change Minecraft's global GUI scale, the HUD hotbar, or other containers.
 
-1. Abre **GUI Scaler**.
-2. Lee y acepta la advertencia. Puedes marcar **Do Not Show Again**.
-3. Activa el interruptor superior.
-4. Ajusta el slider entre **65 % y 175 %**.
+1. Open **GUI Scaler**.
+2. Read and accept the warning. You may select **Do Not Show Again**.
+3. Enable the switch at the top.
+4. Adjust the vertical slider between **65% and 175%**.
 
-El inventario, los slots, objetos, textos y modelo del jugador se escalan como una sola unidad. El máximo efectivo se reduce automáticamente si la ventana o el libro de recetas no tienen espacio suficiente.
+The inventory, slots, items, text, and player model scale as one unit while remaining in their vanilla-relative positions. The effective maximum is automatically reduced when the game window or recipe book does not leave enough space.
 
-Al desactivar la función, el inventario vuelve a obedecer la escala GUI Vanilla.
+When the feature is disabled, the inventory follows Minecraft's vanilla GUI scale again.
 
 ## Item Highlighter
 
-### Añadir un objeto
+### Adding an item
 
-1. Abre **Item Highlighter**.
-2. Usa el buscador del catálogo Vanilla.
-3. Haz clic en un objeto. Se añadirá al panel izquierdo usando su render activo.
-4. Haz clic en el objeto del panel izquierdo para abrir su editor.
+1. Open **Item Highlighter**.
+2. Use the vanilla item catalog search field.
+3. Click an item. It moves to the left panel using its currently active render.
+4. Click the item in the left panel to open its editor.
 
-Se pueden guardar hasta 256 objetos diferentes.
+Up to 256 different items can be stored.
 
-### Colores
+### Colors
 
-- **Slot background:** color detrás del objeto.
-- **Item border:** borde exterior del resaltado.
+- **Slot background:** the color rendered behind the item.
+- **Item border:** the outside border of the highlight.
 
-La textura y el modelo del objeto no se recolorean.
+The item's texture and model are not recolored.
 
 ### Hotbar
 
-Activa **Hotbar** para mostrar el resaltado del objeto también en la hotbar del HUD.
+Enable **Hotbar** to display the configured highlight when the item appears in the HUD hotbar.
 
 ### Dynamic
 
-Con **Dynamic** activo, los objetos coincidentes permanecen Vanilla mientras el cursor no esté sobre uno de ellos. Al colocar el cursor sobre un ejemplar, todos los objetos configurados con ese mismo identificador se iluminan; al retirarlo vuelven inmediatamente al aspecto Vanilla.
+With **Dynamic** enabled, matching items remain vanilla until the pointer is over one of them. Hovering one instance highlights every configured item with the same identifier; moving the pointer away immediately restores their vanilla appearance.
 
-La detección usa el `hoveredSlot` calculado por Minecraft antes de renderizar los slots, por lo que funciona tanto en las previews como en inventarios reales.
+Detection uses the hovered slot calculated by Minecraft before slots are rendered, so it works in both previews and real inventories.
 
-### Done, Reset y Remove item
+### Done, Reset, and Remove item
 
-- **Done:** guarda y vuelve al selector.
-- **Reset:** conserva el objeto, pero restaura sus colores y opciones.
-- **Remove item:** elimina ese objeto del resaltador.
-- **Reset All:** elimina toda la lista de objetos configurados.
+- **Done:** saves the item settings and returns to the selector.
+- **Reset:** keeps the item but restores its colors and options.
+- **Remove item:** removes that item from the highlighter.
+- **Reset All:** removes the entire configured item list.
 
 ## Resource packs
 
-Las previews y los objetos utilizan los recursos actualmente activos:
+Previews and items use the currently active resources:
 
-- La opción **Applied** carga la GUI suministrada por el resource pack de mayor prioridad.
-- **Vanilla** omite cambios de packs para la textura base del inventario.
-- Las capas de color y el fondo de KoHs Inventory Tweaks siempre se aplican encima de la base elegida.
-- Item Highlighter utiliza el modelo y la textura activa de cada objeto; solamente modifica el slot y su borde.
+- **Applied** loads the GUI supplied by the highest-priority active resource pack.
+- **Vanilla** ignores pack replacements for the base inventory texture.
+- KoHs Inventory Tweaks color layers and backgrounds are always applied over the selected base.
+- Item Highlighter uses each item's active model and texture and modifies only the slot and highlight border.
 
-Después de recargar resource packs, las texturas compuestas se invalidan y se generan nuevamente.
+After resource packs are reloaded, composed textures are invalidated and generated again.
 
-## Guardado y archivos
+## Saving and files
 
-Los cambios se guardan automáticamente al utilizar los controles y también al cerrar con los botones de confirmación. El archivo principal es:
+Changes are saved when controls are used and when confirmation buttons close their screens. The main configuration file is:
 
-```text
-config/kohs_inventory_tweaks.json
-```
+    config/kohs_inventory_tweaks.json
 
-Antes de escribir, el mod valida rangos, IDs de objetos, nombres de archivo y coordenadas. El JSON se escribe primero en un temporal y después se reemplaza de forma atómica para reducir el riesgo de corrupción.
+Before writing, the mod validates value ranges, item identifiers, file names, and coordinates. It writes a temporary JSON file first and then replaces the previous file atomically to reduce corruption risk.
 
-Para realizar una copia de seguridad, guarda el JSON y la carpeta `config/kohs_inventory_tweaks/backgrounds/`.
+To create a backup, copy the JSON file and this directory:
 
-## Solución de problemas
+    config/kohs_inventory_tweaks/backgrounds/
 
-### La configuración no abre desde el menú principal
+## Troubleshooting
 
-Es intencional. Entra a un mundo o servidor para que existan un jugador y recursos cargados.
+### The configuration menu does not open from the title screen
 
-### El cursor queda Vanilla en un cofre
+This is intentional. Join a world or server so that a player and loaded resources are available.
 
-Comprueba que el interruptor Chest esté activado y que hayas guardado una posición para el tipo correcto: ×1 o ×2.
+### The cursor stays vanilla in a chest
 
-### El fondo no se importa
+Make sure the Chest switch is enabled and that you saved a position for the correct type: **×1** or **×2**.
 
-Verifica formato, tamaño, resolución, duración y número de frames según la tabla anterior. Algunos archivos MOV o MP4 usan códecs que JCodec no puede decodificar.
+### A custom background cannot be imported
 
-### El inventario no alcanza el 175 %
+Check its format, file size, resolution, duration, and frame count against the limits above. Some MOV or MP4 files use codecs that JCodec cannot decode.
 
-El límite se adapta a la ventana para evitar que slots o botones queden fuera de la pantalla. El libro de recetas visible reduce aún más el máximo seguro.
+### The inventory cannot reach 175%
 
-### Dynamic no aparece
+The upper limit adapts to the window to prevent slots or buttons from leaving the screen. A visible recipe book reduces the safe maximum further.
 
-Confirma que el objeto fue añadido, que Dynamic está activado en su editor y que el cursor está sobre un slot que contiene exactamente ese objeto.
+### Dynamic highlighting is not visible
 
-### Reportar un error
+Confirm that the item was added, **Dynamic** is enabled in its editor, and the pointer is over a slot containing that exact item.
 
-Incluye la versión de Minecraft, Fabric Loader, Fabric API, lista de mods, resource packs activos y pasos exactos para reproducirlo en [GitHub Issues](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues).
+### Reporting a bug
 
-También puedes solicitar ayuda en [Discord](https://discord.gg/9t2VxEF7UU).
+Include the Minecraft version, Fabric Loader version, Fabric API version, mod list, active resource packs, and exact reproduction steps in [GitHub Issues](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues).
+
+You can also ask for help in [Discord](https://discord.gg/9t2VxEF7UU).

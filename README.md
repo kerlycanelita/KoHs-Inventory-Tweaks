@@ -5,66 +5,65 @@
 <h1 align="center">KoHs Inventory Tweaks</h1>
 
 <p align="center">
-  <strong>El sucesor de KoHs Inv Cursor, reconstruido para Minecraft Java 26.1.2.</strong>
+  <strong>The successor to KoHs Inv Cursor, rebuilt for Minecraft Java 26.1.2.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/kerlycanelita/KoHs-Inventory-Tweaks"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-Repositorio-181717?style=for-the-badge&logo=github"></a>
-  <a href="https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues"><img alt="Reportar un problema" src="https://img.shields.io/badge/Issues-Reportar_un_problema-c93c7a?style=for-the-badge&logo=githubissues&logoColor=white"></a>
+  <a href="https://modrinth.com/mod/kohs-inv-cursor"><img alt="Modrinth" src="https://img.shields.io/badge/Modrinth-Download-1BD96A?style=for-the-badge&logo=modrinth&logoColor=white"></a>
+  <a href="https://github.com/kerlycanelita/KoHs-Inventory-Tweaks"><img alt="GitHub repository" src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github"></a>
+  <a href="https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues"><img alt="Report an issue" src="https://img.shields.io/badge/Issues-Report_an_issue-c93c7a?style=for-the-badge&logo=githubissues&logoColor=white"></a>
   <a href="https://discord.gg/9t2VxEF7UU"><img alt="Discord" src="https://img.shields.io/badge/Discord-9t2VxEF7UU-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
-  <a href="WIKI.md"><img alt="Wiki" src="https://img.shields.io/badge/%F0%9F%93%96-Wiki-7c3aed?style=for-the-badge"></a>
+  <a href="WIKI.md"><img alt="English wiki" src="https://img.shields.io/badge/%F0%9F%93%96-Wiki-7c3aed?style=for-the-badge"></a>
 </p>
 
-KoHs Inventory Tweaks es un mod exclusivamente de cliente para Fabric. Interviene en la preparación y el renderizado de las pantallas de inventario sin reemplazar la lógica de inventario del servidor. Su objetivo es ofrecer una apertura consistente, controles visuales configurables y una interfaz responsiva que conserve las interacciones Vanilla.
+KoHs Inventory Tweaks is a Fabric client-side mod that hooks into inventory-screen preparation and rendering without replacing server inventory logic. It provides deterministic cursor placement, guarded rapid input, configurable visuals, and a responsive interface while preserving vanilla interactions.
 
-Este repositorio contiene únicamente la implementación para **Minecraft 26.1.2**. Las versiones anteriores de KoHs Inv Cursor no forman parte de este proyecto.
+This repository contains only the implementation for **Minecraft 26.1.2**. Previous KoHs Inv Cursor versions are not part of this project.
 
-## Compatibilidad
+## Compatibility
 
-| Componente | Versión |
+| Component | Version |
 |---|---:|
 | Minecraft Java Edition | **26.1.2** |
-| Fabric Loader | **0.19.3 o superior** |
+| Fabric Loader | **0.19.3 or newer** |
 | Fabric API | **0.155.2+26.1.2** |
-| Java | **25 o superior** |
-| Mod Menu | Opcional, recomendado |
+| Java | **25 or newer** |
+| Mod Menu | Optional, recommended |
 
-No es necesario instalar el mod en el servidor.
+The mod does not need to be installed on the server.
 
-## Funciones técnicas
+## Technical features
 
-- **Cursor Landing:** guarda coordenadas normalizadas independientes para inventario, cofre simple, cofre doble, Ender Chest y barril. Los contenedores pueden volver individualmente al comportamiento Vanilla.
-- **Center Mouse Fix:** realiza una verificación corta al abrir el inventario del jugador para corregir eventos inesperados de centrado, sin afectar otros contenedores, arrastrar ni forzar continuamente el cursor.
-- **SuperFastInventory:** abre el inventario inmediatamente y conserva una pulsación casi simultánea de la tecla de offhand. El intercambio se ejecuta sobre el slot Vanilla bajo el cursor una vez que la pantalla está preparada.
-- **Customization:** compone en tiempo de ejecución la textura del inventario y de contenedores compatibles, con paletas RGB, opacidad, fondos estáticos o animados y soporte para resource packs.
-- **GUI Scaler:** escala únicamente el inventario del jugador, incluidos slots, objetos, texto y modelo del personaje, entre 65 % y 175 % con límites adaptativos según la ventana.
-- **Item Highlighter:** configura colores por objeto, resaltado opcional en hotbar y activación dinámica basada en el `hoveredSlot` calculado por Minecraft.
-- **Persistencia segura:** cada cambio se sanea y se escribe mediante reemplazo atómico en `config/kohs_inventory_tweaks.json`.
+- **Cursor Landing:** stores independent normalized coordinates for the player inventory, single chest, double chest, Ender Chest, and barrel. Individual container types can fall back to vanilla cursor behavior.
+- **Center Mouse Fix:** monitors only the player inventory for a short period after opening and corrects unexpected centering events without dragging, affecting other containers, or continuously forcing the pointer.
+- **SuperFastInventory:** opens the inventory immediately and preserves an almost simultaneous offhand key press. The swap runs through Minecraft's vanilla action on the real slot under the pointer after the screen is ready.
+- **Customization:** composes player-inventory and compatible-container textures at runtime using RGB palettes, opacity controls, static or animated backgrounds, and resource-pack-aware sources.
+- **GUI Scaler:** scales only the player inventory—including slots, items, text, and the player model—from 65% to 175%, with adaptive limits based on the available window space.
+- **Item Highlighter:** stores per-item colors, optional HUD hotbar highlighting, and dynamic activation based on Minecraft's calculated hovered slot.
+- **Safe persistence:** sanitizes every setting and writes it through atomic replacement to config/kohs_inventory_tweaks.json.
 
-## Instalación
+## Installation
 
-1. Instala Fabric Loader para Minecraft 26.1.2.
-2. Instala Fabric API.
-3. Copia el JAR de KoHs Inventory Tweaks en la carpeta `mods` de la instancia.
-4. Instala Mod Menu si deseas abrir la configuración desde su lista de mods.
-5. Entra a un mundo o servidor antes de abrir la configuración; las previews necesitan un jugador y recursos activos.
+1. Install Fabric Loader for Minecraft 26.1.2.
+2. Install Fabric API.
+3. Place the KoHs Inventory Tweaks JAR in the instance's mods directory.
+4. Optionally install Mod Menu to access configuration through the mod list.
+5. Join a world or server before opening the configuration menu; previews require an active player and loaded resources.
 
-Consulta la [Wiki completa](WIKI.md) para aprender a configurar colores, fondos, cursor, escala e Item Highlighter.
+Read the [English wiki](WIKI.md) for complete instructions covering colors, backgrounds, cursor placement, GUI scaling, and Item Highlighter. A Spanish edition is available through the language button at the top of the wiki.
 
-## Compilación
+## Building
 
-```powershell
-$env:JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
-.\gradlew.bat clean build
-```
+    $env:JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
+    .\gradlew.bat clean build
 
-El JAR generado aparece en `build/libs/`.
+The generated JAR is written to build/libs/.
 
-## Soporte
+## Support
 
-- Errores reproducibles: [GitHub Issues](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues)
-- Comunidad y ayuda: [Discord](https://discord.gg/9t2VxEF7UU)
+- Reproducible bugs: [GitHub Issues](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues)
+- Community and help: [Discord](https://discord.gg/9t2VxEF7UU)
 
-## Licencia
+## License
 
-Distribuido bajo la licencia [MIT](LICENSE). Copyright © 2026 zymekoh.
+Distributed under the [MIT License](LICENSE). Copyright © 2026 zymekoh.
