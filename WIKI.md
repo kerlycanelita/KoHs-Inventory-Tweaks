@@ -1,6 +1,6 @@
 # Wiki de KoHs Inventory Tweaks
 
-Esta guía corresponde exclusivamente a **KoHs Inventory Tweaks 1.0.0 para Minecraft 26.1.2**. El mod es el sucesor de **KoHs Inv Cursor** y fue reconstruido para la nueva versión del juego.
+Esta guía corresponde exclusivamente a **KoHs Inventory Tweaks 1.0.1 para Minecraft 26.1.2**. El mod es el sucesor de **KoHs Inv Cursor** y fue reconstruido para la nueva versión del juego.
 
 ## Contenido
 
@@ -30,9 +30,10 @@ El mod funciona del lado del cliente. Un servidor Vanilla no necesita instalarlo
 ## Abrir la configuración
 
 1. Entra a un mundo o servidor.
-2. Abre el menú de pausa.
-3. Selecciona **Mods**.
-4. Elige **KoHs Inventory Tweaks** y pulsa el botón de configuración.
+2. Pulsa **Y**, la tecla predeterminada del menú de configuración.
+3. Puedes cambiarla desde la pantalla principal del mod o desde los controles de Minecraft.
+
+También puedes abrir el menú desde **Mods → KoHs Inventory Tweaks → Configuración** si tienes Mod Menu instalado.
 
 La configuración no se abre desde el menú principal. En ese caso se muestra un aviso porque las previews necesitan el jugador, los modelos de objetos y los resource packs ya cargados.
 
@@ -74,9 +75,9 @@ Chest, Ender Chest y Barrel tienen interruptores independientes. Si uno está de
 
 ### Center Mouse Fix
 
-Minecraft o algún mod puede producir un evento de centrado mientras se abre una GUI. Center Mouse Fix mantiene una ventana de verificación de aproximadamente 100 ms y restaura una sola vez la posición configurada si detecta ese evento.
+Minecraft o algún mod puede producir un evento de centrado mientras se abre el inventario del jugador. Center Mouse Fix mantiene una ventana de verificación de aproximadamente 100 ms y restaura una sola vez la posición configurada si detecta ese evento.
 
-No genera efecto de arrastre y no bloquea los movimientos posteriores del jugador. También funciona con la posición central Vanilla cuando no existe una posición personalizada.
+No genera efecto de arrastre, no bloquea los movimientos posteriores del jugador y no afecta cofres, Ender Chests, barriles ni otros contenedores. También funciona con la posición central Vanilla del inventario cuando no existe una posición personalizada.
 
 ### SuperFastInventory
 

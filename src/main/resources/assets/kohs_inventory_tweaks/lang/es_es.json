@@ -155,7 +155,7 @@
   "screen.kohs_inventory_tweaks.cursor_toggle": "Cursor: %s",
   "screen.kohs_inventory_tweaks.cursor_disabled_vanilla": "Desactivado · comportamiento vanilla",
   "screen.kohs_inventory_tweaks.center_mouse_fix": "Center Mouse Fix",
-  "screen.kohs_inventory_tweaks.center_mouse_fix.description": "Verifica una vez la posición personalizada o el centro vanilla al abrir; nunca arrastra ni fuerza continuamente el cursor.",
+  "screen.kohs_inventory_tweaks.center_mouse_fix.description": "Verifica una vez la posición personalizada o centrada vanilla al abrir el inventario del jugador. Nunca afecta contenedores, arrastra ni fuerza continuamente el cursor.",
   "screen.kohs_inventory_tweaks.super_fast_inventory": "SuperFastInventory",
   "screen.kohs_inventory_tweaks.super_fast_inventory.description": "Abre al instante, agrupa solicitudes duplicadas y aplica un solo offhand simultáneo al slot bajo el cursor ya colocado.",
   "screen.kohs_inventory_tweaks.remove_animations": "Eliminar absolutamente todas las animaciones",

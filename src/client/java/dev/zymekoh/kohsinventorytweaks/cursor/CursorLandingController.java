@@ -54,7 +54,7 @@ public final class CursorLandingController {
 		}
 
 		warp(minecraft, resolvePhysicalPosition(minecraft, screen, target, true));
-		if (ConfigStore.get().centerMouseFix) {
+		if (isCenterMouseFixTarget(target)) {
 			verificationPending = true;
 			verificationScreen = screen;
 			centerGuardUntil = System.nanoTime() + CENTER_GUARD_NANOS;
@@ -126,8 +126,8 @@ public final class CursorLandingController {
 	) {
 		Window window = minecraft.getWindow();
 		// A disabled custom landing target must remain truly vanilla. Center Mouse
-		// Fix may still verify the vanilla centered position, but it never reuses a
-		// saved custom point while that container's switch is off.
+		// Fix may still verify the player inventory's vanilla centered position, but
+		// it never reuses a saved custom point while that target's switch is off.
 		CursorPoint point = ConfigStore.get().isCursorEnabled(target)
 			? ConfigStore.get().getPosition(target)
 			: null;
@@ -163,7 +163,11 @@ public final class CursorLandingController {
 	}
 
 	private static boolean shouldPlaceCursor(final CursorTarget target) {
-		return ConfigStore.get().isCursorEnabled(target) || ConfigStore.get().centerMouseFix;
+		return ConfigStore.get().isCursorEnabled(target) || isCenterMouseFixTarget(target);
+	}
+
+	private static boolean isCenterMouseFixTarget(final CursorTarget target) {
+		return target == CursorTarget.INVENTORY && ConfigStore.get().centerMouseFix;
 	}
 
 	private static @Nullable CursorTarget classify(final @Nullable Screen screen) {

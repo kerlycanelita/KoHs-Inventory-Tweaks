@@ -155,7 +155,7 @@
   "screen.kohs_inventory_tweaks.cursor_toggle": "Cursor: %s",
   "screen.kohs_inventory_tweaks.cursor_disabled_vanilla": "Disabled · vanilla behavior",
   "screen.kohs_inventory_tweaks.center_mouse_fix": "Center Mouse Fix",
-  "screen.kohs_inventory_tweaks.center_mouse_fix.description": "Verifies the custom or vanilla centered position once on open; never drags or continuously forces the cursor.",
+  "screen.kohs_inventory_tweaks.center_mouse_fix.description": "Verifies the custom or vanilla centered position once when the player inventory opens. It never affects containers, drags, or continuously forces the cursor.",
   "screen.kohs_inventory_tweaks.super_fast_inventory": "SuperFastInventory",
   "screen.kohs_inventory_tweaks.super_fast_inventory.description": "Opens instantly, collapses duplicate open requests, and applies one simultaneous offhand press to the slot under the settled cursor.",
   "screen.kohs_inventory_tweaks.remove_animations": "Remove Absolutely All Inventory Animations",

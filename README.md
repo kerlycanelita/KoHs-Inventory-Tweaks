@@ -34,7 +34,7 @@ No es necesario instalar el mod en el servidor.
 ## Funciones técnicas
 
 - **Cursor Landing:** guarda coordenadas normalizadas independientes para inventario, cofre simple, cofre doble, Ender Chest y barril. Los contenedores pueden volver individualmente al comportamiento Vanilla.
-- **Center Mouse Fix:** realiza una verificación corta durante la apertura para corregir eventos inesperados de centrado, sin arrastrar ni forzar continuamente el cursor.
+- **Center Mouse Fix:** realiza una verificación corta al abrir el inventario del jugador para corregir eventos inesperados de centrado, sin afectar otros contenedores, arrastrar ni forzar continuamente el cursor.
 - **SuperFastInventory:** abre el inventario inmediatamente y conserva una pulsación casi simultánea de la tecla de offhand. El intercambio se ejecuta sobre el slot Vanilla bajo el cursor una vez que la pantalla está preparada.
 - **Customization:** compone en tiempo de ejecución la textura del inventario y de contenedores compatibles, con paletas RGB, opacidad, fondos estáticos o animados y soporte para resource packs.
 - **GUI Scaler:** escala únicamente el inventario del jugador, incluidos slots, objetos, texto y modelo del personaje, entre 65 % y 175 % con límites adaptativos según la ventana.
