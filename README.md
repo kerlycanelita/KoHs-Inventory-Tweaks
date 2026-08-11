@@ -18,7 +18,7 @@
 
 KoHs Inventory Tweaks is a Fabric client-side mod that hooks into inventory-screen preparation and rendering without replacing server inventory logic. It provides deterministic cursor placement, guarded rapid input, configurable visuals, and a responsive interface while preserving vanilla interactions.
 
-This repository contains maintained implementations for **Minecraft 26.1.2** and **Minecraft 1.21.11**. Previous KoHs Inv Cursor versions are not part of this project.
+This repository contains maintained implementations for **Minecraft 26.1.2**, **Minecraft 1.21.11**, and **Minecraft 1.21.10**. Previous KoHs Inv Cursor versions are not part of this project.
 
 ## Compatibility
 
@@ -26,6 +26,7 @@ This repository contains maintained implementations for **Minecraft 26.1.2** and
 |---|---|---:|---|
 | **26.1.2** | **0.155.2+26.1.2** | **25+** | Repository root |
 | **1.21.11** | **0.141.6+1.21.11** | **21+** | `versions/kohs-inventory-tweaks-1.21.11` |
+| **1.21.10** | **0.138.4+1.21.10** | **21+** | `versions/kohs-inventory-tweaks-1.21.10` |
 
 Both builds require Fabric Loader 0.19.3 or newer. Mod Menu is optional and recommended.
 
@@ -56,7 +57,7 @@ Read the [English wiki](WIKI.md) for complete instructions covering colors, back
     $env:JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
     .\gradlew.bat clean build
 
-The 26.1.2 JAR is written to `build/libs/`. To build 1.21.11, run the same command from `versions/kohs-inventory-tweaks-1.21.11`; its JAR is written to that directory's `build/libs/`.
+The 26.1.2 JAR is written to `build/libs/`. To build an older supported target, run the same command from `versions/kohs-inventory-tweaks-1.21.11` or `versions/kohs-inventory-tweaks-1.21.10`; each JAR is written to that directory's `build/libs/`.
 
 ## Support
 

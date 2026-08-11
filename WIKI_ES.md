@@ -4,7 +4,7 @@
 
 # Wiki de KoHs Inventory Tweaks
 
-Esta guía corresponde a **KoHs Inventory Tweaks 1.0.2 para Minecraft 26.1.2 y 1.21.11**. El mod es el sucesor de **KoHs Inv Cursor**.
+Esta guía corresponde a **KoHs Inventory Tweaks 1.0.2 para Minecraft 26.1.2, 1.21.11 y 1.21.10**. El mod es el sucesor de **KoHs Inv Cursor**.
 
 ## Contenido
 
@@ -23,10 +23,10 @@ Esta guía corresponde a **KoHs Inventory Tweaks 1.0.2 para Minecraft 26.1.2 y 1
 
 ## Requisitos
 
-- Minecraft Java Edition 26.1.2 o 1.21.11.
+- Minecraft Java Edition 26.1.2, 1.21.11 o 1.21.10.
 - Fabric Loader 0.19.3 o superior.
 - Fabric API correspondiente a la versión de Minecraft seleccionada.
-- Java 25 o superior para Minecraft 26.1.2; Java 21 o superior para Minecraft 1.21.11.
+- Java 25 o superior para Minecraft 26.1.2; Java 21 o superior para Minecraft 1.21.11 y 1.21.10.
 - Mod Menu es opcional, pero recomendado para acceder a la configuración.
 
 El mod funciona del lado del cliente. Un servidor Vanilla no necesita instalarlo.
