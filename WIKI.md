@@ -4,7 +4,7 @@
 
 # KoHs Inventory Tweaks Wiki
 
-This guide applies to **KoHs Inventory Tweaks 1.0.2 for Minecraft 26.1.2, 1.21.11, and 1.21.10**. The mod is the successor to **KoHs Inv Cursor**.
+This guide applies to **KoHs Inventory Tweaks 1.0.x for Minecraft 26.1.2, 1.21.11, and 1.21.10**. The mod is the successor to **KoHs Inv Cursor**.
 
 ## Contents
 
