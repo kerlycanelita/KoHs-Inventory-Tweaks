@@ -13,6 +13,8 @@ crash-reports/
 versions/*
 !versions/kohs-inventory-tweaks-1.21.10/
 !versions/kohs-inventory-tweaks-1.21.11/
+!versions/kohs-inventory-tweaks-26.1/
+!versions/kohs-inventory-tweaks-26.1.1/
 builds/
 modrinth/
 scripts/
