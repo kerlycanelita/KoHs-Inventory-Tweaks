@@ -79,6 +79,20 @@ public final class GuiScalerScreen extends Screen {
 			}
 		));
 
+		int containersWidth = Math.min(176, Math.max(112, this.width / 4));
+		this.addRenderableWidget(new GlassButton(
+			this.width - outerMargin - containersWidth,
+			controlsTop,
+			containersWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.affect_containers"),
+			button -> {
+				this.persistWorking();
+				this.minecraft.setScreen(new AffectContainersScreen(this));
+			},
+			GlassButton.Variant.NORMAL
+		));
+
 		int gap = Math.max(5, Math.min(10, this.width / 40));
 		int buttonWidth = Math.min(146, Math.max(68, (this.width - outerMargin * 2 - gap) / 2));
 		int actionY = Math.max(0, this.height - 27);
@@ -280,6 +294,10 @@ public final class GuiScalerScreen extends Screen {
 		ConfigStore.replaceAndSave(this.working);
 		this.working = ConfigStore.get().copy();
 		InventoryTextureManager.invalidateConfiguration();
+	}
+
+	void reloadConfigurationFromStore() {
+		this.working = ConfigStore.get().copy();
 	}
 
 	private void saveAndExit() {

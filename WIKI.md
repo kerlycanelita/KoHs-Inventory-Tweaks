@@ -4,7 +4,7 @@
 
 # KoHs Inventory Tweaks Wiki
 
-This guide applies to **KoHs Inventory Tweaks 1.0.x for Minecraft 26.1.2, 1.21.11, and 1.21.10**. The mod is the successor to **KoHs Inv Cursor**.
+This guide applies to **KoHs Inventory Tweaks 1.0.x for Minecraft 26.2, 26.1.2, 26.1.1, 26.1, 1.21.11, and 1.21.10**. The mod is the successor to **KoHs Inv Cursor**.
 
 ## Contents
 
@@ -23,10 +23,10 @@ This guide applies to **KoHs Inventory Tweaks 1.0.x for Minecraft 26.1.2, 1.21.1
 
 ## Requirements
 
-- Minecraft Java Edition 26.1.2, 1.21.11, or 1.21.10.
+- Minecraft Java Edition 26.2, 26.1.2, 26.1.1, 26.1, 1.21.11, or 1.21.10.
 - Fabric Loader 0.19.3 or newer.
 - Fabric API matching the selected Minecraft version.
-- Java 25 or newer for Minecraft 26.1.2; Java 21 or newer for Minecraft 1.21.11 and 1.21.10.
+- Java 25 or newer for Minecraft 26.x; Java 21 or newer for Minecraft 1.21.11 and 1.21.10.
 - Mod Menu is optional but recommended for convenient access to the configuration menu.
 
 KoHs Inventory Tweaks is client-side only. Vanilla servers do not need to install it.
@@ -62,7 +62,7 @@ Cursor Landing lets you select the exact point where the pointer appears when a 
 ### Setting a position
 
 1. Open **Cursor Landing**.
-2. Select Inventory, Chest, Ender Chest, or Barrel.
+2. Select Inventory, Chest, Shulker Box, Ender Chest, or Barrel.
 3. For Chest, choose **×1** or **×2** to distinguish single and double chests.
 4. Click the desired position inside the preview.
 5. Select **Save & Exit**.
@@ -71,7 +71,7 @@ Coordinates are stored in normalized form, allowing them to adapt to the window 
 
 ### Enabling or disabling containers
 
-Chest, Ender Chest, and Barrel have independent switches. When one is disabled, that container keeps vanilla cursor behavior even if a saved position exists.
+Chest, Shulker Box, Ender Chest, and Barrel have independent switches. When one is disabled, that container keeps vanilla cursor behavior even if a saved position exists.
 
 **Reset All** removes every saved position and re-enables the containers. If you press **Esc** while unsaved changes exist, the mod warns you before discarding them.
 
@@ -168,16 +168,18 @@ The **Background opacity** slider affects only the custom background.
 
 ## GUI Scaler
 
-GUI Scaler changes only the player's inventory. It does not change Minecraft's global GUI scale, the HUD hotbar, or other containers.
+GUI Scaler changes the player's inventory without changing Minecraft's global GUI scale or the HUD hotbar. Its **Affect Containers** screen can apply the same selected scale to single chests, double chests, Shulker Boxes, barrels, and Ender Chests.
 
 1. Open **GUI Scaler**.
 2. Read and accept the warning. You may select **Do Not Show Again**.
 3. Enable the switch at the top.
 4. Adjust the vertical slider between **65% and 175%**.
 
+Use **Affect Containers** to preview each supported container. When its switch is disabled, the preview remains at vanilla 100%. When enabled, the preview and real supported containers use the selected inventory scale. This switch is enabled by default on a new installation and can be disabled at any time.
+
 The inventory, slots, items, text, and player model scale as one unit while remaining in their vanilla-relative positions. The effective maximum is automatically reduced when the game window or recipe book does not leave enough space.
 
-When the feature is disabled, the inventory follows Minecraft's vanilla GUI scale again.
+When the main scaler is disabled, the inventory and supported containers follow Minecraft's vanilla GUI scale again.
 
 ## Item Highlighter
 

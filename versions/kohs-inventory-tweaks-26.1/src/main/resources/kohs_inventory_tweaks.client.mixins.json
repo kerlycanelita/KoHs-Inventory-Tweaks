@@ -10,6 +10,7 @@
     "AbstractRecipeBookScreenAccessor",
     "AbstractRecipeBookScreenMixin",
     "ContainerScreenMixin",
+    "ContainerScaleBackgroundMixin",
     "ClientBundleTooltipMixin",
     "CyclingSlotBackgroundMixin",
     "EnchantmentScreenMixin",

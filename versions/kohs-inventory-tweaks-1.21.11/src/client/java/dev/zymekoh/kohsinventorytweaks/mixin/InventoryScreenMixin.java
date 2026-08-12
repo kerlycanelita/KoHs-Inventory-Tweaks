@@ -18,7 +18,8 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(InventoryScreen.class)
+// Wins the one confirmed redirect that KoHs can safely adapt.
+@Mixin(value = InventoryScreen.class, priority = 2000)
 public abstract class InventoryScreenMixin {
 	@Inject(method = "render", at = @At("HEAD"))
 	private void kohsInventoryTweaks$beginInventoryScale(

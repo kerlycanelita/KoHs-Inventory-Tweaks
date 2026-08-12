@@ -18,13 +18,16 @@
 
 KoHs Inventory Tweaks is a Fabric client-side mod that hooks into inventory-screen preparation and rendering without replacing server inventory logic. It provides deterministic cursor placement, guarded rapid input, configurable visuals, and a responsive interface while preserving vanilla interactions.
 
-This repository contains maintained implementations for **Minecraft 26.1.2**, **Minecraft 1.21.11**, and **Minecraft 1.21.10**. Previous KoHs Inv Cursor versions are not part of this project.
+This repository contains maintained implementations for **Minecraft 26.2, 26.1.2, 26.1.1, 26.1, 1.21.11, and 1.21.10**. Previous KoHs Inv Cursor versions are not part of this project.
 
 ## Compatibility
 
 | Minecraft | Fabric API | Java | Source |
 |---|---|---:|---|
+| **26.2** | **0.157.0+26.2** | **25+** | `versions/kohs-inventory-tweaks-26.2` |
 | **26.1.2** | **0.155.2+26.1.2** | **25+** | Repository root |
+| **26.1.1** | **0.145.4+26.1.1** | **25+** | `versions/kohs-inventory-tweaks-26.1.1` |
+| **26.1** | **0.145.1+26.1** | **25+** | `versions/kohs-inventory-tweaks-26.1` |
 | **1.21.11** | **0.141.6+1.21.11** | **21+** | `versions/kohs-inventory-tweaks-1.21.11` |
 | **1.21.10** | **0.138.4+1.21.10** | **21+** | `versions/kohs-inventory-tweaks-1.21.10` |
 
@@ -34,11 +37,11 @@ The mod does not need to be installed on the server.
 
 ## Technical features
 
-- **Cursor Landing:** stores independent normalized coordinates for the player inventory, single chest, double chest, Ender Chest, and barrel. Individual container types can fall back to vanilla cursor behavior.
+- **Cursor Landing:** stores independent normalized coordinates for the player inventory, single chest, double chest, Shulker Box, Ender Chest, and barrel. Individual container types can fall back to vanilla cursor behavior.
 - **Center Mouse Fix:** monitors only the player inventory for a short period after opening and corrects unexpected centering events without dragging, affecting other containers, or continuously forcing the pointer.
 - **SuperFastInventory:** opens the inventory immediately and preserves an almost simultaneous offhand key press. The swap runs through Minecraft's vanilla action on the real slot under the pointer after the screen is ready.
 - **Customization:** composes player-inventory and compatible-container textures at runtime using RGB palettes, opacity controls, static or animated backgrounds, and resource-pack-aware sources.
-- **GUI Scaler:** scales only the player inventory—including slots, items, text, and the player model—from 65% to 175%, with adaptive limits based on the available window space.
+- **GUI Scaler:** scales the player inventory—including slots, items, text, and the player model—from 65% to 175%, with adaptive limits based on available space. An optional, default-enabled switch applies the selected scale to supported chest, Shulker Box, barrel, and Ender Chest screens.
 - **Item Highlighter:** stores per-item colors, optional HUD hotbar highlighting, and dynamic activation based on Minecraft's calculated hovered slot.
 - **Safe persistence:** sanitizes every setting and writes it through atomic replacement to config/kohs_inventory_tweaks.json.
 
@@ -57,7 +60,7 @@ Read the [English wiki](WIKI.md) for complete instructions covering colors, back
     $env:JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
     .\gradlew.bat clean build
 
-The 26.1.2 JAR is written to `build/libs/`. To build an older supported target, run the same command from `versions/kohs-inventory-tweaks-1.21.11` or `versions/kohs-inventory-tweaks-1.21.10`; each JAR is written to that directory's `build/libs/`.
+The 26.1.2 JAR is written to `build/libs/`. To build another supported target, run the same command from its `versions/kohs-inventory-tweaks-<minecraft-version>` directory; each JAR is written to that directory's `build/libs/`.
 
 ## Support
 

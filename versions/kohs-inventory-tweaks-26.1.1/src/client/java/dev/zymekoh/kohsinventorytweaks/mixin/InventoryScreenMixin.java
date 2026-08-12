@@ -18,7 +18,9 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(InventoryScreen.class)
+// This priority wins the one confirmed, safely adaptable redirect collision.
+// Unknown collisions remain blocked instead of being forced optimistically.
+@Mixin(value = InventoryScreen.class, priority = 2000)
 public abstract class InventoryScreenMixin {
 	@Inject(method = "extractRenderState", at = @At("HEAD"))
 	private void kohsInventoryTweaks$beginInventoryScale(

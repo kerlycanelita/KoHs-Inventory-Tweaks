@@ -95,7 +95,9 @@ public final class ConfigStore {
 		sanitized.inventoryGuiScalerEnabled = candidate.inventoryGuiScalerEnabled;
 		sanitized.inventoryGuiScale = InventoryGuiScaler.clampConfiguredScale(candidate.inventoryGuiScale);
 		sanitized.guiScalerWarningDismissed = candidate.guiScalerWarningDismissed;
+		sanitized.affectAllContainers = candidate.affectAllContainers;
 		sanitized.chestCursorEnabled = candidate.chestCursorEnabled;
+		sanitized.shulkerCursorEnabled = candidate.shulkerCursorEnabled;
 		sanitized.enderChestCursorEnabled = candidate.enderChestCursorEnabled;
 		sanitized.barrelCursorEnabled = candidate.barrelCursorEnabled;
 		sanitized.inventoryTextureSource = candidate.inventoryTextureSource == null

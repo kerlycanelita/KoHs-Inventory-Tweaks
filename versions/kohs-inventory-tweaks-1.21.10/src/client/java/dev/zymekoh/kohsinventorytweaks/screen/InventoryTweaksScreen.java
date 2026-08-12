@@ -643,6 +643,7 @@ public final class InventoryTweaksScreen extends Screen {
 		CursorTarget[] tabs = {
 			CursorTarget.INVENTORY,
 			CursorTarget.CHEST_SINGLE,
+			CursorTarget.SHULKER,
 			CursorTarget.ENDER_CHEST,
 			CursorTarget.BARREL
 		};
@@ -2159,6 +2160,17 @@ public final class InventoryTweaksScreen extends Screen {
 		final CursorTarget target,
 		final InventoryTweaksConfig visualConfig
 	) {
+		if (target == CursorTarget.SHULKER) {
+			this.drawSurfacePreview(
+				graphics,
+				x,
+				y,
+				scale,
+				CustomizationPreview.SHULKER_BOX,
+				visualConfig
+			);
+			return;
+		}
 		this.drawGenericContainerPreview(
 			graphics,
 			x,
@@ -2395,9 +2407,9 @@ public final class InventoryTweaksScreen extends Screen {
 		this.sidebarWidth = Mth.clamp(this.panelWidth / 4, 76, 146);
 		this.targetTabGap = this.compactModal ? 2 : 5;
 		int chestArea = 22;
-		this.targetTabHeight = Mth.clamp((contentHeight - chestArea - this.targetTabGap * 3) / 4, 16, 27);
+		this.targetTabHeight = Mth.clamp((contentHeight - chestArea - this.targetTabGap * 4) / 5, 16, 27);
 		this.targetTabY = this.contentTop;
-		this.chestSelectorY = this.targetTabY + 4 * this.targetTabHeight + 3 * this.targetTabGap + 3;
+		this.chestSelectorY = this.targetTabY + 5 * this.targetTabHeight + 4 * this.targetTabGap + 3;
 
 		int previewAreaX = this.sidebarX + this.sidebarWidth + (this.compactModal ? 8 : 18);
 		int previewAreaRight = this.panelX + this.panelWidth - this.panelPadding;

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.4
+
+- Added optional GUI scaling for single chests, double chests, Shulker Boxes, barrels, and Ender Chests while preserving centered rendering and vanilla input coordinates.
+- Made container scaling enabled by default for new installations while preserving every explicitly saved user choice.
+- Made the Affect Containers preview state-aware: disabled shows the container at vanilla 100%, enabled shows the currently selected inventory scale.
+- Added Shulker Box cursor landing with its own saved normalized position and vanilla fallback switch.
+- Improved Issues Tracker conflict discovery by scanning mixin metadata and reporting known inventory-scaling adaptations without claiming unconfirmed crashes.
+- Added maintained Minecraft 26.2, 26.1.1, and 26.1 source/build targets alongside 26.1.2, 1.21.11, and 1.21.10.
+
 ## 1.0.2
 
 - Added the maintained Minecraft 1.21.11 Fabric implementation and its source tree.

@@ -174,7 +174,7 @@ public final class BlockingCompatibilityScreen extends Screen {
 
 	private static String blockingReasonKey(final CompatibilityIssue issue) {
 		return switch (issue.reason()) {
-			case REDIRECT_COLLISION -> "screen.kohs_inventory_tweaks.blocking.reason.redirect_collision";
+			case REDIRECT_COLLISION, SUPPRESSED_REDIRECT -> "screen.kohs_inventory_tweaks.blocking.reason.redirect_collision";
 			case CRITICAL_OVERWRITE -> "screen.kohs_inventory_tweaks.blocking.reason.critical_overwrite";
 			case DIRECT_MUTATION -> "screen.kohs_inventory_tweaks.blocking.reason.direct_mutation";
 		};

@@ -12,6 +12,7 @@ import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.gui.screens.inventory.MenuAccess;
+import net.minecraft.client.gui.screens.inventory.ShulkerBoxScreen;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.inventory.ChestMenu;
 import org.jspecify.annotations.Nullable;
@@ -156,6 +157,10 @@ public final class CursorLandingController {
 			double scale = InventoryGuiScaler.appliedScale(inventoryScreen, ConfigStore.get());
 			logicalX = guiWidth * 0.5 + (logicalX - guiWidth * 0.5) * scale;
 			logicalY = guiHeight * 0.5 + (logicalY - guiHeight * 0.5) * scale;
+		} else {
+			double scale = InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get());
+			logicalX = guiWidth * 0.5 + (logicalX - guiWidth * 0.5) * scale;
+			logicalY = guiHeight * 0.5 + (logicalY - guiHeight * 0.5) * scale;
 		}
 		double x = logicalX * window.getScreenWidth() / Math.max(1.0, guiWidth);
 		double y = logicalY * window.getScreenHeight() / Math.max(1.0, guiHeight);
@@ -173,6 +178,9 @@ public final class CursorLandingController {
 	private static @Nullable CursorTarget classify(final @Nullable Screen screen) {
 		if (screen instanceof InventoryScreen || screen instanceof CreativeModeInventoryScreen) {
 			return CursorTarget.INVENTORY;
+		}
+		if (screen instanceof ShulkerBoxScreen) {
+			return CursorTarget.SHULKER;
 		}
 		if (!(screen instanceof ContainerScreen) || !(screen instanceof MenuAccess<?> access)) {
 			return null;

@@ -34,7 +34,6 @@ public final class CompatibilityIssueManager {
 	private static final String OVERWRITE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Overwrite;";
 	private static final String REDIRECT_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/injection/Redirect;";
 	private static final String INVENTORY_SCALE_FIX_ID = "inventoryscalefix";
-	private static final String INVENTORY_SCALE_FIX_CRASH_VERSION = "1.0.0+mc26.1.2";
 	private static final String INVENTORY_ENTITY_INVOCATION = "Lnet/minecraft/client/gui/screens/inventory/InventoryScreen;"
 		+ "renderEntityInInventoryFollowsMouse(Lnet/minecraft/client/gui/GuiGraphics;IIIIIFFFLnet/minecraft/world/entity/LivingEntity;)V";
 	private static volatile boolean initialized;
@@ -225,17 +224,18 @@ public final class CompatibilityIssueManager {
 	}
 
 	private static CompatibilityIssue explicitIssueFor(final ModContainer container) {
-		if (!INVENTORY_SCALE_FIX_ID.equals(container.getMetadata().getId())
-			|| !INVENTORY_SCALE_FIX_CRASH_VERSION.equals(container.getMetadata().getVersion().getFriendlyString())) {
+		if (!INVENTORY_SCALE_FIX_ID.equals(container.getMetadata().getId())) {
 			return null;
 		}
+		// Confirmed redirect overlap. KoHs owns this invocation at a higher
+		// priority, so only the foreign redirect is suppressed.
 		return new CompatibilityIssue(
 			container.getMetadata().getId(),
 			container.getMetadata().getName(),
 			container.getMetadata().getVersion().getFriendlyString(),
 			creatorsOf(container),
-			CompatibilityIssue.Severity.BLOCKING,
-			CompatibilityIssue.Reason.REDIRECT_COLLISION,
+			CompatibilityIssue.Severity.ADAPTABLE,
+			CompatibilityIssue.Reason.SUPPRESSED_REDIRECT,
 			List.of("net.minecraft.client.gui.screens.inventory.InventoryScreen#renderBackground -> " + INVENTORY_ENTITY_INVOCATION)
 		);
 	}
@@ -258,10 +258,16 @@ public final class CompatibilityIssueManager {
 			try {
 				JsonObject metadata = JsonParser.parseString(Files.readString(metadataPath)).getAsJsonObject();
 				JsonElement mixinsElement = metadata.get("mixins");
-				if (mixinsElement == null || !mixinsElement.isJsonArray()) {
+				if (mixinsElement == null || mixinsElement.isJsonNull()) {
 					continue;
 				}
-				for (JsonElement entry : mixinsElement.getAsJsonArray()) {
+				Iterable<JsonElement> entries = mixinsElement.isJsonArray()
+					? mixinsElement.getAsJsonArray()
+					: List.of(mixinsElement);
+				for (JsonElement entry : entries) {
+					if (!entry.isJsonPrimitive() && !entry.isJsonObject()) {
+						continue;
+					}
 					String configPath = entry.isJsonPrimitive()
 						? entry.getAsString()
 						: stringMember(entry.getAsJsonObject(), "config");

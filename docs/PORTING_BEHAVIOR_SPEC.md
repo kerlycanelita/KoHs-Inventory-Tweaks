@@ -36,7 +36,9 @@ New installations must begin with these values:
 | Custom inventory GUI scale | Off | Vanilla GUI scale controls the inventory while off. |
 | Inventory scale value | 100% | Stored even while the feature is off. |
 | GUI scale warning dismissed | No | “Do not show again” applies only to the GUI Scaler warning. |
+| Affect all containers | On | Supported containers inherit the selected inventory scale on new installations. Explicitly saved choices remain authoritative. |
 | Chest cursor landing | Off | Single and double chest use vanilla pointer behavior. |
+| Shulker Box cursor landing | Off | Uses vanilla pointer behavior. |
 | Ender Chest cursor landing | Off | Uses vanilla pointer behavior. |
 | Barrel cursor landing | Off | Uses vanilla pointer behavior. |
 | Inventory texture source | Applied | Uses the active resource-pack inventory texture. |
@@ -84,10 +86,11 @@ Cursor Landing stores an independent destination for:
 - Player inventory
 - Single chest
 - Double chest
+- Shulker Box
 - Ender Chest
 - Barrel
 
-The editor displays a vanilla/resource-pack-aware preview and lets the player select a point inside it. Chest, Ender Chest, and barrel have independent On/Off controls. Turning one off immediately restores vanilla pointer behavior for that container without deleting the stored point unless Reset All is used. The player inventory has no enable switch; an unset position means vanilla behavior.
+The editor displays a vanilla/resource-pack-aware preview and lets the player select a point inside it. Chest, Shulker Box, Ender Chest, and barrel have independent On/Off controls. Turning one off immediately restores vanilla pointer behavior for that container without deleting the stored point unless Reset All is used. The player inventory has no enable switch; an unset position means vanilla behavior.
 
 The selected point is normalized against the relevant GUI rectangle so it remains correct across GUI scale, resolution, fullscreen, and resource packs. Pointer movement occurs only after the target screen has completed its layout. Do not simulate dragging, clicking, or item movement.
 
@@ -209,6 +212,8 @@ The GUI Scaler opens as a unique full-screen adjustment screen over a visible wo
 - The world backdrop remains full-screen and is not scaled into a black rectangle.
 - Pointer coordinates and hit testing must be inversely transformed so the visual and clickable slot remain identical.
 
+An `Affect Containers` button sits in the right control rail without shifting the centered inventory. It opens a second full-screen calibration view. While the switch is disabled, the centered container preview stays at vanilla 100%; while enabled, it immediately uses the currently selected inventory scale. Left/right arrows cycle only single chest, double chest, Shulker Box, barrel, and Ender Chest. The right-side `Affect all containers` switch is on by default for new installations, while an explicitly saved user choice remains authoritative. Enabling it always shows a translated warning naming those supported containers and explaining that more screens, such as villager trading, may be added later. When enabled, the full container background, labels, slots, carried item, hover position, clicks, releases, and drags use the same centered scale transform; unsupported containers remain vanilla.
+
 The nominal range is 65% to 175%, further clamped when required so controls and the inventory remain usable in the actual window.
 
 ## Resource packs and reloads
@@ -233,11 +238,11 @@ Integration is optional. Never create a hard dependency, crash when Herzium is a
 
 Issues Tracker lists detected problematic mods with icon, name, author, severity, and technical reason. Detection must be based on confirmed mod identifiers and confirmed injection/render conflicts, not guesses.
 
-For an adaptable conflict, show a semi-transparent animated warning with abundant purple particles before normal play. Explain that removing the other mod is recommended but allow continuation when KoHs Inventory Tweaks can safely disable only its own conflicting hooks or use a confirmed compatibility path.
+For an adaptable conflict, show a semi-transparent animated warning with abundant purple particles before normal play. Explain that removing the other mod is recommended but allow continuation when KoHs Inventory Tweaks can safely disable only its own conflicting hooks or use a confirmed compatibility path. A foreign redirect may be suppressed by mixin priority only for an explicit, tested rule whose exact invocation collision is known; never generalize that priority override to unknown mods.
 
 For a confirmed crash-risk conflict that cannot be safely adapted, initialization enters a blocked mode and shows a translated blocking screen. The player may close the game but may not continue into an unsafe session. A crash in a previous run is not by itself permission to delete mods or configs.
 
-Do not attempt to disable another mod's mixins at runtime. A mixin plugin may conditionally disable this mod's own optional mixins before application.
+Do not mutate another mod's files or dynamically unregister its mixins at runtime. A mixin plugin may conditionally disable this mod's own optional mixins before application. The scanner must accept Fabric metadata where `mixins` is either a single entry or an array and must fail open if heuristic inspection fails, while retaining explicit confirmed rules.
 
 ## Responsive GUI and animation contract
 

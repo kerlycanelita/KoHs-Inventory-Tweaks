@@ -1,0 +1,33 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.zymekoh.kohsinventorytweaks.mixin",
+  "plugin": "dev.zymekoh.kohsinventorytweaks.compat.InventoryTweaksMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "AbstractContainerScreenAccessor",
+    "AbstractContainerScreenMixin",
+    "AbstractRecipeBookScreenAccessor",
+    "AbstractRecipeBookScreenMixin",
+    "ContainerScreenMixin",
+    "ContainerScaleBackgroundMixin",
+    "ClientBundleTooltipMixin",
+    "CyclingSlotBackgroundMixin",
+    "EnchantmentScreenMixin",
+    "GuiGraphicsExtractorMixin",
+    "GuiScreenMixin",
+    "HudMixin",
+    "InventoryScreenMixin",
+    "ItemStackMixin",
+    "KeyboardHandlerMixin",
+    "MouseHandlerAccessor",
+    "MouseHandlerMixin",
+    "RecipeBookComponentMixin",
+    "RecipeBookTabButtonMixin",
+    "RecipeButtonMixin",
+    "ScreenBackgroundMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -18,7 +18,9 @@ public final class InventoryTweaksConfig {
 	public boolean inventoryGuiScalerEnabled;
 	public double inventoryGuiScale = 1.0;
 	public boolean guiScalerWarningDismissed;
+	public boolean affectAllContainers = true;
 	public boolean chestCursorEnabled;
+	public boolean shulkerCursorEnabled;
 	public boolean enderChestCursorEnabled;
 	public boolean barrelCursorEnabled;
 	public TextureSource inventoryTextureSource = TextureSource.APPLIED;
@@ -33,6 +35,7 @@ public final class InventoryTweaksConfig {
 	public @Nullable CursorPoint inventory;
 	public @Nullable CursorPoint chestSingle;
 	public @Nullable CursorPoint chestDouble;
+	public @Nullable CursorPoint shulker;
 	public @Nullable CursorPoint enderChest;
 	public @Nullable CursorPoint barrel;
 
@@ -44,7 +47,9 @@ public final class InventoryTweaksConfig {
 		copy.inventoryGuiScalerEnabled = this.inventoryGuiScalerEnabled;
 		copy.inventoryGuiScale = this.inventoryGuiScale;
 		copy.guiScalerWarningDismissed = this.guiScalerWarningDismissed;
+		copy.affectAllContainers = this.affectAllContainers;
 		copy.chestCursorEnabled = this.chestCursorEnabled;
+		copy.shulkerCursorEnabled = this.shulkerCursorEnabled;
 		copy.enderChestCursorEnabled = this.enderChestCursorEnabled;
 		copy.barrelCursorEnabled = this.barrelCursorEnabled;
 		copy.inventoryTextureSource = this.inventoryTextureSource;
@@ -64,6 +69,7 @@ public final class InventoryTweaksConfig {
 		copy.inventory = copyPoint(this.inventory);
 		copy.chestSingle = copyPoint(this.chestSingle);
 		copy.chestDouble = copyPoint(this.chestDouble);
+		copy.shulker = copyPoint(this.shulker);
 		copy.enderChest = copyPoint(this.enderChest);
 		copy.barrel = copyPoint(this.barrel);
 		return copy;
@@ -74,6 +80,7 @@ public final class InventoryTweaksConfig {
 			case INVENTORY -> this.inventory;
 			case CHEST_SINGLE -> this.chestSingle;
 			case CHEST_DOUBLE -> this.chestDouble;
+			case SHULKER -> this.shulker;
 			case ENDER_CHEST -> this.enderChest;
 			case BARREL -> this.barrel;
 		};
@@ -85,6 +92,7 @@ public final class InventoryTweaksConfig {
 			case INVENTORY -> this.inventory = sanitized;
 			case CHEST_SINGLE -> this.chestSingle = sanitized;
 			case CHEST_DOUBLE -> this.chestDouble = sanitized;
+			case SHULKER -> this.shulker = sanitized;
 			case ENDER_CHEST -> this.enderChest = sanitized;
 			case BARREL -> this.barrel = sanitized;
 		}
@@ -94,6 +102,7 @@ public final class InventoryTweaksConfig {
 		return switch (target) {
 			case INVENTORY -> true;
 			case CHEST_SINGLE, CHEST_DOUBLE -> this.chestCursorEnabled;
+			case SHULKER -> this.shulkerCursorEnabled;
 			case ENDER_CHEST -> this.enderChestCursorEnabled;
 			case BARREL -> this.barrelCursorEnabled;
 		};
@@ -104,6 +113,7 @@ public final class InventoryTweaksConfig {
 			case INVENTORY -> {
 			}
 			case CHEST_SINGLE, CHEST_DOUBLE -> this.chestCursorEnabled = enabled;
+			case SHULKER -> this.shulkerCursorEnabled = enabled;
 			case ENDER_CHEST -> this.enderChestCursorEnabled = enabled;
 			case BARREL -> this.barrelCursorEnabled = enabled;
 		}
@@ -111,11 +121,13 @@ public final class InventoryTweaksConfig {
 
 	public void resetCursorPositions() {
 		this.chestCursorEnabled = false;
+		this.shulkerCursorEnabled = false;
 		this.enderChestCursorEnabled = false;
 		this.barrelCursorEnabled = false;
 		this.inventory = null;
 		this.chestSingle = null;
 		this.chestDouble = null;
+		this.shulker = null;
 		this.enderChest = null;
 		this.barrel = null;
 	}
@@ -134,6 +146,7 @@ public final class InventoryTweaksConfig {
 	public void resetGuiScaler() {
 		this.inventoryGuiScalerEnabled = false;
 		this.inventoryGuiScale = 1.0;
+		this.affectAllContainers = true;
 	}
 
 	public @Nullable ItemHighlight findItemHighlight(final String itemId) {
@@ -172,7 +185,9 @@ public final class InventoryTweaksConfig {
 			&& this.inventoryGuiScalerEnabled == other.inventoryGuiScalerEnabled
 			&& Double.compare(this.inventoryGuiScale, other.inventoryGuiScale) == 0
 			&& this.guiScalerWarningDismissed == other.guiScalerWarningDismissed
+			&& this.affectAllContainers == other.affectAllContainers
 			&& this.chestCursorEnabled == other.chestCursorEnabled
+			&& this.shulkerCursorEnabled == other.shulkerCursorEnabled
 			&& this.enderChestCursorEnabled == other.enderChestCursorEnabled
 			&& this.barrelCursorEnabled == other.barrelCursorEnabled
 			&& this.inventoryTextureSource == other.inventoryTextureSource
@@ -187,6 +202,7 @@ public final class InventoryTweaksConfig {
 			&& Objects.equals(this.inventory, other.inventory)
 			&& Objects.equals(this.chestSingle, other.chestSingle)
 			&& Objects.equals(this.chestDouble, other.chestDouble)
+			&& Objects.equals(this.shulker, other.shulker)
 			&& Objects.equals(this.enderChest, other.enderChest)
 			&& Objects.equals(this.barrel, other.barrel);
 	}

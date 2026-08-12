@@ -3,6 +3,7 @@ package dev.zymekoh.kohsinventorytweaks.inventory;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.mixin.AbstractRecipeBookScreenAccessor;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 
 public final class InventoryGuiScaler {
@@ -24,9 +25,41 @@ public final class InventoryGuiScaler {
 	}
 
 	public static double maximumScaleFor(final int screenWidth, final int screenHeight) {
-		double horizontalFit = Math.max(1, screenWidth - SCREEN_MARGIN * 2) / (double) INVENTORY_WIDTH;
-		double verticalFit = Math.max(1, screenHeight - SCREEN_MARGIN * 2) / (double) INVENTORY_HEIGHT;
+		return maximumScaleFor(screenWidth, screenHeight, INVENTORY_WIDTH, INVENTORY_HEIGHT);
+	}
+
+	public static double maximumScaleFor(
+		final int screenWidth,
+		final int screenHeight,
+		final int contentWidth,
+		final int contentHeight
+	) {
+		double horizontalFit = Math.max(1, screenWidth - SCREEN_MARGIN * 2) / (double) Math.max(1, contentWidth);
+		double verticalFit = Math.max(1, screenHeight - SCREEN_MARGIN * 2) / (double) Math.max(1, contentHeight);
 		return Math.max(MINIMUM_SCALE, Math.min(MAXIMUM_SCALE, Math.min(horizontalFit, verticalFit)));
+	}
+
+	public static double configuredContainerScale(
+		final int screenWidth,
+		final int screenHeight,
+		final InventoryTweaksConfig config,
+		final ContainerScaleTarget target
+	) {
+		if (config == null || !config.inventoryGuiScalerEnabled || target == null) {
+			return 1.0;
+		}
+		return Math.min(
+			clampConfiguredScale(config.inventoryGuiScale),
+			maximumScaleFor(screenWidth, screenHeight, target.previewWidth(), target.previewHeight())
+		);
+	}
+
+	public static double appliedContainerScale(final Screen screen, final InventoryTweaksConfig config) {
+		ContainerScaleTarget target = ContainerScaleTarget.classify(screen);
+		if (config == null || !config.affectAllContainers || target == null) {
+			return 1.0;
+		}
+		return configuredContainerScale(screen.width, screen.height, config, target);
 	}
 
 	public static double appliedScale(

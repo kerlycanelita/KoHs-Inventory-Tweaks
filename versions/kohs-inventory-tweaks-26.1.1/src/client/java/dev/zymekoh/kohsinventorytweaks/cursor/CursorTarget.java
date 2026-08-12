@@ -4,6 +4,7 @@ public enum CursorTarget {
 	INVENTORY("inventory", "screen.kohs_inventory_tweaks.target.inventory", 176, 166),
 	CHEST_SINGLE("chest_single", "screen.kohs_inventory_tweaks.target.chest_single", 176, 168),
 	CHEST_DOUBLE("chest_double", "screen.kohs_inventory_tweaks.target.chest_double", 176, 222),
+	SHULKER("shulker", "screen.kohs_inventory_tweaks.target.shulker", 176, 167),
 	ENDER_CHEST("ender_chest", "screen.kohs_inventory_tweaks.target.ender_chest", 176, 168),
 	BARREL("barrel", "screen.kohs_inventory_tweaks.target.barrel", 176, 168);
 
