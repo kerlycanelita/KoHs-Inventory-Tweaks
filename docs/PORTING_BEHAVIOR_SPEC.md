@@ -238,6 +238,8 @@ Integration is optional. Never create a hard dependency, crash when Herzium is a
 
 Issues Tracker lists detected problematic mods with icon, name, author, severity, and technical reason. Detection must be based on confirmed mod identifiers and confirmed injection/render conflicts, not guesses.
 
+Better Screens (`betterscreens`) is an explicit blocking conflict. Its container-scale implementation owns global screen extraction, renderer state, window GUI scale, and mouse-coordinate conversion, which cannot safely run alongside KoHs' centered container transform. When detected, KoHs must gate every gameplay mixin, skip normal runtime registration, show the localized close-only blocker, and list the confirmed overlap points.
+
 For an adaptable conflict, show a semi-transparent animated warning with abundant purple particles before normal play. Explain that removing the other mod is recommended but allow continuation when KoHs Inventory Tweaks can safely disable only its own conflicting hooks or use a confirmed compatibility path. A foreign redirect may be suppressed by mixin priority only for an explicit, tested rule whose exact invocation collision is known; never generalize that priority override to unknown mods.
 
 For a confirmed crash-risk conflict that cannot be safely adapted, initialization enters a blocked mode and shows a translated blocking screen. The player may close the game but may not continue into an unsafe session. A crash in a previous run is not by itself permission to delete mods or configs.

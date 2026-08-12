@@ -18,6 +18,7 @@ public record CompatibilityIssue(
 	public enum Reason {
 		DIRECT_MUTATION("direct_mutation"),
 		CRITICAL_OVERWRITE("critical_overwrite"),
+		CONTAINER_SCALE_PIPELINE("container_scale_pipeline"),
 		REDIRECT_COLLISION("redirect_collision"),
 		SUPPRESSED_REDIRECT("suppressed_redirect");
 

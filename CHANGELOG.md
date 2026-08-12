@@ -7,6 +7,7 @@
 - Made the Affect Containers preview state-aware: disabled shows the container at vanilla 100%, enabled shows the currently selected inventory scale.
 - Added Shulker Box cursor landing with its own saved normalized position and vanilla fallback switch.
 - Improved Issues Tracker conflict discovery by scanning mixin metadata and reporting known inventory-scaling adaptations without claiming unconfirmed crashes.
+- Added a confirmed blocking rule for Better Screens (`betterscreens`): KoHs gates its gameplay mixins and runtime services before showing the non-bypassable incompatibility screen because both mods own the container-scale render and mouse-coordinate pipeline.
 - Added maintained Minecraft 26.2, 26.1.1, and 26.1 source/build targets alongside 26.1.2, 1.21.11, and 1.21.10.
 
 ## 1.0.2

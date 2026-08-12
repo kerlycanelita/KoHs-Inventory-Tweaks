@@ -34,6 +34,7 @@ public final class CompatibilityIssueManager {
 	private static final String OVERWRITE_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/Overwrite;";
 	private static final String REDIRECT_DESCRIPTOR = "Lorg/spongepowered/asm/mixin/injection/Redirect;";
 	private static final String INVENTORY_SCALE_FIX_ID = "inventoryscalefix";
+	private static final String BETTER_SCREENS_ID = "betterscreens";
 	private static final String INVENTORY_ENTITY_INVOCATION = "Lnet/minecraft/client/gui/screens/inventory/InventoryScreen;"
 		+ "renderEntityInInventoryFollowsMouse(Lnet/minecraft/client/gui/GuiGraphics;IIIIIFFFLnet/minecraft/world/entity/LivingEntity;)V";
 	private static volatile boolean initialized;
@@ -49,11 +50,13 @@ public final class CompatibilityIssueManager {
 			return;
 		}
 		initialized = true;
+		List<CompatibilityIssue> explicitIssues = detectExplicitIssues();
 		try {
 			ModContainer ownContainer = FabricLoader.getInstance()
 				.getModContainer(MOD_ID)
 				.orElse(null);
 			if (ownContainer == null) {
+				issues = explicitIssues;
 				return;
 			}
 			Set<TargetMethod> ownHooks = new HashSet<>();
@@ -73,16 +76,17 @@ public final class CompatibilityIssueManager {
 				}
 			}
 
-			List<CompatibilityIssue> detected = new ArrayList<>();
+			List<CompatibilityIssue> detected = new ArrayList<>(explicitIssues);
+			Set<String> explicitlyHandledIds = explicitIssues.stream()
+				.map(CompatibilityIssue::modId)
+				.collect(java.util.stream.Collectors.toUnmodifiableSet());
 			for (ModContainer container : FabricLoader.getInstance().getAllMods()) {
 				String modId = container.getMetadata().getId();
-				if (modId.equals(MOD_ID) || modId.startsWith("fabric-") || modId.equals("minecraft")) {
+				if (modId.equals(MOD_ID) || modId.startsWith("fabric-") || modId.equals("minecraft")
+					|| explicitlyHandledIds.contains(modId)) {
 					continue;
 				}
-				CompatibilityIssue issue = explicitIssueFor(container);
-				if (issue == null) {
-					issue = inspectForeignMod(container, ownHooks, criticalOwnHooks, ownRedirects);
-				}
+				CompatibilityIssue issue = inspectForeignMod(container, ownHooks, criticalOwnHooks, ownRedirects);
 				if (issue != null) {
 					detected.add(issue);
 				}
@@ -105,9 +109,25 @@ public final class CompatibilityIssueManager {
 				}
 			}
 		} catch (RuntimeException exception) {
-			LOGGER.warn("Compatibility scan failed open; normal startup will continue", exception);
-			issues = List.of();
+			LOGGER.warn("Heuristic compatibility scan failed; explicit compatibility rules remain active", exception);
+			issues = explicitIssues;
 		}
+	}
+
+	private static List<CompatibilityIssue> detectExplicitIssues() {
+		List<CompatibilityIssue> detected = new ArrayList<>();
+		for (ModContainer container : FabricLoader.getInstance().getAllMods()) {
+			try {
+				CompatibilityIssue issue = explicitIssueFor(container);
+				if (issue != null) {
+					detected.add(issue);
+				}
+			} catch (RuntimeException exception) {
+				LOGGER.debug("Could not evaluate explicit compatibility rule for a loaded mod", exception);
+			}
+		}
+		detected.sort(Comparator.comparing(CompatibilityIssue::modName, String.CASE_INSENSITIVE_ORDER));
+		return List.copyOf(detected);
 	}
 
 	public static List<CompatibilityIssue> issues() {
@@ -224,6 +244,22 @@ public final class CompatibilityIssueManager {
 	}
 
 	private static CompatibilityIssue explicitIssueFor(final ModContainer container) {
+		if (BETTER_SCREENS_ID.equals(container.getMetadata().getId())) {
+			return new CompatibilityIssue(
+				container.getMetadata().getId(),
+				container.getMetadata().getName(),
+				container.getMetadata().getVersion().getFriendlyString(),
+				creatorsOf(container),
+				CompatibilityIssue.Severity.BLOCKING,
+				CompatibilityIssue.Reason.CONTAINER_SCALE_PIPELINE,
+				List.of(
+					"net.minecraft.client.gui.Gui#extractRenderState",
+					"net.minecraft.client.MouseHandler#getScaledXPos",
+					"net.minecraft.client.MouseHandler#getScaledYPos",
+					"net.minecraft.client.renderer.GameRenderer#render"
+				)
+			);
+		}
 		if (!INVENTORY_SCALE_FIX_ID.equals(container.getMetadata().getId())) {
 			return null;
 		}
