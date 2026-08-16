@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.5
+
+- Fixed the Minecraft 26.2 startup crash caused by an obsolete `extractSnapbackItem` mixin target inherited from 26.1.2.
+- Removed only the obsolete snapback-animation injection from the 26.2 port. Minecraft 26.2 no longer contains `SnapbackData` or the corresponding extraction method.
+- Verified that the 26.2 client completes mixin application, initializes KoHs Inventory Tweaks, and reaches resource loading successfully.
+
 ## 1.0.4
 
 - Added optional GUI scaling for single chests, double chests, Shulker Boxes, barrels, and Ender Chests while preserving centered rendering and vanilla input coordinates.

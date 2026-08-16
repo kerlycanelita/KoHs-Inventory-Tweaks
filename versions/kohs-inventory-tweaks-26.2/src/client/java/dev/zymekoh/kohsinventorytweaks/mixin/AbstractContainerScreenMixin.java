@@ -69,13 +69,6 @@ public abstract class AbstractContainerScreenMixin {
 		return InventoryGuiScaler.toInventoryEvent(event, screen.width, screen.height, scale);
 	}
 
-	@Inject(method = "extractSnapbackItem", at = @At("HEAD"), cancellable = true)
-	private void kohsInventoryTweaks$removeTransientGhostCopy(final CallbackInfo callbackInfo) {
-		if (ConfigStore.get().removeAllInventoryAnimations) {
-			callbackInfo.cancel();
-		}
-	}
-
 	@Inject(method = "init", at = @At("TAIL"))
 	private void kohsInventoryTweaks$placeCursorAfterLayout(final CallbackInfo callbackInfo) {
 		CursorLandingController.onContainerScreenInitialized(Minecraft.getInstance(), (Screen) (Object) this);
