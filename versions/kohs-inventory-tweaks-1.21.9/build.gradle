@@ -1,0 +1,99 @@
+plugins {
+	id 'fabric-loom' version '1.15-SNAPSHOT'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = 'kohs-inventory-tweaks'
+}
+
+repositories {
+	mavenCentral()
+	maven { name = 'Terraformers'; url = 'https://maven.terraformersmc.com/releases/' }
+}
+
+loom {
+	splitEnvironmentSourceSets()
+	mods {
+		'kohs_inventory_tweaks' {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+sourceSets {
+	client {
+		java.setSrcDirs(['../kohs-inventory-tweaks-1.21.10/src/client/java'])
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	include implementation('org.jcodec:jcodec:0.2.5')
+	include implementation('org.jcodec:jcodec-javase:0.2.5')
+}
+
+def upstreamResources = file('../kohs-inventory-tweaks-1.21.10/src/main/resources')
+
+processResources {
+	inputs.property 'version', project.version
+	includeEmptyDirs = false
+
+	from(new File(upstreamResources, 'assets')) {
+		into 'assets'
+		exclude 'kohs_inventory_tweaks/lang/*.json'
+	}
+
+	from(new File(upstreamResources, 'assets/kohs_inventory_tweaks/lang')) {
+		into 'assets/kohs_inventory_tweaks/lang'
+		include '*.json'
+		filter { line -> line
+			.replace('Vanilla 1.21.10', 'Vanilla 1.21.9')
+			.replace('Vanilla de 1.21.10', 'Vanilla de 1.21.9')
+		}
+	}
+
+	['es_ar', 'es_cl', 'es_ec', 'es_mx', 'es_uy', 'es_ve'].each { spanishLocale ->
+		from(new File(upstreamResources, 'assets/kohs_inventory_tweaks/lang/es_es.json')) {
+			into 'assets/kohs_inventory_tweaks/lang'
+			rename { "${spanishLocale}.json" }
+			filter { line -> line
+				.replace('Vanilla 1.21.10', 'Vanilla 1.21.9')
+				.replace('Vanilla de 1.21.10', 'Vanilla de 1.21.9')
+			}
+		}
+	}
+
+	filesMatching('fabric.mod.json') {
+		expand(version: project.version)
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = 21
+	options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+	toolchain { languageVersion = JavaLanguageVersion.of(25) }
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.register('stageVersionArtifacts', Copy) {
+	from(layout.buildDirectory.dir('libs'))
+	include('*.jar')
+	into(layout.projectDirectory.dir('../../builds/1.21.9'))
+}
+
+tasks.named('build') {
+	finalizedBy('stageVersionArtifacts')
+}

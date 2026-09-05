@@ -1,0 +1,80 @@
+plugins {
+	id 'fabric-loom' version "${loom_version}"
+}
+
+def matrix = new Properties()
+file('gradle/minecraft-versions.properties').withInputStream { matrix.load(it) }
+def targetMinecraft = (project.findProperty('target_minecraft_version') ?: '1.21.5').toString()
+def fabricApi = matrix.getProperty("${targetMinecraft}.fabric_api")
+def modMenu = matrix.getProperty("${targetMinecraft}.modmenu")
+if (fabricApi == null || modMenu == null) {
+	throw new GradleException("Unsupported Minecraft target ${targetMinecraft}")
+}
+
+version = "${project.mod_version}+mc${targetMinecraft}"
+group = project.maven_group
+
+base { archivesName = 'kohs-inventory-tweaks' }
+layout.buildDirectory = file("build/${targetMinecraft}")
+
+repositories {
+	mavenCentral()
+	maven { url = 'https://maven.terraformersmc.com/releases/' }
+}
+
+loom {
+	splitEnvironmentSourceSets()
+	mods {
+		'kohs_inventory_tweaks' {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${targetMinecraft}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApi}"
+	modCompileOnly "com.terraformersmc:modmenu:${modMenu}"
+	include implementation('org.jcodec:jcodec:0.2.5')
+	include implementation('org.jcodec:jcodec-javase:0.2.5')
+}
+
+processResources {
+	inputs.property 'version', project.version
+	inputs.property 'minecraft_dependency', "=${targetMinecraft}"
+	includeEmptyDirs = false
+	['es_ar', 'es_cl', 'es_ec', 'es_mx', 'es_uy', 'es_ve'].each { spanishLocale ->
+		from('src/main/resources/assets/kohs_inventory_tweaks/lang/es_es.json') {
+			into 'assets/kohs_inventory_tweaks/lang'
+			rename { "${spanishLocale}.json" }
+		}
+	}
+	filesMatching('fabric.mod.json') {
+		expand version: project.version, minecraft_dependency: "=${targetMinecraft}"
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = 21
+	options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+	toolchain { languageVersion = JavaLanguageVersion.of(25) }
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.register('stageVersionArtifacts', Copy) {
+	from(layout.buildDirectory.dir('libs'))
+	include('*.jar')
+	into(layout.projectDirectory.dir("../../builds/${targetMinecraft}"))
+}
+
+tasks.named('build') {
+	finalizedBy('stageVersionArtifacts')
+}

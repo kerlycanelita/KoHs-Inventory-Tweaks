@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "kohs_inventory_tweaks",
+  "version": "${version}",
+  "name": "KoHs Inventory Tweaks",
+  "description": "Successor to KoHs Inv Cursor. Client-side inventory control for deterministic cursor landing, guarded fast input, GUI scaling, resource-pack-aware customization, and per-item highlighting.",
+  "authors": ["zymekoh"],
+  "license": "MIT",
+  "icon": "assets/kohs_inventory_tweaks/icon.png",
+  "contact": {
+    "homepage": "https://github.com/kerlycanelita/KoHs-Inventory-Tweaks",
+    "sources": "https://github.com/kerlycanelita/KoHs-Inventory-Tweaks",
+    "issues": "https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues"
+  },
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.zymekoh.kohsinventorytweaks.KoHsInventoryTweaksClient"],
+    "modmenu": ["dev.zymekoh.kohsinventorytweaks.integration.ModMenuIntegration"]
+  },
+  "mixins": [
+    {"config": "kohs_inventory_tweaks.client.mixins.json", "environment": "client"}
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "${minecraft_version}",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
