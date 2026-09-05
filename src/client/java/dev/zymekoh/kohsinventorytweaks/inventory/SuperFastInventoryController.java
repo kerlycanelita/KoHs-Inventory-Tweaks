@@ -19,13 +19,12 @@ import org.lwjgl.glfw.GLFW;
 /**
  * Advances only construction of the ordinary local player inventory.
  *
- * <p>GLFW delivers keyboard and mouse callbacks as one display-update batch, and
- * Minecraft runs every one of them as a queued task inside {@code runAllTasks}.
- * This controller records that complete batch and makes its decision the moment
- * the drain finishes, still ahead of {@code Minecraft#tick}. A sole queued
- * Inventory press can then open on the frame it arrived instead of waiting for
- * the next 20 TPS client tick. Any overlapping non-movement mapping leaves the
- * complete Vanilla queue untouched.</p>
+ * <p>GLFW delivers keyboard and mouse callbacks as one display-update batch.
+ * This controller records that complete batch and makes its decision immediately
+ * after {@code RenderSystem.pollEvents()} returns. A sole queued Inventory press can then
+ * open on the next rendered frame instead of waiting for the next 20 TPS client
+ * tick. Any overlapping non-movement mapping leaves the complete Vanilla queue
+ * untouched.</p>
  */
 public final class SuperFastInventoryController {
 	/** Trailing repeat marker appended by the queued-action report, as in `key.attackx2`. */
@@ -90,7 +89,7 @@ public final class SuperFastInventoryController {
 		));
 	}
 
-	/** Called once per frame, after every event queued by the last poll has run. */
+	/** Called once after GLFW has delivered every event in this rendered frame. */
 	public static void afterInputPoll(final Minecraft minecraft) {
 		if (!physicalInputObserved) {
 			return;
