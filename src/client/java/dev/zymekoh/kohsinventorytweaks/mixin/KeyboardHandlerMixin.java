@@ -18,12 +18,12 @@ public abstract class KeyboardHandlerMixin {
 	private Minecraft minecraft;
 
 	@Inject(method = "keyPress", at = @At("TAIL"))
-	private void kohsInventoryTweaks$openInventoryWithoutTickDelay(
-		final long handle,
+	private void kohsInventoryTweaks$openLocalInventoryOnPhysicalPress(
+		final long windowHandle,
 		final int action,
 		final KeyEvent event,
 		final CallbackInfo callbackInfo
 	) {
-		SuperFastInventoryController.onKeyboardEvent(this.minecraft, handle, action, event);
+		SuperFastInventoryController.onKeyboardEvent(this.minecraft, windowHandle, action, event);
 	}
 }

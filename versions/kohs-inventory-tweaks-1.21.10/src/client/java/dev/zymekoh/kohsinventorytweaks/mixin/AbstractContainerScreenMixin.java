@@ -117,7 +117,7 @@ public abstract class AbstractContainerScreenMixin {
 
 	@Inject(method = "renderSnapbackItem", at = @At("HEAD"), cancellable = true)
 	private void kohsInventoryTweaks$removeTransientGhostCopy(final CallbackInfo callbackInfo) {
-		if (ConfigStore.get().removeAllInventoryAnimations) {
+		if (InventoryAnimationController.suppressAllInventoryAnimations()) {
 			callbackInfo.cancel();
 		}
 	}
@@ -131,6 +131,8 @@ public abstract class AbstractContainerScreenMixin {
 	private void kohsInventoryTweaks$drawItemHighlightBackground(
 		final GuiGraphics graphics,
 		final Slot slot,
+		final int mouseX,
+		final int mouseY,
 		final CallbackInfo callbackInfo
 	) {
 		InventoryAnimationController.beginInventoryItem();
@@ -146,6 +148,8 @@ public abstract class AbstractContainerScreenMixin {
 	private void kohsInventoryTweaks$drawItemHighlightBorder(
 		final GuiGraphics graphics,
 		final Slot slot,
+		final int mouseX,
+		final int mouseY,
 		final CallbackInfo callbackInfo
 	) {
 		ItemHighlighterController.drawContainerSlot(

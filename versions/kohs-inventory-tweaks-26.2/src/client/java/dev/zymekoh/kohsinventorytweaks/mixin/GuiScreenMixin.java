@@ -1,7 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
-import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.screens.Screen;
 import org.jspecify.annotations.Nullable;
@@ -15,6 +14,5 @@ public abstract class GuiScreenMixin {
 	@Inject(method = "setScreen", at = @At("HEAD"))
 	private void kohsInventoryTweaks$prepareCursor(final @Nullable Screen screen, final CallbackInfo callbackInfo) {
 		CursorLandingController.onScreenRequested(screen);
-		SuperFastInventoryController.onScreenRequested(screen);
 	}
 }

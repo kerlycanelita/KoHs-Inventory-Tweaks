@@ -141,7 +141,7 @@ public final class GuiScalerScreen extends Screen {
 
 		Component scale = Component.translatable(
 			"screen.kohs_inventory_tweaks.gui_scaler.slider",
-			(int) Math.round(this.actualScale() * 100.0)
+			(int) Math.round(this.configuredScale() * 100.0)
 		);
 		graphics.drawString(
 			this.font,
@@ -282,6 +282,10 @@ public final class GuiScalerScreen extends Screen {
 
 	private double actualScale() {
 		return InventoryGuiScaler.appliedScale(this.width, this.height, this.working);
+	}
+
+	private double configuredScale() {
+		return InventoryGuiScaler.configuredPhysicalScale(this.width, this.height, this.working);
 	}
 
 	private Component enabledLabel() {

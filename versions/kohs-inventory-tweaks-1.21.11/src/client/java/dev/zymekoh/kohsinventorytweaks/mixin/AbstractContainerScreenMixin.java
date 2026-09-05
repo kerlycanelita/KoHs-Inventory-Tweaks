@@ -3,6 +3,7 @@ package dev.zymekoh.kohsinventorytweaks.mixin;
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
+import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryAnimationController;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
 import net.minecraft.client.gui.GuiGraphics;
@@ -117,7 +118,7 @@ public abstract class AbstractContainerScreenMixin {
 
 	@Inject(method = "renderSnapbackItem", at = @At("HEAD"), cancellable = true)
 	private void kohsInventoryTweaks$removeTransientGhostCopy(final CallbackInfo callbackInfo) {
-		if (ConfigStore.get().removeAllInventoryAnimations) {
+		if (InventoryAnimationController.suppressAllInventoryAnimations()) {
 			callbackInfo.cancel();
 		}
 	}
@@ -157,6 +158,11 @@ public abstract class AbstractContainerScreenMixin {
 			(AbstractContainerScreen<?>) (Object) this,
 			slot,
 			true
+		);
+		AccessibilityRenderController.drawFocusedSlot(
+			graphics,
+			(AbstractContainerScreen<?>) (Object) this,
+			slot
 		);
 		InventoryAnimationController.endInventoryItem();
 	}

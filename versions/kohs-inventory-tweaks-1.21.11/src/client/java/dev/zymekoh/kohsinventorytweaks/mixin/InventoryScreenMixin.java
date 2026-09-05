@@ -2,10 +2,8 @@ package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
-import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.resources.Identifier;
@@ -48,20 +46,6 @@ public abstract class InventoryScreenMixin {
 		final CallbackInfo callbackInfo
 	) {
 		graphics.pose().popMatrix();
-	}
-
-	@Inject(method = "render", at = @At("RETURN"))
-	private void kohsInventoryTweaks$finishFastOpening(
-		final GuiGraphics graphics,
-		final int mouseX,
-		final int mouseY,
-		final float a,
-		final CallbackInfo callbackInfo
-	) {
-		SuperFastInventoryController.onInventoryRendered(
-			Minecraft.getInstance(),
-			(InventoryScreen) (Object) this
-		);
 	}
 
 	@ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 0)

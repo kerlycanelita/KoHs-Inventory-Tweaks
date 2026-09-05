@@ -1,5 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
+import dev.zymekoh.kohsinventorytweaks.compat.MouseConflictNotificationController;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Gui;
@@ -13,6 +14,24 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Gui.class)
 public abstract class GuiMixin {
+	@Inject(method = "extractRenderState", at = @At("RETURN"))
+	private void kohsInventoryTweaks$drawMouseConflictNotification(
+		final GuiGraphicsExtractor graphics,
+		final DeltaTracker deltaTracker,
+		final CallbackInfo callbackInfo
+	) {
+		MouseConflictNotificationController.draw(graphics);
+	}
+
+	@Inject(method = "extractItemHotbar", at = @At("HEAD"))
+	private void kohsInventoryTweaks$beginHotbarPass(
+		final GuiGraphicsExtractor graphics,
+		final DeltaTracker deltaTracker,
+		final CallbackInfo callbackInfo
+	) {
+		ItemHighlighterController.beginHotbar();
+	}
+
 	@Inject(method = "extractSlot", at = @At("HEAD"))
 	private void kohsInventoryTweaks$drawHotbarHighlightBackground(
 		final GuiGraphicsExtractor graphics,
@@ -24,7 +43,7 @@ public abstract class GuiMixin {
 		final int seed,
 		final CallbackInfo callbackInfo
 	) {
-		ItemHighlighterController.drawHotbarSlot(graphics, x, y, stack, false);
+		ItemHighlighterController.drawHotbarSlot(graphics, player, x, y, stack, false);
 	}
 
 	@Inject(method = "extractSlot", at = @At("RETURN"))
@@ -38,6 +57,6 @@ public abstract class GuiMixin {
 		final int seed,
 		final CallbackInfo callbackInfo
 	) {
-		ItemHighlighterController.drawHotbarSlot(graphics, x, y, stack, true);
+		ItemHighlighterController.drawHotbarSlot(graphics, player, x, y, stack, true);
 	}
 }

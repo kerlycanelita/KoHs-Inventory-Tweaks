@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 import net.minecraft.resources.Identifier;
 
-/** Every Vanilla inventory surface available in the target Minecraft version. */
+/** Every Vanilla 26.1.2 inventory surface represented in Customization. */
 public enum CustomizationPreview {
 	INVENTORY("inventory", Kind.PLAYER, null, 176, 166, 256, 256, 0, List.of()),
 	CHEST_SINGLE("chest_single", Kind.GENERIC, null, 176, 168, 256, 256, 3, List.of()),

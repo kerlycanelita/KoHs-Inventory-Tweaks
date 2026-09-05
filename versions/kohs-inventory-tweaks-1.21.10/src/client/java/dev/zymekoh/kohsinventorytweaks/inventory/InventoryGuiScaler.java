@@ -1,6 +1,8 @@
 package dev.zymekoh.kohsinventorytweaks.inventory;
 
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.mixin.AbstractRecipeBookScreenAccessor;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -45,7 +47,8 @@ public final class InventoryGuiScaler {
 		final InventoryTweaksConfig config,
 		final ContainerScaleTarget target
 	) {
-		if (config == null || !config.inventoryGuiScalerEnabled || target == null) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.GUI_SCALER)
+			|| config == null || !config.inventoryGuiScalerEnabled || target == null) {
 			return 1.0;
 		}
 		return Math.min(
@@ -56,7 +59,8 @@ public final class InventoryGuiScaler {
 
 	public static double appliedContainerScale(final Screen screen, final InventoryTweaksConfig config) {
 		ContainerScaleTarget target = ContainerScaleTarget.classify(screen);
-		if (config == null || !config.affectAllContainers || target == null) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.GUI_SCALER)
+			|| config == null || !config.affectAllContainers || target == null) {
 			return 1.0;
 		}
 		return configuredContainerScale(screen.width, screen.height, config, target);
@@ -67,14 +71,16 @@ public final class InventoryGuiScaler {
 		final int screenHeight,
 		final InventoryTweaksConfig config
 	) {
-		if (config == null || !config.inventoryGuiScalerEnabled) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.GUI_SCALER)
+			|| config == null || !config.inventoryGuiScalerEnabled) {
 			return 1.0;
 		}
 		return Math.min(clampConfiguredScale(config.inventoryGuiScale), maximumScaleFor(screenWidth, screenHeight));
 	}
 
 	public static double appliedScale(final InventoryScreen screen, final InventoryTweaksConfig config) {
-		if (config == null || !config.inventoryGuiScalerEnabled) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.GUI_SCALER)
+			|| config == null || !config.inventoryGuiScalerEnabled) {
 			return 1.0;
 		}
 		boolean recipeBookVisible = ((AbstractRecipeBookScreenAccessor) screen)

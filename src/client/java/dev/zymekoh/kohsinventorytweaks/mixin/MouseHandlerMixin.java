@@ -1,8 +1,10 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
+import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
+import net.minecraft.client.input.MouseButtonInfo;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -12,7 +14,9 @@ import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin(MouseHandler.class)
+// Owns only local cursor release and the optional early construction of the
+// ordinary player-inventory screen. Inventory actions remain Vanilla-owned.
+@Mixin(value = MouseHandler.class, priority = 2000)
 public abstract class MouseHandlerMixin {
 	@Shadow
 	@Final
@@ -42,16 +46,14 @@ public abstract class MouseHandlerMixin {
 		args.set(3, target[1]);
 	}
 
-	@Inject(method = "onMove", at = @At("HEAD"), cancellable = true)
-	private void kohsInventoryTweaks$recoverUnexpectedCenter(
-		final long handle,
-		final double x,
-		final double y,
+	@Inject(method = "onButton", at = @At("TAIL"))
+	private void kohsInventoryTweaks$openLocalInventoryOnMousePress(
+		final long windowHandle,
+		final MouseButtonInfo buttonInfo,
+		final int action,
 		final CallbackInfo callbackInfo
 	) {
-		if (handle == this.minecraft.getWindow().handle()
-			&& CursorLandingController.recoverUnexpectedCenterEvent(this.minecraft, x, y)) {
-			callbackInfo.cancel();
-		}
+		SuperFastInventoryController.onMouseButton(this.minecraft, windowHandle, buttonInfo, action);
 	}
+
 }

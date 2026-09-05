@@ -5,11 +5,14 @@ import dev.zymekoh.kohsinventorytweaks.KoHsInventoryTweaksClient;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.TextureSource;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.AnimatedBackground;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.AnimationFrame;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -28,6 +31,12 @@ import org.jspecify.annotations.Nullable;
 public final class InventoryTextureManager {
 	public static final Identifier VANILLA_INVENTORY = Identifier.withDefaultNamespace("textures/gui/container/inventory.png");
 	public static final Identifier VANILLA_CONTAINER = Identifier.withDefaultNamespace("textures/gui/container/generic_54.png");
+	public static final Identifier VANILLA_RECIPE_BOOK = Identifier.withDefaultNamespace("textures/gui/recipe_book.png");
+	// The panel is blitted from (1, 1) with a 147x166 source rectangle, so the
+	// customized region has to reach one pixel further than its drawn size.
+	private static final int RECIPE_BOOK_WIDTH = 148;
+	private static final int RECIPE_BOOK_HEIGHT = 167;
+	private static final String RECIPE_BOOK_SIGNATURE = "recipe_book";
 	private static final Identifier GENERATED_INVENTORY = Identifier.fromNamespaceAndPath(
 		KoHsInventoryTweaksClient.MOD_ID,
 		"dynamic/custom_inventory"
@@ -43,6 +52,17 @@ public final class InventoryTextureManager {
 	private static final AnimationFrame[] containerRenderedFrames = new AnimationFrame[7];
 	private static final String[] containerStyleKeys = new String[7];
 	private static final Map<String, SurfaceTextureState> surfaceTextures = new HashMap<>();
+	private static final String NO_BACKGROUND_KEY = "null:0";
+	private static final long BACKGROUND_PROBE_INTERVAL_NANOS = 500_000_000L;
+	// Slot masks are pure geometry, so they are resolved once instead of per pixel
+	// on every recomposition of an animated background.
+	private static final boolean[] INVENTORY_SLOT_MASK = createInventorySlotMask();
+	private static final boolean[][] CONTAINER_SLOT_MASKS = new boolean[7][];
+	private static @Nullable WeakReference<AbstractContainerScreen<?>> signatureScreen;
+	private static String signatureValue = "";
+	private static String probedBackgroundFile = "";
+	private static String probedBackgroundKey = NO_BACKGROUND_KEY;
+	private static long probedBackgroundAtNanos;
 	private static @Nullable AnimatedBackground background;
 	private static @Nullable AnimationFrame renderedFrame;
 	private static String loadedBaseKey = "";
@@ -70,7 +90,8 @@ public final class InventoryTextureManager {
 	}
 
 	public static Identifier textureFor(final InventoryTweaksConfig config) {
-		if (isUnmodifiedAppliedTexture(config)) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)
+			|| isUnmodifiedAppliedTexture(config)) {
 			return VANILLA_INVENTORY;
 		}
 
@@ -102,7 +123,8 @@ public final class InventoryTextureManager {
 		final Identifier original,
 		final int imageHeight
 	) {
-		if (!VANILLA_CONTAINER.equals(original) || isUnmodifiedAppliedTexture(config)) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)
+			|| !VANILLA_CONTAINER.equals(original) || isUnmodifiedAppliedTexture(config)) {
 			return original;
 		}
 		int rows = Math.max(1, Math.min(6, (imageHeight - 114) / 18));
@@ -138,7 +160,8 @@ public final class InventoryTextureManager {
 		final int imageWidth,
 		final int imageHeight
 	) {
-		if (!isContainerSurface(original)) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)
+			|| !isContainerSurface(original)) {
 			return original;
 		}
 		if (VANILLA_INVENTORY.equals(original)) {
@@ -147,11 +170,23 @@ public final class InventoryTextureManager {
 		if (VANILLA_CONTAINER.equals(original)) {
 			return containerTextureFor(config, original, imageHeight);
 		}
-
-		List<SlotRegion> slots = new ArrayList<>(screen.getMenu().slots.size());
-		for (net.minecraft.world.inventory.Slot slot : screen.getMenu().slots) {
-			slots.add(new SlotRegion(slot.x, slot.y));
+		if (VANILLA_RECIPE_BOOK.equals(original)) {
+			// The recipe book belongs to the screen, not to the menu, so it has neither
+			// the container's dimensions nor its slots. It takes the frame colour, the
+			// opacity and the background of the same customization, and leaves its recipe
+			// grid untinted because those buttons are drawn as sprites on top of it.
+			return surfaceTextureFor(
+				config,
+				original,
+				RECIPE_BOOK_WIDTH,
+				RECIPE_BOOK_HEIGHT,
+				256,
+				256,
+				RECIPE_BOOK_SIGNATURE,
+				List::of
+			);
 		}
+
 		return surfaceTextureFor(
 			config,
 			original,
@@ -159,8 +194,30 @@ public final class InventoryTextureManager {
 			imageHeight,
 			logicalTextureWidth(original),
 			256,
-			slots
+			screen
 		);
+	}
+
+	private static List<SlotRegion> slotRegionsOf(final AbstractContainerScreen<?> screen) {
+		List<SlotRegion> slots = new ArrayList<>(screen.getMenu().slots.size());
+		for (net.minecraft.world.inventory.Slot slot : screen.getMenu().slots) {
+			slots.add(new SlotRegion(slot.x, slot.y));
+		}
+		return slots;
+	}
+
+	/**
+	 * A screen keeps its slot layout for its whole lifetime, so the signature that
+	 * identifies its composed surface is resolved once per opened screen.
+	 */
+	private static String signatureOf(final AbstractContainerScreen<?> screen) {
+		WeakReference<AbstractContainerScreen<?>> cached = signatureScreen;
+		if (cached != null && cached.get() == screen) {
+			return signatureValue;
+		}
+		signatureValue = slotSignature(slotRegionsOf(screen));
+		signatureScreen = new WeakReference<>(screen);
+		return signatureValue;
 	}
 
 	/**
@@ -183,15 +240,27 @@ public final class InventoryTextureManager {
 			imageHeight,
 			logicalTextureWidth,
 			logicalTextureHeight,
-			slots
+			slotSignature(slots),
+			() -> slots
 		);
 	}
 
+	/**
+	 * Answers whether any container surface can currently differ from the resource
+	 * pack. Reached from every GUI blit, so it only reads configuration fields.
+	 */
+	public static boolean customizesContainerSurfaces(final InventoryTweaksConfig config) {
+		return config != null
+			&& CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)
+			&& !isUnmodifiedAppliedTexture(config);
+	}
+
 	public static boolean hasColorCustomization(final InventoryTweaksConfig config) {
-		return config.frameColor != 0xFFFFFF
+		return CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)
+			&& (config.frameColor != 0xFFFFFF
 			|| config.frameOpacity != 255
 			|| config.slotColor != 0xFFFFFF
-			|| config.slotOpacity != 255;
+			|| config.slotOpacity != 255);
 	}
 
 	private static Identifier surfaceTextureFor(
@@ -201,12 +270,36 @@ public final class InventoryTextureManager {
 		final int imageHeight,
 		final int logicalTextureWidth,
 		final int logicalTextureHeight,
-		final List<SlotRegion> slots
+		final AbstractContainerScreen<?> screen
 	) {
 		if (isUnmodifiedAppliedTexture(config)) {
 			return original;
 		}
-		String slotSignature = slotSignature(slots);
+		return surfaceTextureFor(
+			config,
+			original,
+			imageWidth,
+			imageHeight,
+			logicalTextureWidth,
+			logicalTextureHeight,
+			signatureOf(screen),
+			() -> slotRegionsOf(screen)
+		);
+	}
+
+	private static Identifier surfaceTextureFor(
+		final InventoryTweaksConfig config,
+		final Identifier original,
+		final int imageWidth,
+		final int imageHeight,
+		final int logicalTextureWidth,
+		final int logicalTextureHeight,
+		final String slotSignature,
+		final java.util.function.Supplier<List<SlotRegion>> slots
+	) {
+		if (isUnmodifiedAppliedTexture(config)) {
+			return original;
+		}
 		String cacheKey = original + ":" + imageWidth + "x" + imageHeight + ":"
 			+ logicalTextureWidth + "x" + logicalTextureHeight + ":" + slotSignature;
 		SurfaceTextureState state = surfaceTextures.computeIfAbsent(
@@ -220,7 +313,7 @@ public final class InventoryTextureManager {
 				imageHeight,
 				logicalTextureWidth,
 				logicalTextureHeight,
-				slots
+				slots.get()
 			)
 		);
 
@@ -243,9 +336,14 @@ public final class InventoryTextureManager {
 	}
 
 	private static boolean isContainerSurface(final Identifier texture) {
-		return "minecraft".equals(texture.getNamespace())
-			&& texture.getPath().startsWith("textures/gui/container/")
-			&& texture.getPath().endsWith(".png");
+		if (!"minecraft".equals(texture.getNamespace()) || !texture.getPath().endsWith(".png")) {
+			return false;
+		}
+		// The recipe book sits outside the container directory but is drawn attached to
+		// the inventory, so leaving it out is what made a customized inventory open
+		// next to an untouched vanilla panel.
+		return texture.getPath().startsWith("textures/gui/container/")
+			|| VANILLA_RECIPE_BOOK.equals(texture);
 	}
 
 	private static int logicalTextureWidth(final Identifier texture) {
@@ -259,9 +357,9 @@ public final class InventoryTextureManager {
 		}
 		return signature.toString();
 	}
-
 	public static void onResourcesReloaded() {
 		resourceGeneration++;
+		forgetBackgroundProbe();
 		loadedBaseKey = "";
 		composedStyleKey = "";
 		basePixels = null;
@@ -278,6 +376,7 @@ public final class InventoryTextureManager {
 	}
 
 	public static void invalidateConfiguration() {
+		forgetBackgroundProbe();
 		composedStyleKey = "";
 		for (int rows = 1; rows <= 6; rows++) {
 			containerStyleKeys[rows] = "";
@@ -289,7 +388,7 @@ public final class InventoryTextureManager {
 
 	private static boolean isUnmodifiedAppliedTexture(final InventoryTweaksConfig config) {
 		return config.inventoryTextureSource == TextureSource.APPLIED
-			&& !config.removeAllInventoryAnimations
+			&& !InventoryAnimationController.suppressAllInventoryAnimations()
 			&& config.frameColor == 0xFFFFFF
 			&& config.frameOpacity == 255
 			&& config.slotColor == 0xFFFFFF
@@ -297,15 +396,35 @@ public final class InventoryTextureManager {
 			&& (config.customBackgroundFile == null || config.customBackgroundFile.isBlank());
 	}
 
+	/**
+	 * Detects an edited background file without stating it on every rendered frame.
+	 * The probe is refreshed twice per second and immediately after a resource
+	 * reload or a configuration change.
+	 */
 	private static String backgroundKey(final InventoryTweaksConfig config) {
-		long backgroundModified = 0L;
-		if (config.customBackgroundFile != null) {
+		String file = config.customBackgroundFile;
+		if (file == null) {
+			return NO_BACKGROUND_KEY;
+		}
+		long now = System.nanoTime();
+		if (!file.equals(probedBackgroundFile)
+			|| now - probedBackgroundAtNanos >= BACKGROUND_PROBE_INTERVAL_NANOS) {
+			long backgroundModified = 0L;
 			try {
-				backgroundModified = Files.getLastModifiedTime(ConfigStore.resolveBackground(config.customBackgroundFile)).toMillis();
+				backgroundModified = Files.getLastModifiedTime(ConfigStore.resolveBackground(file)).toMillis();
 			} catch (IOException ignored) {
 			}
+			probedBackgroundFile = file;
+			probedBackgroundAtNanos = now;
+			probedBackgroundKey = file + ":" + backgroundModified;
 		}
-		return config.customBackgroundFile + ":" + backgroundModified;
+		return probedBackgroundKey;
+	}
+
+	private static void forgetBackgroundProbe() {
+		probedBackgroundFile = "";
+		probedBackgroundKey = NO_BACKGROUND_KEY;
+		probedBackgroundAtNanos = 0L;
 	}
 
 	private static String styleKey(
@@ -315,7 +434,7 @@ public final class InventoryTextureManager {
 	) {
 		return baseKey + ":" + backgroundKey + ":" + config.frameColor + ":" + config.frameOpacity
 			+ ":" + config.slotColor + ":" + config.slotOpacity + ":" + config.backgroundOpacity
-			+ ":static=" + config.removeAllInventoryAnimations;
+			+ ":static=" + InventoryAnimationController.suppressAllInventoryAnimations();
 	}
 
 	private static @Nullable AnimationFrame backgroundFrame(final InventoryTweaksConfig config) {
@@ -323,7 +442,9 @@ public final class InventoryTextureManager {
 			return null;
 		}
 		return background.frameAt(
-			config.removeAllInventoryAnimations ? 0L : System.currentTimeMillis() - animationStartedAt
+			InventoryAnimationController.suppressAllInventoryAnimations()
+				? 0L
+				: VisualPerformanceController.animatedBackgroundTime(System.currentTimeMillis() - animationStartedAt)
 		);
 	}
 
@@ -505,54 +626,62 @@ public final class InventoryTextureManager {
 	}
 
 	private static boolean isContainerSlotPixel(final int x, final int y, final int rows) {
-		for (int row = 0; row < rows; row++) {
-			for (int column = 0; column < 9; column++) {
-				if (inside(x, y, 7 + column * 18, 17 + row * 18, 18, 18)) {
-					return true;
-				}
+		return containerSlotMask(rows)[x + y * TEXTURE_SIZE];
+	}
+
+	private static boolean[] containerSlotMask(final int rows) {
+		boolean[] mask = CONTAINER_SLOT_MASKS[rows];
+		if (mask == null) {
+			mask = new boolean[TEXTURE_SIZE * TEXTURE_SIZE];
+			for (int row = 0; row < rows; row++) {
+				markSlotRow(mask, 17 + row * 18);
 			}
-		}
-		for (int row = 0; row < 3; row++) {
-			for (int column = 0; column < 9; column++) {
-				if (inside(x, y, 7 + column * 18, 139 + row * 18, 18, 18)) {
-					return true;
-				}
+			for (int row = 0; row < 3; row++) {
+				markSlotRow(mask, 139 + row * 18);
 			}
+			markSlotRow(mask, 197);
+			CONTAINER_SLOT_MASKS[rows] = mask;
 		}
-		for (int column = 0; column < 9; column++) {
-			if (inside(x, y, 7 + column * 18, 197, 18, 18)) {
-				return true;
-			}
-		}
-		return false;
+		return mask;
 	}
 
 	private static boolean isSlotPixel(final int x, final int y) {
+		return INVENTORY_SLOT_MASK[x + y * TEXTURE_SIZE];
+	}
+
+	private static boolean[] createInventorySlotMask() {
+		boolean[] mask = new boolean[TEXTURE_SIZE * TEXTURE_SIZE];
 		for (int row = 0; row < 3; row++) {
-			for (int column = 0; column < 9; column++) {
-				if (inside(x, y, 7 + column * 18, 83 + row * 18, 18, 18)) {
-					return true;
-				}
-			}
+			markSlotRow(mask, 83 + row * 18);
 		}
-		for (int column = 0; column < 9; column++) {
-			if (inside(x, y, 7 + column * 18, 141, 18, 18)) {
-				return true;
-			}
-		}
+		markSlotRow(mask, 141);
 		for (int row = 0; row < 4; row++) {
-			if (inside(x, y, 7, 7 + row * 18, 18, 18)) {
-				return true;
-			}
+			markSlot(mask, 7, 7 + row * 18);
 		}
 		for (int row = 0; row < 2; row++) {
 			for (int column = 0; column < 2; column++) {
-				if (inside(x, y, 97 + column * 18, 17 + row * 18, 18, 18)) {
-					return true;
-				}
+				markSlot(mask, 97 + column * 18, 17 + row * 18);
 			}
 		}
-		return inside(x, y, 153, 27, 18, 18) || inside(x, y, 76, 61, 18, 18);
+		markSlot(mask, 153, 27);
+		markSlot(mask, 76, 61);
+		return mask;
+	}
+
+	private static void markSlotRow(final boolean[] mask, final int top) {
+		for (int column = 0; column < 9; column++) {
+			markSlot(mask, 7 + column * 18, top);
+		}
+	}
+
+	private static void markSlot(final boolean[] mask, final int left, final int top) {
+		int right = Math.min(TEXTURE_SIZE, left + 18);
+		int bottom = Math.min(TEXTURE_SIZE, top + 18);
+		for (int y = Math.max(0, top); y < bottom; y++) {
+			for (int x = Math.max(0, left); x < right; x++) {
+				mask[x + y * TEXTURE_SIZE] = true;
+			}
+		}
 	}
 
 	private static final class SurfaceTextureState {
@@ -684,10 +813,6 @@ public final class InventoryTextureManager {
 			this.texture.upload();
 			this.renderedFrame = frame;
 		}
-	}
-
-	private static boolean inside(final int x, final int y, final int left, final int top, final int width, final int height) {
-		return x >= left && x < left + width && y >= top && y < top + height;
 	}
 
 	private static int tint(final int pixel, final int color, final int opacity) {

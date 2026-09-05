@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import dev.zymekoh.kohsinventorytweaks.render.VisualPerformanceController;
 
 public final class IssuesTrackerScreen extends Screen {
 	private static final long ENTRANCE_NANOS = 280_000_000L;
@@ -169,7 +170,7 @@ public final class IssuesTrackerScreen extends Screen {
 		final int width,
 		final int height
 	) {
-		boolean blocking = issue.severity() == CompatibilityIssue.Severity.BLOCKING;
+		int severityColor = CompatibilitySeverityIcons.colorFor(issue.severity());
 		UiRender.panel(
 			graphics,
 			x,
@@ -178,7 +179,7 @@ public final class IssuesTrackerScreen extends Screen {
 			height,
 			8,
 			UiTheme.GLASS_LIGHT,
-			blocking ? UiTheme.DANGER : UiTheme.ACCENT_SOFT
+			severityColor
 		);
 		int iconSize = width < 300 ? 30 : 40;
 		Identifier icon = this.icons.load(issue.modId());
@@ -190,18 +191,33 @@ public final class IssuesTrackerScreen extends Screen {
 		}
 		int textX = x + iconSize + 18;
 		int textWidth = Math.max(48, width - iconSize - 28);
-		Component status = Component.translatable(blocking
-			? "screen.kohs_inventory_tweaks.issues_tracker.status.blocking"
-			: "screen.kohs_inventory_tweaks.issues_tracker.status.adaptable");
+		Component status = Component.translatable(CompatibilitySeverityIcons.statusKey(issue.severity()));
 		int statusWidth = this.font.width(status);
-		String displayName = this.font.plainSubstrByWidth(issue.modName(), Math.max(12, textWidth - statusWidth - 10));
+		int severityIconSize = 14;
+		int severityIconX = x + width - 8 - severityIconSize;
+		int statusX = severityIconX - 4 - statusWidth;
+		String displayName = this.font.plainSubstrByWidth(issue.modName(), Math.max(12, statusX - textX - 5));
 		graphics.drawString(this.font, Component.literal(displayName), textX, y + 9, UiTheme.TEXT, false);
+		graphics.blit(
+			RenderPipelines.GUI_TEXTURED,
+			CompatibilitySeverityIcons.textureFor(issue.severity()),
+			severityIconX,
+			y + 6,
+			0.0F,
+			0.0F,
+			severityIconSize,
+			severityIconSize,
+			128,
+			128,
+			128,
+			128
+		);
 		graphics.drawString(
 			this.font,
 			status,
-			x + width - 9 - this.font.width(status),
+			statusX,
 			y + 9,
-			blocking ? UiTheme.DANGER : UiTheme.ACCENT_BRIGHT,
+			severityColor,
 			false
 		);
 		graphics.drawString(
@@ -241,13 +257,16 @@ public final class IssuesTrackerScreen extends Screen {
 	}
 
 	private int cardHeight(final CompatibilityIssue issue) {
-		int width = Math.max(80, this.panelWidth - 44);
-		int reasonLines = this.font.split(Component.translatable(issue.reason().translationKey()), width).size();
+		int cardWidth = Math.max(1, this.panelWidth - 24);
+		int textWidth = Math.max(1, cardWidth - 20);
+		int iconSize = cardWidth < 300 ? 30 : 40;
+		int reasonTop = Math.max(48, iconSize + 15);
+		int reasonLines = this.font.split(Component.translatable(issue.reason().translationKey()), textWidth).size();
 		int pointLines = this.font.split(
 			Component.translatable("screen.kohs_inventory_tweaks.issues_tracker.points", String.join(", ", issue.conflictPoints())),
-			width
+			textWidth
 		).size();
-		return Math.max(86, 54 + reasonLines * 10 + pointLines * 10);
+		return Math.max(86, reasonTop + reasonLines * 10 + 3 + pointLines * 10 + 8);
 	}
 
 	private void drawScrollbar(final GuiGraphics graphics) {
@@ -267,7 +286,7 @@ public final class IssuesTrackerScreen extends Screen {
 			return;
 		}
 		Random random = new Random(0x495353554553L);
-		int count = Mth.clamp(this.width * this.height / 6800, 28, 50);
+		int count = VisualPerformanceController.particleCount(Mth.clamp(this.width * this.height / 6800, 28, 50));
 		for (int i = 0; i < count; i++) {
 			this.particles.add(new FloatingParticle(
 				random.nextFloat() * Math.max(1, this.width),

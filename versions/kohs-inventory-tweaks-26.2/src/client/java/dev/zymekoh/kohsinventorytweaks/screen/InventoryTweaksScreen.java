@@ -6,14 +6,17 @@ import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.CursorPoint;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.TextureSource;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorTarget;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
-import dev.zymekoh.kohsinventorytweaks.integration.HerziumIntegration;
 import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.CropSettings;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.PreparedMedia;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
+import dev.zymekoh.kohsinventorytweaks.render.VisualPerformanceController;
+import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -33,6 +36,10 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
@@ -59,8 +66,10 @@ public final class InventoryTweaksScreen extends Screen {
 	private static final int CUSTOM_BACKGROUND_CARD_Y = CUSTOM_SLOT_CARD_Y + CUSTOM_LAYER_CARD_HEIGHT + 8;
 	private static final int CUSTOM_BACKGROUND_CARD_HEIGHT = 126;
 	private static final int CUSTOM_BACKDROP_CARD_Y = CUSTOM_BACKGROUND_CARD_Y + CUSTOM_BACKGROUND_CARD_HEIGHT + 8;
-	private static final int CUSTOM_BACKDROP_CARD_HEIGHT = 78;
-	private static final int CUSTOM_CONTENT_HEIGHT = CUSTOM_BACKDROP_CARD_Y + CUSTOM_BACKDROP_CARD_HEIGHT;
+	private static final int CUSTOM_BACKDROP_CARD_HEIGHT = 108;
+	private static final int CUSTOM_PLAYER_GLOW_CARD_Y = CUSTOM_BACKDROP_CARD_Y + CUSTOM_BACKDROP_CARD_HEIGHT + 8;
+	private static final int CUSTOM_PLAYER_GLOW_CARD_HEIGHT = 64;
+	private static final int CUSTOM_CONTENT_HEIGHT = CUSTOM_PLAYER_GLOW_CARD_Y + CUSTOM_PLAYER_GLOW_CARD_HEIGHT;
 	private static final CustomizationPreview[] CUSTOMIZATION_PREVIEWS = CustomizationPreview.values();
 
 	private final Screen parent;
@@ -91,8 +100,6 @@ public final class InventoryTweaksScreen extends Screen {
 	private int cursorCardY;
 	private int tweakCardX;
 	private int tweakCardY;
-	private int herziumCardX;
-	private int herziumCardY;
 	private int issuesCardX;
 	private int issuesCardY;
 	private int customizationCardX;
@@ -152,6 +159,7 @@ public final class InventoryTweaksScreen extends Screen {
 	private int tweakFirstCardY;
 	private int tweakCardHeight;
 	private int tweakCardGap;
+	private int tweakStatusY;
 	private int customizationPreviewX;
 	private int customizationPreviewY;
 	private int customizationPreviewWidth;
@@ -216,7 +224,6 @@ public final class InventoryTweaksScreen extends Screen {
 		GUI_SCALER_WARNING,
 		CUSTOMIZATION_WARNING,
 		ANIMATIONS_WARNING,
-		HERZIUM_WARNING,
 		WARNING
 	}
 
@@ -228,6 +235,9 @@ public final class InventoryTweaksScreen extends Screen {
 		// was the first feature opened, making saved items look missing and later
 		// overwriting unrelated settings with defaults.
 		this.working = ConfigStore.get().copy();
+		// Force the first preview frame to be composed from the values loaded from
+		// disk instead of reusing a dynamic texture left by another inventory pass.
+		InventoryTextureManager.invalidateConfiguration();
 	}
 
 	@Override
@@ -253,7 +263,6 @@ public final class InventoryTweaksScreen extends Screen {
 			case GUI_SCALER_WARNING -> this.addGuiScalerWarningButtons();
 			case CUSTOMIZATION_WARNING -> this.addCustomizationWarningButtons();
 			case ANIMATIONS_WARNING -> this.addAnimationsWarningButtons();
-			case HERZIUM_WARNING -> this.addHerziumWarningButtons();
 			case WARNING -> this.addWarningButtons();
 		}
 	}
@@ -316,8 +325,6 @@ public final class InventoryTweaksScreen extends Screen {
 				this.drawCustomizationWarning(graphics);
 			} else if (this.modal == Modal.ANIMATIONS_WARNING) {
 				this.drawAnimationsWarning(graphics);
-			} else if (this.modal == Modal.HERZIUM_WARNING) {
-				this.drawHerziumWarning(graphics);
 			}
 			super.extractRenderState(graphics, mouseX, mouseY, a);
 			this.drawActiveScrollFades(graphics);
@@ -440,13 +447,6 @@ public final class InventoryTweaksScreen extends Screen {
 		} else if (this.modal == Modal.ANIMATIONS_WARNING) {
 			this.modal = Modal.TWEAKS;
 			this.rebuildWidgets();
-		} else if (this.modal == Modal.HERZIUM_WARNING) {
-			this.modal = Modal.NONE;
-			this.rebuildWidgets();
-		} else if (this.modal == Modal.CROP) {
-			this.cancelCrop();
-		} else {
-			this.attemptCloseModal();
 		}
 		return true;
 	}
@@ -488,16 +488,17 @@ public final class InventoryTweaksScreen extends Screen {
 			this.cursorCardX,
 			this.cursorCardY,
 			true,
+			CompatibilityFeature.CURSOR_LANDING,
 			"screen.kohs_inventory_tweaks.cursor_landing",
 			"screen.kohs_inventory_tweaks.cursor_landing.description",
 			button -> this.openModal(Modal.CURSOR),
 			GlassButton.Variant.NORMAL
 		);
-		this.addHerziumButton();
 		this.addMainFeatureButton(
 			this.tweakCardX,
 			this.tweakCardY,
 			true,
+			CompatibilityFeature.INVENTORY_TWEAKS,
 			"screen.kohs_inventory_tweaks.inventory_tweaks",
 			"screen.kohs_inventory_tweaks.inventory_tweaks.description",
 			button -> this.openModal(Modal.TWEAKS),
@@ -507,6 +508,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.issuesCardX,
 			this.issuesCardY,
 			true,
+			null,
 			"screen.kohs_inventory_tweaks.issues_tracker",
 			"screen.kohs_inventory_tweaks.issues_tracker.description",
 			button -> this.minecraft.gui.setScreen(new IssuesTrackerScreen(this)),
@@ -516,6 +518,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.customizationCardX,
 			this.customizationCardY,
 			false,
+			CompatibilityFeature.CUSTOMIZATION,
 			"screen.kohs_inventory_tweaks.customization",
 			"screen.kohs_inventory_tweaks.customization.description",
 			button -> this.openCustomizationWarning(),
@@ -525,6 +528,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.itemHighlighterCardX,
 			this.itemHighlighterCardY,
 			false,
+			CompatibilityFeature.ITEM_HIGHLIGHTER,
 			"screen.kohs_inventory_tweaks.item_highlighter",
 			"screen.kohs_inventory_tweaks.item_highlighter.description",
 			button -> this.minecraft.gui.setScreen(new ItemHighlighterScreen(
@@ -541,6 +545,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.guiScalerCardX,
 			this.guiScalerCardY,
 			false,
+			CompatibilityFeature.GUI_SCALER,
 			"screen.kohs_inventory_tweaks.gui_scaler",
 			"screen.kohs_inventory_tweaks.gui_scaler.description",
 			button -> this.openGuiScaler(),
@@ -583,6 +588,7 @@ public final class InventoryTweaksScreen extends Screen {
 		final int x,
 		final int y,
 		final boolean leftRail,
+		final CompatibilityFeature feature,
 		final String titleKey,
 		final String descriptionKey,
 		final Button.OnPress onPress,
@@ -594,6 +600,10 @@ public final class InventoryTweaksScreen extends Screen {
 		int railWidth = leftRail ? this.mainLeftRailWidth : this.mainRightRailWidth;
 		int visibleTop = railY + 22;
 		int visibleBottom = railY + railHeight - 5;
+		boolean available = feature == null || CompatibilityIssueManager.isFeatureAvailable(feature);
+		Component description = Component.translatable(available
+			? descriptionKey
+			: "screen.kohs_inventory_tweaks.compatibility.feature_disabled");
 		GlassButton button = new GlassButton(
 			x,
 			y,
@@ -602,41 +612,14 @@ public final class InventoryTweaksScreen extends Screen {
 			Component.translatable(titleKey),
 			onPress,
 			variant
-		).setSubtitle(Component.translatable(descriptionKey))
+		).setSubtitle(description)
 			.setClipBounds(railX + 2, visibleTop, railX + railWidth - 2, visibleBottom);
-		button.setTooltip(Tooltip.create(Component.translatable(descriptionKey)));
+		button.active = available;
+		button.setTooltip(Tooltip.create(description));
 		button.setTooltipDelay(Duration.ofMillis(220));
 		button.visible = y + this.mainCardHeight > visibleTop && y < visibleBottom;
 		this.addRenderableWidget(button);
 		(leftRail ? this.mainLeftScrollingWidgets : this.mainRightScrollingWidgets).add(button);
-	}
-
-	private void addHerziumButton() {
-		int visibleTop = this.mainLeftRailY + 22;
-		int visibleBottom = this.mainLeftRailY + this.mainLeftRailHeight - 5;
-		boolean installed = HerziumIntegration.installed();
-		HerziumButton button = new HerziumButton(
-			this.herziumCardX,
-			this.herziumCardY,
-			this.mainCardWidth,
-			this.mainCardHeight,
-			Component.translatable("screen.kohs_inventory_tweaks.herzium"),
-			pressed -> this.openHerzium(),
-			installed
-		).setClipBounds(
-			this.mainLeftRailX + 2,
-			visibleTop,
-			this.mainLeftRailX + this.mainLeftRailWidth - 2,
-			visibleBottom
-		);
-		button.setTooltip(Tooltip.create(Component.translatable(installed
-			? "screen.kohs_inventory_tweaks.herzium.description.installed"
-			: "screen.kohs_inventory_tweaks.herzium.description.missing")));
-		button.setTooltipDelay(Duration.ofMillis(220));
-		button.visible = this.herziumCardY + this.mainCardHeight > visibleTop
-			&& this.herziumCardY < visibleBottom;
-		this.addRenderableWidget(button);
-		this.mainLeftScrollingWidgets.add(button);
 	}
 
 	private void addCursorModalButtons() {
@@ -689,6 +672,27 @@ public final class InventoryTweaksScreen extends Screen {
 			));
 		}
 
+		if (this.selectedTarget == CursorTarget.INVENTORY) {
+			GlassButton landingItem = new GlassButton(
+				this.cursorToggleX,
+				this.cursorToggleY,
+				this.cursorToggleWidth,
+				this.cursorToggleHeight,
+				this.landingItemLabel(),
+				button -> {
+					this.toggleLandingItem();
+					button.setMessage(this.landingItemLabel());
+				},
+				GlassButton.Variant.TOGGLE,
+				() -> this.working.inventoryLandingItem != null
+			);
+			landingItem.setTooltip(Tooltip.create(
+				Component.translatable("screen.kohs_inventory_tweaks.cursor.landing_item.description")
+			));
+			landingItem.setTooltipDelay(Duration.ofMillis(220));
+			this.addRenderableWidget(landingItem);
+		}
+
 		if (this.selectedTarget != CursorTarget.INVENTORY) {
 			this.addRenderableWidget(new GlassButton(
 				this.cursorToggleX,
@@ -722,11 +726,13 @@ public final class InventoryTweaksScreen extends Screen {
 				button.setMessage(this.centerFixLabel());
 				this.persistWorking();
 			},
-			() -> this.working.centerMouseFix
+			() -> this.working.centerMouseFix,
+			CompatibilityFeature.INVENTORY_TWEAKS
 		);
 		this.addTweakToggle(
 			this.tweakOptionsX + this.tweakOptionsWidth - toggleWidth - 10,
-			this.tweakFirstCardY + this.tweakCardHeight + this.tweakCardGap + Math.max(7, (this.tweakCardHeight - 24) / 2),
+			this.tweakFirstCardY + this.tweakCardHeight + this.tweakCardGap
+				+ Math.max(7, (this.tweakCardHeight - 24) / 2),
 			toggleWidth,
 			this.superFastInventoryLabel(),
 			"screen.kohs_inventory_tweaks.super_fast_inventory.description",
@@ -735,7 +741,8 @@ public final class InventoryTweaksScreen extends Screen {
 				button.setMessage(this.superFastInventoryLabel());
 				this.persistWorking();
 			},
-			() -> this.working.superFastInventory
+			() -> this.working.superFastInventory,
+			CompatibilityFeature.INVENTORY_TWEAKS
 		);
 		this.addTweakToggle(
 			this.tweakOptionsX + this.tweakOptionsWidth - toggleWidth - 10,
@@ -754,7 +761,8 @@ public final class InventoryTweaksScreen extends Screen {
 					this.rebuildWidgets();
 				}
 			},
-			() -> this.working.removeAllInventoryAnimations
+			() -> this.working.removeAllInventoryAnimations,
+			null
 		);
 		this.addFooterButtons(Modal.TWEAKS);
 	}
@@ -766,10 +774,16 @@ public final class InventoryTweaksScreen extends Screen {
 		final Component label,
 		final String descriptionKey,
 		final Button.OnPress onPress,
-		final BooleanSupplier selected
+		final BooleanSupplier selected,
+		final CompatibilityFeature requiredFeature
 	) {
 		GlassButton button = new GlassButton(x, y, width, 24, label, onPress, GlassButton.Variant.SWITCH, selected);
-		button.setTooltip(Tooltip.create(Component.translatable(descriptionKey)));
+		boolean available = requiredFeature == null
+			|| CompatibilityIssueManager.isFeatureAvailable(requiredFeature);
+		button.active = available;
+		button.setTooltip(Tooltip.create(Component.translatable(available
+			? descriptionKey
+			: "screen.kohs_inventory_tweaks.compatibility.feature_disabled")));
 		button.setTooltipDelay(Duration.ofMillis(220));
 		this.addRenderableWidget(button);
 	}
@@ -902,6 +916,30 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.backdrop.opacity",
 			this.working.inventoryBackdropOpacity,
 			value -> this.working.inventoryBackdropOpacity = value
+		);
+		if (this.working.visiblePlayerGlowEnabled) {
+			this.addCustomizationSlider(
+				backdropY + 78,
+				controlX,
+				controlWidth,
+				"screen.kohs_inventory_tweaks.backdrop.player_depth_intensity",
+				this.working.visiblePlayerDepthIntensity,
+				value -> this.working.visiblePlayerDepthIntensity = value
+			);
+		}
+
+		int playerGlowY = contentY + CUSTOM_PLAYER_GLOW_CARD_Y;
+		this.addCustomizationButton(
+			controlX,
+			playerGlowY + 35,
+			controlWidth,
+			Component.translatable("screen.kohs_inventory_tweaks.advanced.configure"),
+			button -> {
+				this.persistWorking();
+				this.minecraft.gui.setScreen(AdvancedSettingsScreen.playerGlow(this));
+			},
+			true,
+			GlassButton.Variant.PRIMARY
 		);
 		this.addFooterButtons(Modal.CUSTOMIZATION);
 	}
@@ -1155,34 +1193,6 @@ public final class InventoryTweaksScreen extends Screen {
 		));
 	}
 
-	private void addHerziumWarningButtons() {
-		int gap = 8;
-		int buttonWidth = Math.min(168, Math.max(1, (this.warningWidth - 28 - gap) / 2));
-		int y = this.warningY + this.warningHeight - 32;
-		int startX = this.warningX + (this.warningWidth - buttonWidth * 2 - gap) / 2;
-		this.addRenderableWidget(new GlassButton(
-			startX,
-			y,
-			buttonWidth,
-			22,
-			Component.translatable("screen.kohs_inventory_tweaks.herzium.releases"),
-			button -> Util.getPlatform().openUri(HerziumIntegration.RELEASES_URL),
-			GlassButton.Variant.PRIMARY
-		));
-		this.addRenderableWidget(new GlassButton(
-			startX + buttonWidth + gap,
-			y,
-			buttonWidth,
-			22,
-			Component.translatable("gui.back"),
-			button -> {
-				this.modal = Modal.NONE;
-				this.rebuildWidgets();
-			},
-			GlassButton.Variant.NORMAL
-		));
-	}
-
 	private void addCustomizationSlider(
 		final int y,
 		final int x,
@@ -1350,14 +1360,22 @@ public final class InventoryTweaksScreen extends Screen {
 			this.mainRightMaxScroll
 		);
 
-		UiRender.panel(
+		// Keep the preview backing transparent. An opaque glass panel here made a
+		// correctly transparent frame/slot layer look filled when the menu opened.
+		UiRender.glow(
 			graphics,
 			this.mainPreviewX - 5,
 			this.mainPreviewY - 5,
 			this.mainPreviewWidth + 10,
 			this.mainPreviewHeight + 10,
 			8,
-			UiTheme.PREVIEW_GLASS,
+			22
+		);
+		graphics.outline(
+			this.mainPreviewX - 5,
+			this.mainPreviewY - 5,
+			this.mainPreviewWidth + 10,
+			this.mainPreviewHeight + 10,
 			UiTheme.BORDER_SOFT
 		);
 
@@ -1369,7 +1387,7 @@ public final class InventoryTweaksScreen extends Screen {
 			mouseX,
 			mouseY,
 			true,
-			ConfigStore.get()
+			this.working
 		);
 		graphics.centeredText(
 			this.font,
@@ -1378,6 +1396,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.textureSelectorY - 11,
 			UiTheme.TEXT_MUTED
 		);
+		this.drawFastOpenStatus(graphics);
 	}
 
 	private void drawMainRail(
@@ -1523,6 +1542,28 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.remove_animations",
 			"screen.kohs_inventory_tweaks.remove_animations.description"
 		);
+	}
+
+	/** Explains whether the most recent inventory press used the immediate path. */
+	private void drawFastOpenStatus(final GuiGraphicsExtractor graphics) {
+		Component status;
+		int color;
+		if (!this.working.superFastInventory) return;
+		if (SuperFastInventoryController.lastOpenWasImmediate()) {
+			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.immediate");
+			color = UiTheme.ACCENT_BRIGHT;
+		} else if (SuperFastInventoryController.lastOpenHadInputConflict()) {
+			List<String> mappings = SuperFastInventoryController.lastConflictMappings();
+			MutableComponent names = Component.empty();
+			for (int index = 0; index < mappings.size(); index++) {
+				if (index > 0) names.append(", ");
+				names.append(Component.translatable(mappings.get(index)));
+			}
+			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.conflict", names);
+			color = UiTheme.WARNING;
+		} else return;
+		List<FormattedCharSequence> lines = this.font.split(status, this.tweakOptionsWidth - 20);
+		if (!lines.isEmpty()) graphics.text(this.font, lines.getFirst(), this.tweakOptionsX + 10, this.tweakStatusY, color);
 	}
 
 	private void drawTweakCard(
@@ -1672,25 +1713,6 @@ public final class InventoryTweaksScreen extends Screen {
 		);
 	}
 
-	private void drawHerziumWarning(final GuiGraphicsExtractor graphics) {
-		UiRender.panel(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, 10, UiTheme.GLASS, UiTheme.WARNING);
-		graphics.centeredText(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.herzium.warning.title"),
-			this.warningX + this.warningWidth / 2,
-			this.warningY + 14,
-			UiTheme.WARNING
-		);
-		graphics.textWithWordWrap(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.herzium.warning.description"),
-			this.warningX + 14,
-			this.warningY + 34,
-			this.warningWidth - 28,
-			UiTheme.TEXT
-		);
-	}
-
 	private void drawCustomizationModal(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY) {
 		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
 		graphics.text(
@@ -1808,6 +1830,12 @@ public final class InventoryTweaksScreen extends Screen {
 			this.customizationOptionsX + 2,
 			this.customizationOptionsWidth - 6,
 			contentY + CUSTOM_BACKDROP_CARD_Y
+		);
+		this.drawCustomizationNavigationCard(
+			graphics,
+			this.customizationOptionsX + 2,
+			this.customizationOptionsWidth - 6,
+			contentY + CUSTOM_PLAYER_GLOW_CARD_Y
 		);
 		graphics.disableScissor();
 
@@ -1993,6 +2021,32 @@ public final class InventoryTweaksScreen extends Screen {
 		}
 	}
 
+	private void drawCustomizationNavigationCard(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int width,
+		final int y
+	) {
+		graphics.fill(x + 6, y, x + width - 6, y + 1, UiTheme.BORDER_SOFT);
+		graphics.text(
+			this.font,
+			Component.translatable("screen.kohs_inventory_tweaks.advanced.tab.player_glow"),
+			x + 8,
+			y + 8,
+			UiTheme.TEXT
+		);
+		graphics.text(
+			this.font,
+			this.font.plainSubstrByWidth(
+				Component.translatable("screen.kohs_inventory_tweaks.advanced.access.player_glow.description").getString(),
+				Math.max(1, width - 16)
+			),
+			x + 8,
+			y + 21,
+			UiTheme.TEXT_MUTED
+		);
+	}
+
 	private void drawBackdropPreview(
 		final GuiGraphicsExtractor graphics,
 		final int x,
@@ -2108,6 +2162,7 @@ public final class InventoryTweaksScreen extends Screen {
 				this.minecraft.player
 			);
 			String hoveredDynamicItem = null;
+			Slot hoveredPreviewSlot = null;
 			if (followMouse && scale > 0.0F) {
 				double localMouseX = (mouseX - x) / scale;
 				double localMouseY = (mouseY - y) / scale;
@@ -2123,15 +2178,14 @@ public final class InventoryTweaksScreen extends Screen {
 						if (hoveredHighlight != null && hoveredHighlight.dynamicHighlight) {
 							hoveredDynamicItem = hoveredHighlight.itemId;
 						}
+						hoveredPreviewSlot = slot;
 						break;
 					}
 				}
 			}
 			for (Slot slot : this.minecraft.player.inventoryMenu.slots) {
 				if (slot.isActive() && !slot.getItem().isEmpty()) {
-					InventoryTweaksConfig.ItemHighlight highlight = visualConfig.findItemHighlight(
-						BuiltInRegistries.ITEM.getKey(slot.getItem().getItem()).toString()
-					);
+					InventoryTweaksConfig.ItemHighlight highlight = ItemHighlighterController.highlightFor(visualConfig, slot.getItem());
 					boolean renderHighlight = highlight != null
 						&& (!highlight.dynamicHighlight || highlight.itemId.equals(hoveredDynamicItem));
 					if (renderHighlight) {
@@ -2141,6 +2195,9 @@ public final class InventoryTweaksScreen extends Screen {
 					graphics.itemDecorations(this.font, slot.getItem(), slot.x, slot.y);
 					if (renderHighlight) {
 						ItemHighlighterController.drawHighlightLayer(graphics, slot.x - 1, slot.y - 1, 18, highlight, true);
+					}
+					if (slot == hoveredPreviewSlot) {
+						AccessibilityRenderController.drawPreviewFocus(graphics, slot.x, slot.y, visualConfig);
 					}
 				}
 			}
@@ -2348,7 +2405,7 @@ public final class InventoryTweaksScreen extends Screen {
 		this.mainCardWidth = Math.max(1, railWidth - 10);
 		this.mainCardHeight = this.compactMain ? 23 : 36;
 		int cardGap = this.compactMain ? 5 : 7;
-		int leftRailContentHeight = this.mainCardHeight * 4 + cardGap * 3;
+		int leftRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
 		int rightRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
 		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 27);
 		this.mainLeftMaxScroll = Math.max(0, leftRailContentHeight - railVisibleHeight);
@@ -2363,10 +2420,8 @@ public final class InventoryTweaksScreen extends Screen {
 		this.cursorCardY = railContentTop - this.mainLeftScroll;
 		this.tweakCardX = this.cursorCardX;
 		this.tweakCardY = this.cursorCardY + this.mainCardHeight + cardGap;
-		this.herziumCardX = this.cursorCardX;
 		this.issuesCardX = this.cursorCardX;
 		this.issuesCardY = this.tweakCardY + this.mainCardHeight + cardGap;
-		this.herziumCardY = this.issuesCardY + this.mainCardHeight + cardGap;
 		this.customizationCardX = this.mainRightRailX + 5;
 		this.customizationCardY = railContentTop - this.mainRightScroll;
 		this.itemHighlighterCardX = this.customizationCardX;
@@ -2446,11 +2501,13 @@ public final class InventoryTweaksScreen extends Screen {
 		this.tweakOptionsX = this.panelX + (this.panelWidth - this.tweakOptionsWidth) / 2;
 
 		this.tweakCardGap = this.compactModal ? 4 : 8;
-		int maximumCardHeight = Math.max(24, (contentHeight - this.tweakCardGap * 2) / 3);
+		int statusHeight = 14;
+		int maximumCardHeight = Math.max(24, (contentHeight - statusHeight - this.tweakCardGap * 2) / 3);
 		int minimumCardHeight = Math.min(this.compactModal ? 42 : 48, maximumCardHeight);
 		this.tweakCardHeight = Mth.clamp(maximumCardHeight, minimumCardHeight, 68);
 		int cardsHeight = this.tweakCardHeight * 3 + this.tweakCardGap * 2;
-		this.tweakFirstCardY = this.contentTop + Math.max(0, (contentHeight - cardsHeight) / 2);
+		this.tweakFirstCardY = this.contentTop + Math.max(0, (contentHeight - statusHeight - cardsHeight) / 2);
+		this.tweakStatusY = this.tweakFirstCardY + cardsHeight + 4;
 	}
 
 	private void calculateGuiScalerLayout() {
@@ -2460,10 +2517,10 @@ public final class InventoryTweaksScreen extends Screen {
 		this.guiScalerToggleY = this.contentTop;
 
 		this.guiScalerActualScale = this.working.inventoryGuiScalerEnabled
-			? Math.min(
-				InventoryGuiScaler.clampConfiguredScale(this.working.inventoryGuiScale),
-				InventoryGuiScaler.maximumScaleFor(this.width, this.height)
-			)
+			? InventoryGuiScaler.configuredPhysicalScale(this.width, this.height, this.working)
+			: 1.0;
+		double surfaceScale = this.working.inventoryGuiScalerEnabled
+			? InventoryGuiScaler.appliedScale(this.width, this.height, this.working)
 			: 1.0;
 		this.guiScalerSliderWidth = Math.min(390, Math.max(80, contentWidth - 32));
 		this.guiScalerSliderX = this.panelX + (this.panelWidth - this.guiScalerSliderWidth) / 2;
@@ -2475,11 +2532,11 @@ public final class InventoryTweaksScreen extends Screen {
 		availableWidth = Math.max(20, availableWidth);
 		int availableHeight = Math.max(20, previewBottom - previewTop);
 		float fittedScale = Math.min(
-			(float) this.guiScalerActualScale,
+			(float) surfaceScale,
 			Math.min(availableWidth / (float) INVENTORY_WIDTH, availableHeight / (float) INVENTORY_HEIGHT)
 		);
 		this.guiScalerPreviewScale = Math.max(0.12F, fittedScale);
-		this.guiScalerPreviewFitted = this.guiScalerPreviewScale + 0.001F < this.guiScalerActualScale;
+		this.guiScalerPreviewFitted = this.guiScalerPreviewScale + 0.001F < surfaceScale;
 		this.guiScalerPreviewWidth = Math.round(INVENTORY_WIDTH * this.guiScalerPreviewScale);
 		this.guiScalerPreviewHeight = Math.round(INVENTORY_HEIGHT * this.guiScalerPreviewScale);
 		this.guiScalerPreviewX = previewAreaX + (availableWidth - this.guiScalerPreviewWidth) / 2;
@@ -2561,7 +2618,7 @@ public final class InventoryTweaksScreen extends Screen {
 			return;
 		}
 		Random random = new Random(0x4B4F4853L);
-		int count = Mth.clamp(this.width * this.height / 7600, 24, 42);
+		int count = VisualPerformanceController.particleCount(Mth.clamp(this.width * this.height / 7600, 24, 42));
 		for (int i = 0; i < count; i++) {
 			this.particles.add(new FloatingParticle(
 				random.nextFloat() * Math.max(1, this.width),
@@ -2643,6 +2700,10 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void openModal(final Modal nextModal) {
+		if (nextModal == Modal.CURSOR
+			&& !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CURSOR_LANDING)) {
+			return;
+		}
 		this.working = ConfigStore.get().copy();
 		if (nextModal == Modal.CUSTOMIZATION) {
 			this.customizationSmoothScroll.snapTo(0.0);
@@ -2657,16 +2718,6 @@ public final class InventoryTweaksScreen extends Screen {
 	private void openCustomizationWarning() {
 		this.working = ConfigStore.get().copy();
 		this.modal = Modal.CUSTOMIZATION_WARNING;
-		this.rebuildWidgets();
-	}
-
-	private void openHerzium() {
-		Screen herziumScreen = HerziumIntegration.createConfigScreen(this);
-		if (herziumScreen != null) {
-			this.minecraft.gui.setScreen(herziumScreen);
-			return;
-		}
-		this.modal = Modal.HERZIUM_WARNING;
 		this.rebuildWidgets();
 	}
 
@@ -2688,6 +2739,10 @@ public final class InventoryTweaksScreen extends Screen {
 	void reloadConfigurationFromStore() {
 		this.working = ConfigStore.get().copy();
 		this.modal = Modal.NONE;
+	}
+
+	void refreshConfigurationFromStore() {
+		this.working = ConfigStore.get().copy();
 	}
 
 	private void selectTarget(final CursorTarget target) {
@@ -2734,6 +2789,27 @@ public final class InventoryTweaksScreen extends Screen {
 
 	private boolean isSelectedCursorEnabled() {
 		return this.working.isCursorEnabled(this.selectedTarget);
+	}
+
+	private void toggleLandingItem() {
+		if (this.working.inventoryLandingItem != null || this.minecraft.player == null) {
+			this.working.inventoryLandingItem = null;
+			this.persistWorking();
+			return;
+		}
+		ItemStack held = this.minecraft.player.getMainHandItem();
+		if (held.isEmpty()) return;
+		this.working.inventoryLandingItem = BuiltInRegistries.ITEM.getKey(held.getItem()).toString();
+		this.persistWorking();
+	}
+
+	private Component landingItemLabel() {
+		String itemId = this.working.inventoryLandingItem;
+		if (itemId == null) return Component.translatable("screen.kohs_inventory_tweaks.cursor.landing_item.off");
+		Identifier identifier = Identifier.tryParse(itemId);
+		Item item = identifier == null ? null : BuiltInRegistries.ITEM.getValue(identifier);
+		return Component.translatable("screen.kohs_inventory_tweaks.cursor.landing_item.on",
+			item == null ? Component.literal(itemId) : Component.translatable(item.getDescriptionId()));
 	}
 
 	private Component cursorToggleLabel() {

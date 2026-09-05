@@ -1,6 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
-import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.render.InventoryAnimationController;
 import java.util.List;
 import net.minecraft.client.gui.screens.inventory.CyclingSlotBackground;
 import net.minecraft.resources.ResourceLocation;
@@ -20,7 +20,7 @@ public abstract class CyclingSlotBackgroundMixin {
 		final List<ResourceLocation> icons,
 		final CallbackInfo callbackInfo
 	) {
-		if (ConfigStore.get().removeAllInventoryAnimations) {
+		if (InventoryAnimationController.suppressAllInventoryAnimations()) {
 			this.tick = 0;
 			this.iconIndex = 0;
 		}

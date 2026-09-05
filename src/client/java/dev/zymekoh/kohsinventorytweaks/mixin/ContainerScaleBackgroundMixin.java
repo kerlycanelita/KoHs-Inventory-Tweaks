@@ -32,12 +32,7 @@ public abstract class ContainerScaleBackgroundMixin {
 	) {
 		Screen screen = (Screen) (Object) this;
 		float scale = (float) InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get());
-		float centerX = screen.width * 0.5F;
-		float centerY = screen.height * 0.5F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(centerX, centerY);
-		graphics.pose().scale(scale, scale);
-		graphics.pose().translate(-centerX, -centerY);
+		InventoryGuiScaler.beginScaledSurface(graphics, screen.width * 0.5F, screen.height * 0.5F, scale);
 	}
 
 	@Inject(method = "extractBackground", at = @At("RETURN"))
@@ -48,6 +43,6 @@ public abstract class ContainerScaleBackgroundMixin {
 		final float a,
 		final CallbackInfo callbackInfo
 	) {
-		graphics.pose().popMatrix();
+		InventoryGuiScaler.endScaledSurface(graphics);
 	}
 }

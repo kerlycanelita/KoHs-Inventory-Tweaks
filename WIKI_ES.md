@@ -79,20 +79,15 @@ Chest, Shulker Box, Ender Chest y Barrel tienen interruptores independientes. Si
 
 ### Center Mouse Fix
 
-Minecraft o algún mod puede producir un evento de centrado mientras se abre el inventario del jugador. Center Mouse Fix mantiene una ventana de verificación de aproximadamente 100 ms y restaura una sola vez la posición configurada si detecta ese evento.
+Center Mouse Fix entrega a `MouseHandler#releaseMouse` la posición personalizada o centrada Vanilla exactamente una vez por cada apertura del inventario del jugador. No refina la posición durante la inicialización, no verifica frames renderizados ni aplica interpolación o correcciones posteriores.
 
-No genera efecto de arrastre, no bloquea los movimientos posteriores del jugador y no afecta cofres, Ender Chests, barriles ni otros contenedores. También funciona con la posición central Vanilla del inventario cuando no existe una posición personalizada.
+No genera efecto de arrastre, no bloquea los movimientos posteriores del jugador y no afecta cofres, Ender Chests, barriles ni otros contenedores. Una posición configurada aparte en Cursor Landing sigue siendo solamente una colocación visual local y nunca cambia una acción del inventario.
 
-### SuperFastInventory
+### Inventario superrápido
 
-SuperFastInventory elimina la espera innecesaria al crear la pantalla local del inventario y protege las combinaciones rápidas de inventario y offhand:
+Al activarlo, la pulsación física de la tecla del inventario —o un botón del mouse reasignado— construye inmediatamente el `InventoryScreen` local en lugar de esperar al siguiente tick del cliente. Consume únicamente el clic lógico de inventario que Vanilla acaba de encolar para impedir una apertura duplicada. Si offhand, hotbar, ataque, uso, soltar o recoger ya están encolados en ese tick, KoHs no adelanta la apertura y deja que Vanilla procese el lote completo. No encola offhand, no inventa clics, no reintenta acciones, no reinicia cooldowns ni envía paquetes directamente. Los inventarios controlados por el servidor siempre conservan su ruta Vanilla.
 
-- Conserva durante 125 ms una pulsación de offhand realizada casi al mismo tiempo que la tecla de inventario.
-- Espera a que Minecraft haya calculado el slot real bajo el cursor.
-- Ejecuta una única acción Vanilla `SWAP` con el botón de offhand sobre ese slot.
-- Cancela la operación si hay un objeto transportado por el cursor, el jugador es espectador, la pantalla cambió o el servidor controla la apertura.
-
-No duplica objetos, no automatiza clicks repetidos y no modifica paquetes para exceder las reglas Vanilla.
+Esto adelanta la apertura local y una posible interacción posterior hasta un tick. Los tipos, contenido y orden de paquetes, la validación de slots y los manejadores siguen siendo Vanilla, aunque el servidor puede observar el tiempo naturalmente anterior de un clic hecho después de que aparezca la pantalla adelantada.
 
 ### Eliminar absolutamente todas las animaciones del inventario
 
@@ -165,7 +160,7 @@ GUI Scaler modifica el inventario del jugador sin cambiar la escala GUI global d
 1. Abre **GUI Scaler**.
 2. Lee y acepta la advertencia. Puedes marcar **Do Not Show Again**.
 3. Activa el interruptor superior.
-4. Ajusta el slider entre **65 % y 175 %**.
+4. Ajusta el slider entre **65 % y 315 %**. Una instalación nueva y Restablecer comienzan en **200 %**.
 
 En **Affect Containers** puedes previsualizar cada contenedor compatible. Con su interruptor desactivado, la preview permanece al 100 % Vanilla. Al activarlo, la preview y los contenedores reales usan la escala elegida. Esta opción viene activada por defecto en una instalación nueva y puede desactivarse en cualquier momento.
 
@@ -219,6 +214,14 @@ Las previews y los objetos utilizan los recursos actualmente activos:
 
 Después de recargar resource packs, las texturas compuestas se invalidan y se generan nuevamente.
 
+## Visibilidad de jugadores
+
+Abre **Customization**, baja hasta **Visibilidad de jugadores** y selecciona **Configurar**. Incluye resaltado del modelo mediante paleta, iluminación local, distancia y pulso opcional. Su preview extrae la skin y el equipo actuales del jugador y los muestra caminando sin modificar la entidad real.
+
+El efecto se ejecuta únicamente mientras el inventario del jugador está abierto y siempre fuera de su panel. Los bloques siguen ocultando jugadores y nunca utiliza un contorno visible a través de paredes. Las opciones dependientes permanecen ocultas mientras Visibilidad de jugadores está desactivada; **Intensidad de profundidad del jugador** aparece solamente después de activarla.
+
+Perfiles, Resaltador inteligente y el catálogo general de Herramientas avanzadas ya no forman parte de la interfaz actual. Item Highlighter aplica solamente reglas explícitas elegidas por el usuario.
+
 ## Guardado y archivos
 
 Los cambios se guardan automáticamente al utilizar los controles y también al cerrar con los botones de confirmación. El archivo principal es:
@@ -245,7 +248,7 @@ Comprueba que el interruptor Chest esté activado y que hayas guardado una posic
 
 Verifica formato, tamaño, resolución, duración y número de frames según la tabla anterior. Algunos archivos MOV o MP4 usan códecs que JCodec no puede decodificar.
 
-### El inventario no alcanza el 175 %
+### El inventario no alcanza el 315 %
 
 El límite se adapta a la ventana para evitar que slots o botones queden fuera de la pantalla. El libro de recetas visible reduce aún más el máximo seguro.
 

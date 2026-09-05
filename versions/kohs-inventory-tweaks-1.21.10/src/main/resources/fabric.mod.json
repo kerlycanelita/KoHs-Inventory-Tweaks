@@ -29,12 +29,11 @@
   ],
   "depends": {
     "fabricloader": ">=0.19.3",
-    "minecraft": "~1.21.10",
+    "minecraft": "1.21.10",
     "java": ">=21",
     "fabric-api": "*"
   },
   "suggests": {
-    "modmenu": "*",
-    "herzium": "*"
+    "modmenu": "*"
   }
 }

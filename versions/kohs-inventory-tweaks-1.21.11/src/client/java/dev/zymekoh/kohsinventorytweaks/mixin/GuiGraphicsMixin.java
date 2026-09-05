@@ -3,6 +3,7 @@ package dev.zymekoh.kohsinventorytweaks.mixin;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
+import dev.zymekoh.kohsinventorytweaks.render.InventoryAnimationController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -68,7 +69,7 @@ public abstract class GuiGraphicsMixin {
 			callbackInfo.cancel();
 			return;
 		}
-		if (config.removeAllInventoryAnimations && (path.endsWith("/lit_progress")
+		if (InventoryAnimationController.suppressAllInventoryAnimations() && (path.endsWith("/lit_progress")
 			|| path.endsWith("/burn_progress")
 			|| path.equals("container/brewing_stand/brew_progress")
 			|| path.equals("container/brewing_stand/bubbles"))) {
@@ -122,7 +123,8 @@ public abstract class GuiGraphicsMixin {
 		argsOnly = true
 	)
 	private Identifier kohsInventoryTweaks$customizeContainerSurface(final Identifier original) {
-		if (!(Minecraft.getInstance().screen instanceof AbstractContainerScreen<?> screen)) {
+		if (!InventoryTextureManager.customizesContainerSurfaces(ConfigStore.get())
+			|| !(Minecraft.getInstance().screen instanceof AbstractContainerScreen<?> screen)) {
 			return original;
 		}
 		AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;

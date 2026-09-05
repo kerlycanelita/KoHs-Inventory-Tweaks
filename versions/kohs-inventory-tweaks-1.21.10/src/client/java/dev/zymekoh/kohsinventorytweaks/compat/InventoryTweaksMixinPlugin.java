@@ -2,11 +2,16 @@ package dev.zymekoh.kohsinventorytweaks.compat;
 
 import java.util.List;
 import java.util.Set;
+
+import net.fabricmc.loader.api.FabricLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
 public final class InventoryTweaksMixinPlugin implements IMixinConfigPlugin {
+	private static final String RAW_INPUT_BUFFER_MIXIN = ".RawInputBufferMixin";
+	private static final String RAW_INPUT_BUFFER_ID = "rawinputbuffer";
+
 	@Override
 	public void onLoad(final String mixinPackage) {
 		CompatibilityIssueManager.initialize();
@@ -20,6 +25,11 @@ public final class InventoryTweaksMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public boolean shouldApplyMixin(final String targetClassName, final String mixinClassName) {
+		if (mixinClassName.endsWith(RAW_INPUT_BUFFER_MIXIN)
+			&& (!FabricLoader.getInstance().isModLoaded(RAW_INPUT_BUFFER_ID)
+				|| !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CURSOR_LANDING))) {
+			return false;
+		}
 		return !CompatibilityIssueManager.isSafelyBlocked();
 	}
 

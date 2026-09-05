@@ -1,10 +1,12 @@
 package dev.zymekoh.kohsinventorytweaks.render;
 
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 
 /**
  * Keeps inventory-only animation overrides scoped to the item currently being
- * rendered. The scope deliberately excludes the HUD, held items, entities and
+ * extracted. The scope deliberately excludes the HUD, held items, entities and
  * world rendering.
  */
 public final class InventoryAnimationController {
@@ -27,6 +29,11 @@ public final class InventoryAnimationController {
 	}
 
 	public static boolean suppressAnimatedFoil() {
-		return INVENTORY_ITEM_DEPTH.get() > 0 && ConfigStore.get().removeAllInventoryAnimations;
+		return INVENTORY_ITEM_DEPTH.get() > 0 && suppressAllInventoryAnimations();
+	}
+
+	public static boolean suppressAllInventoryAnimations() {
+		return CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)
+			&& ConfigStore.get().removeAllInventoryAnimations;
 	}
 }

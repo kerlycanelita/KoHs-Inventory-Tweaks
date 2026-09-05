@@ -1,6 +1,8 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -20,6 +22,9 @@ public abstract class ScreenBackgroundMixin {
 		final CallbackInfo callbackInfo
 	) {
 		if (!((Object) this instanceof AbstractContainerScreen<?> screen)) {
+			return;
+		}
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)) {
 			return;
 		}
 		int opacity = Math.max(0, Math.min(255, ConfigStore.get().inventoryBackdropOpacity));

@@ -1,11 +1,10 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
-import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.resources.Identifier;
@@ -22,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 // Unknown collisions remain blocked instead of being forced optimistically.
 @Mixin(value = InventoryScreen.class, priority = 2000)
 public abstract class InventoryScreenMixin {
-	@Inject(method = "extractRenderState", at = @At("HEAD"))
+	@Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", at = @At("HEAD"))
 	private void kohsInventoryTweaks$beginInventoryScale(
 		final GuiGraphicsExtractor graphics,
 		final int mouseX,
@@ -32,16 +31,11 @@ public abstract class InventoryScreenMixin {
 	) {
 		InventoryScreen screen = (InventoryScreen) (Object) this;
 		float scale = (float) InventoryGuiScaler.appliedScale(screen, ConfigStore.get());
-		float centerX = screen.width * 0.5F;
-		float centerY = screen.height * 0.5F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(centerX, centerY);
-		graphics.pose().scale(scale, scale);
-		graphics.pose().translate(-centerX, -centerY);
+		InventoryGuiScaler.beginScaledSurface(graphics, screen.width * 0.5F, screen.height * 0.5F, scale);
 	}
 
 	@Inject(
-		method = "extractBackground",
+		method = "extractBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
 		at = @At(
 			value = "INVOKE",
 			target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIFFIIII)V",
@@ -57,15 +51,13 @@ public abstract class InventoryScreenMixin {
 	) {
 		InventoryScreen screen = (InventoryScreen) (Object) this;
 		float scale = (float) InventoryGuiScaler.appliedScale(screen, ConfigStore.get());
-		float centerX = screen.width * 0.5F;
-		float centerY = screen.height * 0.5F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(centerX, centerY);
-		graphics.pose().scale(scale, scale);
-		graphics.pose().translate(-centerX, -centerY);
+		InventoryGuiScaler.beginScaledSurface(graphics, screen.width * 0.5F, screen.height * 0.5F, scale);
 	}
 
-	@Inject(method = {"extractBackground", "extractRenderState"}, at = @At("RETURN"))
+	@Inject(method = {
+		"extractBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
+		"extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V"
+	}, at = @At("RETURN"))
 	private void kohsInventoryTweaks$endInventoryScale(
 		final GuiGraphicsExtractor graphics,
 		final int mouseX,
@@ -73,31 +65,17 @@ public abstract class InventoryScreenMixin {
 		final float a,
 		final CallbackInfo callbackInfo
 	) {
-		graphics.pose().popMatrix();
+		InventoryGuiScaler.endScaledSurface(graphics);
 	}
 
-	@Inject(method = "extractRenderState", at = @At("RETURN"))
-	private void kohsInventoryTweaks$finishFastOpening(
-		final GuiGraphicsExtractor graphics,
-		final int mouseX,
-		final int mouseY,
-		final float a,
-		final CallbackInfo callbackInfo
-	) {
-		SuperFastInventoryController.onInventoryRendered(
-			Minecraft.getInstance(),
-			(InventoryScreen) (Object) this
-		);
-	}
-
-	@ModifyVariable(method = "extractRenderState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	@ModifyVariable(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	private int kohsInventoryTweaks$transformRenderMouseX(final int mouseX) {
 		InventoryScreen screen = (InventoryScreen) (Object) this;
 		double scale = InventoryGuiScaler.appliedScale(screen, ConfigStore.get());
 		return (int) Math.round(InventoryGuiScaler.toInventoryCoordinate(mouseX, screen.width, scale));
 	}
 
-	@ModifyVariable(method = "extractRenderState", at = @At("HEAD"), argsOnly = true, ordinal = 1)
+	@ModifyVariable(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", at = @At("HEAD"), argsOnly = true, ordinal = 1)
 	private int kohsInventoryTweaks$transformRenderMouseY(final int mouseY) {
 		InventoryScreen screen = (InventoryScreen) (Object) this;
 		double scale = InventoryGuiScaler.appliedScale(screen, ConfigStore.get());
@@ -112,7 +90,7 @@ public abstract class InventoryScreenMixin {
 	}
 
 	@ModifyArg(
-		method = "extractBackground",
+		method = "extractBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
 		at = @At(
 			value = "INVOKE",
 			target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIFFIIII)V"
@@ -124,7 +102,7 @@ public abstract class InventoryScreenMixin {
 	}
 
 	@Redirect(
-		method = "extractBackground",
+		method = "extractBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
 		at = @At(
 			value = "INVOKE",
 			target = "Lnet/minecraft/client/gui/screens/inventory/InventoryScreen;extractEntityInInventoryFollowsMouse(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIIIIFFFLnet/minecraft/world/entity/LivingEntity;)V"

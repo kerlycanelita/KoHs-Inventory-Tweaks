@@ -1,8 +1,10 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
+import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.ItemHighlight;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
+import dev.zymekoh.kohsinventorytweaks.render.VisualPerformanceController;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,7 +34,7 @@ public final class ItemHighlighterScreen extends Screen {
 	private static final long EDITOR_ENTRANCE_DURATION_NANOS = 240_000_000L;
 	private final Screen parent;
 	private final Consumer<InventoryTweaksConfig> onSave;
-	private final InventoryTweaksConfig working;
+	private InventoryTweaksConfig working;
 	private final List<FloatingParticle> particles = new ArrayList<>();
 	private final List<ItemEntry> allItems = new ArrayList<>();
 	private final List<ItemEntry> filteredItems = new ArrayList<>();
@@ -572,14 +574,14 @@ public final class ItemHighlighterScreen extends Screen {
 		this.panelX = (this.width - this.panelWidth) / 2;
 		this.panelY = (this.height - this.panelHeight) / 2;
 		this.contentTop = this.panelY + 31;
-		this.contentBottom = this.panelY + this.panelHeight - 34;
+		this.contentBottom = this.panelY + this.panelHeight - 32;
 
 		int contentWidth = this.panelWidth - 24;
 		int gap = contentWidth < 420 ? 6 : 10;
 		this.selectedWidth = Mth.clamp((int) (contentWidth * 0.28F), Math.min(82, contentWidth / 3), 188);
 		this.selectedX = this.panelX + 12;
 		this.selectedY = this.contentTop;
-		this.selectedHeight = Math.max(90, this.contentBottom - this.contentTop);
+		this.selectedHeight = Math.max(48, this.contentBottom - this.contentTop);
 		this.catalogX = this.selectedX + this.selectedWidth + gap;
 		this.catalogY = this.contentTop;
 		this.catalogWidth = Math.max(100, this.panelX + this.panelWidth - 12 - this.catalogX);
@@ -628,7 +630,7 @@ public final class ItemHighlighterScreen extends Screen {
 					this.allItems.add(new ItemEntry(id.toString(), stack, search));
 				}
 			} catch (RuntimeException ignored) {
-				// Some builds expose internal registry entries before their components are bound.
+				// 26.1.2 exposes a few internal registry entries before their components are bound.
 			}
 		});
 		this.allItems.sort(Comparator.comparing(ItemEntry::itemId));
@@ -664,7 +666,7 @@ public final class ItemHighlighterScreen extends Screen {
 			return;
 		}
 		Random random = new Random(0x4954454DL);
-		int count = Mth.clamp(this.width * this.height / 7600, 24, 42);
+		int count = VisualPerformanceController.particleCount(Mth.clamp(this.width * this.height / 7600, 24, 42));
 		for (int i = 0; i < count; i++) {
 			this.particles.add(new FloatingParticle(
 				random.nextFloat() * Math.max(1, this.width),
@@ -738,6 +740,10 @@ public final class ItemHighlighterScreen extends Screen {
 
 	private void persistWorking() {
 		this.onSave.accept(this.working.copy());
+	}
+
+	void reloadConfigurationFromStore() {
+		this.working = ConfigStore.get().copy();
 	}
 
 	private @Nullable ItemHighlight editingHighlight() {

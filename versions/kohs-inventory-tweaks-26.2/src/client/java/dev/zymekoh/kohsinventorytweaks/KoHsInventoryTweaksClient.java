@@ -4,14 +4,15 @@ import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityNoticeController;
 import dev.zymekoh.kohsinventorytweaks.compat.BlockingCompatibilityController;
+import dev.zymekoh.kohsinventorytweaks.compat.MouseConflictNotificationController;
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
 import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
-import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
+import dev.zymekoh.kohsinventorytweaks.inventory.InventoryWarmup;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
@@ -37,18 +38,20 @@ public final class KoHsInventoryTweaksClient implements ClientModInitializer {
 		ConfigMenuKeyBinding.register();
 		ClientTickEvents.END_CLIENT_TICK.register(minecraft -> {
 			CompatibilityNoticeController.onClientTick(minecraft);
-			CursorLandingController.onClientTick(minecraft);
-			SuperFastInventoryController.onClientTick(minecraft);
+			MouseConflictNotificationController.onClientTick(minecraft);
 			ConfigMenuKeyBinding.onClientTick(minecraft);
+			InventoryWarmup.onClientTick(minecraft);
 		});
 		ResourceLoader.get(PackType.CLIENT_RESOURCES).registerReloadListener(
 			Identifier.fromNamespaceAndPath(MOD_ID, "inventory_texture"),
 			(ResourceManagerReloadListener) resourceManager -> InventoryTextureManager.onResourcesReloaded()
 		);
-		String minecraftVersion = FabricLoader.getInstance()
-			.getModContainer("minecraft")
+		LOGGER.info("KoHs Inventory Tweaks initialized for Minecraft {}", runtimeMinecraftVersion());
+	}
+
+	private static String runtimeMinecraftVersion() {
+		return FabricLoader.getInstance().getModContainer("minecraft")
 			.map(container -> container.getMetadata().getVersion().getFriendlyString())
 			.orElse("unknown");
-		LOGGER.info("KoHs Inventory Tweaks initialized for Minecraft {}", minecraftVersion);
 	}
 }

@@ -14,7 +14,7 @@ public final class CompatibilityNoticeController {
 		if (shownThisSession
 			|| minecraft.level != null
 			|| !(minecraft.gui.screen() instanceof TitleScreen)
-			|| !CompatibilityIssueManager.hasIssues()) {
+			|| !CompatibilityIssueManager.hasModalNoticeIssues()) {
 			return;
 		}
 		shownThisSession = true;

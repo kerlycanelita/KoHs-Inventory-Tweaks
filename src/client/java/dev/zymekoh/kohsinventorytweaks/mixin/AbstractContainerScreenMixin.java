@@ -3,6 +3,7 @@ package dev.zymekoh.kohsinventorytweaks.mixin;
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
+import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryAnimationController;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -29,12 +30,7 @@ public abstract class AbstractContainerScreenMixin {
 	) {
 		Screen screen = (Screen) (Object) this;
 		float scale = (float) InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get());
-		float centerX = screen.width * 0.5F;
-		float centerY = screen.height * 0.5F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(centerX, centerY);
-		graphics.pose().scale(scale, scale);
-		graphics.pose().translate(-centerX, -centerY);
+		InventoryGuiScaler.beginScaledSurface(graphics, screen.width * 0.5F, screen.height * 0.5F, scale);
 	}
 
 	@Inject(method = "extractRenderState", at = @At("RETURN"))
@@ -45,7 +41,7 @@ public abstract class AbstractContainerScreenMixin {
 		final float a,
 		final CallbackInfo callbackInfo
 	) {
-		graphics.pose().popMatrix();
+		InventoryGuiScaler.endScaledSurface(graphics);
 	}
 
 	@ModifyVariable(method = "extractRenderState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
@@ -71,7 +67,7 @@ public abstract class AbstractContainerScreenMixin {
 
 	@Inject(method = "extractSnapbackItem", at = @At("HEAD"), cancellable = true)
 	private void kohsInventoryTweaks$removeTransientGhostCopy(final CallbackInfo callbackInfo) {
-		if (ConfigStore.get().removeAllInventoryAnimations) {
+		if (InventoryAnimationController.suppressAllInventoryAnimations()) {
 			callbackInfo.cancel();
 		}
 	}
@@ -111,6 +107,11 @@ public abstract class AbstractContainerScreenMixin {
 			(AbstractContainerScreen<?>) (Object) this,
 			slot,
 			true
+		);
+		AccessibilityRenderController.drawFocusedSlot(
+			graphics,
+			(AbstractContainerScreen<?>) (Object) this,
+			slot
 		);
 		InventoryAnimationController.endInventoryItem();
 	}

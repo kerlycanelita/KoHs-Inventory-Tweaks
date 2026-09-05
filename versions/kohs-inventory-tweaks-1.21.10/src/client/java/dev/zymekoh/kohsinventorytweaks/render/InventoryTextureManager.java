@@ -5,6 +5,8 @@ import dev.zymekoh.kohsinventorytweaks.KoHsInventoryTweaksClient;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.TextureSource;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.AnimatedBackground;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.AnimationFrame;
@@ -69,7 +71,8 @@ public final class InventoryTextureManager {
 	}
 
 	public static ResourceLocation textureFor(final InventoryTweaksConfig config) {
-		if (isUnmodifiedAppliedTexture(config)) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)
+			|| isUnmodifiedAppliedTexture(config)) {
 			return VANILLA_INVENTORY;
 		}
 
@@ -101,7 +104,8 @@ public final class InventoryTextureManager {
 		final ResourceLocation original,
 		final int imageHeight
 	) {
-		if (!VANILLA_CONTAINER.equals(original) || isUnmodifiedAppliedTexture(config)) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)
+			|| !VANILLA_CONTAINER.equals(original) || isUnmodifiedAppliedTexture(config)) {
 			return original;
 		}
 		int rows = Math.max(1, Math.min(6, (imageHeight - 114) / 18));
@@ -137,7 +141,8 @@ public final class InventoryTextureManager {
 		final int imageWidth,
 		final int imageHeight
 	) {
-		if (!isContainerSurface(original)) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)
+			|| !isContainerSurface(original)) {
 			return original;
 		}
 		if (VANILLA_INVENTORY.equals(original)) {
@@ -187,10 +192,11 @@ public final class InventoryTextureManager {
 	}
 
 	public static boolean hasColorCustomization(final InventoryTweaksConfig config) {
-		return config.frameColor != 0xFFFFFF
+		return CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)
+			&& (config.frameColor != 0xFFFFFF
 			|| config.frameOpacity != 255
 			|| config.slotColor != 0xFFFFFF
-			|| config.slotOpacity != 255;
+			|| config.slotOpacity != 255);
 	}
 
 	private static ResourceLocation surfaceTextureFor(
@@ -288,7 +294,7 @@ public final class InventoryTextureManager {
 
 	private static boolean isUnmodifiedAppliedTexture(final InventoryTweaksConfig config) {
 		return config.inventoryTextureSource == TextureSource.APPLIED
-			&& !config.removeAllInventoryAnimations
+			&& !InventoryAnimationController.suppressAllInventoryAnimations()
 			&& config.frameColor == 0xFFFFFF
 			&& config.frameOpacity == 255
 			&& config.slotColor == 0xFFFFFF
@@ -314,7 +320,7 @@ public final class InventoryTextureManager {
 	) {
 		return baseKey + ":" + backgroundKey + ":" + config.frameColor + ":" + config.frameOpacity
 			+ ":" + config.slotColor + ":" + config.slotOpacity + ":" + config.backgroundOpacity
-			+ ":static=" + config.removeAllInventoryAnimations;
+			+ ":static=" + InventoryAnimationController.suppressAllInventoryAnimations();
 	}
 
 	private static AnimationFrame backgroundFrame(final InventoryTweaksConfig config) {
@@ -322,7 +328,7 @@ public final class InventoryTextureManager {
 			return null;
 		}
 		return background.frameAt(
-			config.removeAllInventoryAnimations ? 0L : System.currentTimeMillis() - animationStartedAt
+			InventoryAnimationController.suppressAllInventoryAnimations() ? 0L : System.currentTimeMillis() - animationStartedAt
 		);
 	}
 

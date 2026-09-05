@@ -269,17 +269,32 @@ public final class IssuesTrackerScreen extends Screen {
 		final int width,
 		final int height
 	) {
-		boolean blocking = issue.severity() == CompatibilityIssue.Severity.BLOCKING;
-		UiRender.panel(graphics, x, y, width, height, 7, UiTheme.GLASS, blocking ? UiTheme.DANGER : UiTheme.ACCENT_SOFT);
+		int severityColor = CompatibilitySeverityIcons.colorFor(issue.severity());
+		UiRender.panel(graphics, x, y, width, height, 7, UiTheme.GLASS, severityColor);
 		this.drawModIcon(graphics, issue.modId(), x + 7, y + 8, 28);
 		int textX = x + 42;
 		int textWidth = Math.max(30, width - 49);
-		Component status = Component.translatable(blocking
-			? "screen.kohs_inventory_tweaks.issues_tracker.status.blocking"
-			: "screen.kohs_inventory_tweaks.issues_tracker.status.adaptable");
-		String displayName = this.font.plainSubstrByWidth(issue.modName(), Math.max(12, textWidth - this.font.width(status) - 7));
+		Component status = Component.translatable(CompatibilitySeverityIcons.statusKey(issue.severity()));
+		int severityIconSize = 14;
+		int severityIconX = x + width - 7 - severityIconSize;
+		int statusX = severityIconX - 3 - this.font.width(status);
+		String displayName = this.font.plainSubstrByWidth(issue.modName(), Math.max(12, statusX - textX - 4));
 		graphics.drawString(this.font, Component.literal(displayName), textX, y + 7, UiTheme.TEXT, false);
-		graphics.drawString(this.font, status, x + width - 7 - this.font.width(status), y + 7, blocking ? UiTheme.DANGER : UiTheme.ACCENT_BRIGHT, false);
+		graphics.blit(
+			RenderPipelines.GUI_TEXTURED,
+			CompatibilitySeverityIcons.textureFor(issue.severity()),
+			severityIconX,
+			y + 4,
+			0.0F,
+			0.0F,
+			severityIconSize,
+			severityIconSize,
+			128,
+			128,
+			128,
+			128
+		);
+		graphics.drawString(this.font, status, statusX, y + 7, severityColor, false);
 		graphics.drawString(this.font, Component.literal(issue.modId() + "  " + issue.version()), textX, y + 18, UiTheme.TEXT_MUTED, false);
 		graphics.drawString(this.font, Component.translatable("screen.kohs_inventory_tweaks.issues_tracker.creator", issue.creators()), textX, y + 29, UiTheme.TEXT_DISABLED, false);
 		int reasonY = y + 43;
@@ -311,9 +326,26 @@ public final class IssuesTrackerScreen extends Screen {
 		Component source = Component.translatable("CRASH_REPORT".equals(failure.sourceType())
 			? "screen.kohs_inventory_tweaks.issues_tracker.startup_log.crash"
 			: "screen.kohs_inventory_tweaks.issues_tracker.startup_log.prevented");
-		String displayName = this.font.plainSubstrByWidth(failure.modName(), Math.max(12, textWidth - this.font.width(source) - 7));
+		int severityIconSize = 14;
+		int severityIconX = x + width - 7 - severityIconSize;
+		int sourceX = severityIconX - 3 - this.font.width(source);
+		String displayName = this.font.plainSubstrByWidth(failure.modName(), Math.max(12, sourceX - textX - 4));
 		graphics.drawString(this.font, Component.literal(displayName), textX, y + 7, UiTheme.TEXT, false);
-		graphics.drawString(this.font, source, x + width - 7 - this.font.width(source), y + 7, UiTheme.DANGER, false);
+		graphics.blit(
+			RenderPipelines.GUI_TEXTURED,
+			CompatibilitySeverityIcons.textureFor(CompatibilityIssue.Severity.BLOCKING),
+			severityIconX,
+			y + 4,
+			0.0F,
+			0.0F,
+			severityIconSize,
+			severityIconSize,
+			128,
+			128,
+			128,
+			128
+		);
+		graphics.drawString(this.font, source, sourceX, y + 7, UiTheme.DANGER, false);
 		graphics.drawString(this.font, Component.literal(failure.modId() + "  " + failure.modVersion()), textX, y + 18, UiTheme.TEXT_MUTED, false);
 		graphics.drawString(
 			this.font,
@@ -381,15 +413,19 @@ public final class IssuesTrackerScreen extends Screen {
 			"screen.kohs_inventory_tweaks.issues_tracker.points",
 			String.join(", ", issue.conflictPoints())
 		);
-		return Math.max(82, 48 + this.font.split(reason, textWidth).size() * 10 + this.font.split(points, textWidth).size() * 10);
+		return Math.max(
+			82,
+			43 + this.font.split(reason, textWidth).size() * 10
+				+ 3 + this.font.split(points, textWidth).size() * 10 + 8
+		);
 	}
 
 	private int failureCardHeight(final Failure failure, final int width) {
 		int textWidth = Math.max(20, width - 16);
 		return Math.max(
 			82,
-			48 + this.font.split(this.failureReason(failure), textWidth).size() * 10
-				+ this.font.split(Component.literal(failure.details()), textWidth).size() * 10
+			43 + this.font.split(this.failureReason(failure), textWidth).size() * 10
+				+ 3 + this.font.split(Component.literal(failure.details()), textWidth).size() * 10 + 8
 		);
 	}
 

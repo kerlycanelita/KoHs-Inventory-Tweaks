@@ -1,5 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
+import dev.zymekoh.kohsinventorytweaks.compat.MouseConflictNotificationController;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Gui;
@@ -13,6 +14,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Gui.class)
 public abstract class GuiMixin {
+	@Inject(method = "render", at = @At("RETURN"))
+	private void kohsInventoryTweaks$drawCompatibilityNotification(
+		final GuiGraphics graphics,
+		final DeltaTracker deltaTracker,
+		final CallbackInfo callbackInfo
+	) {
+		MouseConflictNotificationController.draw(graphics);
+	}
+
 	@Inject(method = "renderSlot", at = @At("HEAD"))
 	private void kohsInventoryTweaks$drawHotbarHighlightBackground(
 		final GuiGraphics graphics,

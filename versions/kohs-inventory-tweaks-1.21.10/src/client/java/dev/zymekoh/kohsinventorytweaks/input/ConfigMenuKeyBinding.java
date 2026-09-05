@@ -2,7 +2,9 @@ package dev.zymekoh.kohsinventorytweaks.input;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.zymekoh.kohsinventorytweaks.KoHsInventoryTweaksClient;
+import dev.zymekoh.kohsinventorytweaks.compat.MouseConflictNotificationController;
 import dev.zymekoh.kohsinventorytweaks.screen.InventoryTweaksScreen;
+import dev.zymekoh.kohsinventorytweaks.screen.IssuesTrackerScreen;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -35,7 +37,10 @@ public final class ConfigMenuKeyBinding {
 		while (OPEN_CONFIG.consumeClick()) {
 			// Never steal input from chat, inventories, or another configuration screen.
 			if (minecraft.screen == null && minecraft.player != null && minecraft.gameMode != null) {
-				minecraft.setScreen(new InventoryTweaksScreen(null));
+				InventoryTweaksScreen menu = new InventoryTweaksScreen(null);
+				minecraft.setScreen(MouseConflictNotificationController.consumeIssuesTrackerRoute()
+					? new IssuesTrackerScreen(menu)
+					: menu);
 			}
 		}
 	}

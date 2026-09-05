@@ -141,7 +141,7 @@ public final class GuiScalerScreen extends Screen {
 
 		Component scale = Component.translatable(
 			"screen.kohs_inventory_tweaks.gui_scaler.slider",
-			(int) Math.round(this.actualScale() * 100.0)
+			(int) Math.round(this.configuredScale() * 100.0)
 		);
 		graphics.text(
 			this.font,
@@ -212,6 +212,8 @@ public final class GuiScalerScreen extends Screen {
 		);
 
 		if (this.minecraft.player != null) {
+			// Entity picture-in-picture states do not inherit the current GUI pose,
+			// so transform their bounds exactly once into screen coordinates.
 			float inventoryLeft = this.width * 0.5F - INVENTORY_WIDTH * 0.5F * scale;
 			float inventoryTop = this.height * 0.5F - INVENTORY_HEIGHT * 0.5F * scale;
 			InventoryScreen.extractEntityInInventoryFollowsMouse(
@@ -282,6 +284,10 @@ public final class GuiScalerScreen extends Screen {
 
 	private double actualScale() {
 		return InventoryGuiScaler.appliedScale(this.width, this.height, this.working);
+	}
+
+	private double configuredScale() {
+		return InventoryGuiScaler.configuredPhysicalScale(this.width, this.height, this.working);
 	}
 
 	private Component enabledLabel() {

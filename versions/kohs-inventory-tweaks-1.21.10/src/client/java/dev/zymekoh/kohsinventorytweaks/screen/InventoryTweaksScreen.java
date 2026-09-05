@@ -6,9 +6,10 @@ import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.CursorPoint;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.TextureSource;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorTarget;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
-import dev.zymekoh.kohsinventorytweaks.integration.HerziumIntegration;
 import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.CropSettings;
@@ -91,8 +92,6 @@ public final class InventoryTweaksScreen extends Screen {
 	private int cursorCardY;
 	private int tweakCardX;
 	private int tweakCardY;
-	private int herziumCardX;
-	private int herziumCardY;
 	private int issuesCardX;
 	private int issuesCardY;
 	private int customizationCardX;
@@ -216,7 +215,6 @@ public final class InventoryTweaksScreen extends Screen {
 		GUI_SCALER_WARNING,
 		CUSTOMIZATION_WARNING,
 		ANIMATIONS_WARNING,
-		HERZIUM_WARNING,
 		WARNING
 	}
 
@@ -253,7 +251,6 @@ public final class InventoryTweaksScreen extends Screen {
 			case GUI_SCALER_WARNING -> this.addGuiScalerWarningButtons();
 			case CUSTOMIZATION_WARNING -> this.addCustomizationWarningButtons();
 			case ANIMATIONS_WARNING -> this.addAnimationsWarningButtons();
-			case HERZIUM_WARNING -> this.addHerziumWarningButtons();
 			case WARNING -> this.addWarningButtons();
 		}
 	}
@@ -316,8 +313,6 @@ public final class InventoryTweaksScreen extends Screen {
 				this.drawCustomizationWarning(graphics);
 			} else if (this.modal == Modal.ANIMATIONS_WARNING) {
 				this.drawAnimationsWarning(graphics);
-			} else if (this.modal == Modal.HERZIUM_WARNING) {
-				this.drawHerziumWarning(graphics);
 			}
 			super.render(graphics, mouseX, mouseY, a);
 			this.drawActiveScrollFades(graphics);
@@ -440,13 +435,6 @@ public final class InventoryTweaksScreen extends Screen {
 		} else if (this.modal == Modal.ANIMATIONS_WARNING) {
 			this.modal = Modal.TWEAKS;
 			this.rebuildWidgets();
-		} else if (this.modal == Modal.HERZIUM_WARNING) {
-			this.modal = Modal.NONE;
-			this.rebuildWidgets();
-		} else if (this.modal == Modal.CROP) {
-			this.cancelCrop();
-		} else {
-			this.attemptCloseModal();
 		}
 		return true;
 	}
@@ -488,16 +476,17 @@ public final class InventoryTweaksScreen extends Screen {
 			this.cursorCardX,
 			this.cursorCardY,
 			true,
+			CompatibilityFeature.CURSOR_LANDING,
 			"screen.kohs_inventory_tweaks.cursor_landing",
 			"screen.kohs_inventory_tweaks.cursor_landing.description",
 			button -> this.openModal(Modal.CURSOR),
 			GlassButton.Variant.NORMAL
 		);
-		this.addHerziumButton();
 		this.addMainFeatureButton(
 			this.tweakCardX,
 			this.tweakCardY,
 			true,
+			CompatibilityFeature.INVENTORY_TWEAKS,
 			"screen.kohs_inventory_tweaks.inventory_tweaks",
 			"screen.kohs_inventory_tweaks.inventory_tweaks.description",
 			button -> this.openModal(Modal.TWEAKS),
@@ -507,6 +496,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.issuesCardX,
 			this.issuesCardY,
 			true,
+			null,
 			"screen.kohs_inventory_tweaks.issues_tracker",
 			"screen.kohs_inventory_tweaks.issues_tracker.description",
 			button -> this.minecraft.setScreen(new IssuesTrackerScreen(this)),
@@ -516,6 +506,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.customizationCardX,
 			this.customizationCardY,
 			false,
+			CompatibilityFeature.CUSTOMIZATION,
 			"screen.kohs_inventory_tweaks.customization",
 			"screen.kohs_inventory_tweaks.customization.description",
 			button -> this.openCustomizationWarning(),
@@ -525,6 +516,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.itemHighlighterCardX,
 			this.itemHighlighterCardY,
 			false,
+			CompatibilityFeature.ITEM_HIGHLIGHTER,
 			"screen.kohs_inventory_tweaks.item_highlighter",
 			"screen.kohs_inventory_tweaks.item_highlighter.description",
 			button -> this.minecraft.setScreen(new ItemHighlighterScreen(
@@ -541,6 +533,7 @@ public final class InventoryTweaksScreen extends Screen {
 			this.guiScalerCardX,
 			this.guiScalerCardY,
 			false,
+			CompatibilityFeature.GUI_SCALER,
 			"screen.kohs_inventory_tweaks.gui_scaler",
 			"screen.kohs_inventory_tweaks.gui_scaler.description",
 			button -> this.openGuiScaler(),
@@ -583,6 +576,7 @@ public final class InventoryTweaksScreen extends Screen {
 		final int x,
 		final int y,
 		final boolean leftRail,
+		final CompatibilityFeature feature,
 		final String titleKey,
 		final String descriptionKey,
 		final Button.OnPress onPress,
@@ -594,6 +588,10 @@ public final class InventoryTweaksScreen extends Screen {
 		int railWidth = leftRail ? this.mainLeftRailWidth : this.mainRightRailWidth;
 		int visibleTop = railY + 22;
 		int visibleBottom = railY + railHeight - 5;
+		boolean available = feature == null || CompatibilityIssueManager.isFeatureAvailable(feature);
+		Component description = Component.translatable(available
+			? descriptionKey
+			: "screen.kohs_inventory_tweaks.compatibility.feature_disabled");
 		GlassButton button = new GlassButton(
 			x,
 			y,
@@ -602,41 +600,14 @@ public final class InventoryTweaksScreen extends Screen {
 			Component.translatable(titleKey),
 			onPress,
 			variant
-		).setSubtitle(Component.translatable(descriptionKey))
+		).setSubtitle(description)
 			.setClipBounds(railX + 2, visibleTop, railX + railWidth - 2, visibleBottom);
-		button.setTooltip(Tooltip.create(Component.translatable(descriptionKey)));
+		button.active = available;
+		button.setTooltip(Tooltip.create(description));
 		button.setTooltipDelay(Duration.ofMillis(220));
 		button.visible = y + this.mainCardHeight > visibleTop && y < visibleBottom;
 		this.addRenderableWidget(button);
 		(leftRail ? this.mainLeftScrollingWidgets : this.mainRightScrollingWidgets).add(button);
-	}
-
-	private void addHerziumButton() {
-		int visibleTop = this.mainLeftRailY + 22;
-		int visibleBottom = this.mainLeftRailY + this.mainLeftRailHeight - 5;
-		boolean installed = HerziumIntegration.installed();
-		HerziumButton button = new HerziumButton(
-			this.herziumCardX,
-			this.herziumCardY,
-			this.mainCardWidth,
-			this.mainCardHeight,
-			Component.translatable("screen.kohs_inventory_tweaks.herzium"),
-			pressed -> this.openHerzium(),
-			installed
-		).setClipBounds(
-			this.mainLeftRailX + 2,
-			visibleTop,
-			this.mainLeftRailX + this.mainLeftRailWidth - 2,
-			visibleBottom
-		);
-		button.setTooltip(Tooltip.create(Component.translatable(installed
-			? "screen.kohs_inventory_tweaks.herzium.description.installed"
-			: "screen.kohs_inventory_tweaks.herzium.description.missing")));
-		button.setTooltipDelay(Duration.ofMillis(220));
-		button.visible = this.herziumCardY + this.mainCardHeight > visibleTop
-			&& this.herziumCardY < visibleBottom;
-		this.addRenderableWidget(button);
-		this.mainLeftScrollingWidgets.add(button);
 	}
 
 	private void addCursorModalButtons() {
@@ -1155,34 +1126,6 @@ public final class InventoryTweaksScreen extends Screen {
 		));
 	}
 
-	private void addHerziumWarningButtons() {
-		int gap = 8;
-		int buttonWidth = Math.min(168, Math.max(1, (this.warningWidth - 28 - gap) / 2));
-		int y = this.warningY + this.warningHeight - 32;
-		int startX = this.warningX + (this.warningWidth - buttonWidth * 2 - gap) / 2;
-		this.addRenderableWidget(new GlassButton(
-			startX,
-			y,
-			buttonWidth,
-			22,
-			Component.translatable("screen.kohs_inventory_tweaks.herzium.releases"),
-			button -> Util.getPlatform().openUri(HerziumIntegration.RELEASES_URL),
-			GlassButton.Variant.PRIMARY
-		));
-		this.addRenderableWidget(new GlassButton(
-			startX + buttonWidth + gap,
-			y,
-			buttonWidth,
-			22,
-			Component.translatable("gui.back"),
-			button -> {
-				this.modal = Modal.NONE;
-				this.rebuildWidgets();
-			},
-			GlassButton.Variant.NORMAL
-		));
-	}
-
 	private void addCustomizationSlider(
 		final int y,
 		final int x,
@@ -1665,25 +1608,6 @@ public final class InventoryTweaksScreen extends Screen {
 		graphics.drawWordWrap(
 			this.font,
 			Component.translatable("screen.kohs_inventory_tweaks.remove_animations.warning.description"),
-			this.warningX + 14,
-			this.warningY + 34,
-			this.warningWidth - 28,
-			UiTheme.TEXT
-		);
-	}
-
-	private void drawHerziumWarning(final GuiGraphics graphics) {
-		UiRender.panel(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, 10, UiTheme.GLASS, UiTheme.WARNING);
-		graphics.drawCenteredString(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.herzium.warning.title"),
-			this.warningX + this.warningWidth / 2,
-			this.warningY + 14,
-			UiTheme.WARNING
-		);
-		graphics.drawWordWrap(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.herzium.warning.description"),
 			this.warningX + 14,
 			this.warningY + 34,
 			this.warningWidth - 28,
@@ -2352,7 +2276,7 @@ public final class InventoryTweaksScreen extends Screen {
 		this.mainCardWidth = Math.max(1, railWidth - 10);
 		this.mainCardHeight = this.compactMain ? 23 : 36;
 		int cardGap = this.compactMain ? 5 : 7;
-		int leftRailContentHeight = this.mainCardHeight * 4 + cardGap * 3;
+		int leftRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
 		int rightRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
 		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 27);
 		this.mainLeftMaxScroll = Math.max(0, leftRailContentHeight - railVisibleHeight);
@@ -2367,10 +2291,8 @@ public final class InventoryTweaksScreen extends Screen {
 		this.cursorCardY = railContentTop - this.mainLeftScroll;
 		this.tweakCardX = this.cursorCardX;
 		this.tweakCardY = this.cursorCardY + this.mainCardHeight + cardGap;
-		this.herziumCardX = this.cursorCardX;
 		this.issuesCardX = this.cursorCardX;
 		this.issuesCardY = this.tweakCardY + this.mainCardHeight + cardGap;
-		this.herziumCardY = this.issuesCardY + this.mainCardHeight + cardGap;
 		this.customizationCardX = this.mainRightRailX + 5;
 		this.customizationCardY = railContentTop - this.mainRightScroll;
 		this.itemHighlighterCardX = this.customizationCardX;
@@ -2647,6 +2569,10 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void openModal(final Modal nextModal) {
+		if (nextModal == Modal.CURSOR
+			&& !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CURSOR_LANDING)) {
+			return;
+		}
 		this.working = ConfigStore.get().copy();
 		if (nextModal == Modal.CUSTOMIZATION) {
 			this.customizationSmoothScroll.snapTo(0.0);
@@ -2661,16 +2587,6 @@ public final class InventoryTweaksScreen extends Screen {
 	private void openCustomizationWarning() {
 		this.working = ConfigStore.get().copy();
 		this.modal = Modal.CUSTOMIZATION_WARNING;
-		this.rebuildWidgets();
-	}
-
-	private void openHerzium() {
-		Screen herziumScreen = HerziumIntegration.createConfigScreen(this);
-		if (herziumScreen != null) {
-			this.minecraft.setScreen(herziumScreen);
-			return;
-		}
-		this.modal = Modal.HERZIUM_WARNING;
 		this.rebuildWidgets();
 	}
 

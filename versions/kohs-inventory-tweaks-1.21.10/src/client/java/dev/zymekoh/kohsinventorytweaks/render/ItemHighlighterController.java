@@ -1,6 +1,8 @@
 package dev.zymekoh.kohsinventorytweaks.render;
 
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.ItemHighlight;
 import dev.zymekoh.kohsinventorytweaks.mixin.AbstractContainerScreenAccessor;
 import dev.zymekoh.kohsinventorytweaks.screen.UiRender;
@@ -71,7 +73,8 @@ public final class ItemHighlighterController {
 	}
 
 	public static ItemHighlight highlightFor(final ItemStack stack) {
-		if (stack == null || stack.isEmpty()) {
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.ITEM_HIGHLIGHTER)
+			|| stack == null || stack.isEmpty()) {
 			return null;
 		}
 		return ConfigStore.get().findItemHighlight(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());

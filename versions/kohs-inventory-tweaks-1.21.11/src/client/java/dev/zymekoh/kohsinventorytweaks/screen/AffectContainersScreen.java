@@ -155,6 +155,9 @@ public final class AffectContainersScreen extends Screen {
 		double scale = this.working.affectAllContainers
 			? InventoryGuiScaler.configuredContainerScale(this.width, this.height, this.working, target)
 			: 1.0;
+		double physicalScale = this.working.affectAllContainers
+			? InventoryGuiScaler.configuredContainerPhysicalScale(this.width, this.height, this.working, target)
+			: 1.0;
 		int previewWidth = Math.max(1, (int) Math.round(target.previewWidth() * scale));
 		int previewHeight = Math.max(1, (int) Math.round(target.previewHeight() * scale));
 		int previewX = (this.width - previewWidth) / 2;
@@ -175,7 +178,7 @@ public final class AffectContainersScreen extends Screen {
 		Component previewLabel = Component.translatable(
 			"screen.kohs_inventory_tweaks.affect_containers.preview",
 			Component.translatable(target.translationKey()),
-			(int) Math.round(scale * 100.0)
+			(int) Math.round(physicalScale * 100.0)
 		);
 		graphics.drawCenteredString(
 			this.font,

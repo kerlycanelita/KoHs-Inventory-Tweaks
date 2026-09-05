@@ -4,6 +4,7 @@ plugins {
 
 version = project.mod_version
 group = project.maven_group
+def releaseVersion = version.toString()
 
 base {
 	archivesName = 'kohs-inventory-tweaks'
@@ -38,8 +39,12 @@ dependencies {
 }
 
 processResources {
-	inputs.property 'version', project.version
+	inputs.property 'version', releaseVersion
 	includeEmptyDirs = false
+
+	from('LICENSE') {
+		into ''
+	}
 
 	['es_ar', 'es_cl', 'es_ec', 'es_mx', 'es_uy', 'es_ve'].each { spanishLocale ->
 		from('src/main/resources/assets/kohs_inventory_tweaks/lang/es_es.json') {
@@ -49,7 +54,7 @@ processResources {
 	}
 
 	filesMatching('fabric.mod.json') {
-		expand 'version': project.version
+		expand 'version': releaseVersion
 	}
 }
 

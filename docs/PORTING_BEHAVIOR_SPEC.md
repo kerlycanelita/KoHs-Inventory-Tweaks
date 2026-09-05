@@ -14,7 +14,7 @@ Use the following prompt as the starting point for a future port:
 
 - The mod is client-side. It must not require server installation or send custom inventory packets.
 - Vanilla container rules remain authoritative. No fabricated clicks, impossible swaps, inventory prediction, drag automation, duplicate actions, or bypasses are allowed.
-- The mod may improve client timing, presentation, pointer placement, and local input queuing only.
+- The mod may improve presentation and local pointer placement only; opening and inventory input remain on Minecraft's vanilla client-tick path.
 - Never replace the entire vanilla screen when a targeted render or input hook can preserve compatibility.
 - A missing custom setting always falls back safely to vanilla behavior.
 - All user changes that are confirmed with a save action must survive restart.
@@ -31,10 +31,10 @@ New installations must begin with these values:
 | Setting | Default | Contract |
 |---|---:|---|
 | Center Mouse Fix | On | Applies only when opening the player inventory. |
-| SuperFastInventory | On | Client-side opening/input coordination only. |
+| Super Fast Inventory | On | Advances only ordinary local `InventoryScreen` construction; server-controlled openings remain Vanilla. |
 | Remove All Inventory Animations | Off | Requires a warning before enabling. |
-| Custom inventory GUI scale | Off | Vanilla GUI scale controls the inventory while off. |
-| Inventory scale value | 100% | Stored even while the feature is off. |
+| Custom inventory GUI scale | On | New installations use the fixed physical inventory scale immediately. |
+| Inventory scale value | 200% | Measured against the fixed Vanilla GUI Scale 2x reference, independently of the user's global GUI scale. |
 | GUI scale warning dismissed | No | “Do not show again” applies only to the GUI Scaler warning. |
 | Affect all containers | On | Supported containers inherit the selected inventory scale on new installations. Explicitly saved choices remain authoritative. |
 | Chest cursor landing | Off | Single and double chest use vanilla pointer behavior. |
@@ -67,7 +67,6 @@ The menu contains at least:
 - Cursor Landing
 - Inventory Tweaks
 - Issues Tracker
-- Herzium
 - Customization
 - Item Highlighter
 - GUI Scaler
@@ -92,39 +91,33 @@ Cursor Landing stores an independent destination for:
 
 The editor displays a vanilla/resource-pack-aware preview and lets the player select a point inside it. Chest, Shulker Box, Ender Chest, and barrel have independent On/Off controls. Turning one off immediately restores vanilla pointer behavior for that container without deleting the stored point unless Reset All is used. The player inventory has no enable switch; an unset position means vanilla behavior.
 
-The selected point is normalized against the relevant GUI rectangle so it remains correct across GUI scale, resolution, fullscreen, and resource packs. Pointer movement occurs only after the target screen has completed its layout. Do not simulate dragging, clicking, or item movement.
+The selected point is normalized against the relevant GUI rectangle so it remains correct across GUI scale, resolution, fullscreen, and resource packs. When a screen opens from gameplay, pass that exact point into vanilla's mouse-release placement. After GLFW switches from captured to visible cursor mode, compare the physical cursor coordinates with the same target and perform one immediate conditional commit only when they differ; this prevents native raw-input ownership from leaving only a virtual/ghost position. That check and commit stay inside the same synchronous screen-open transition. Never refine or verify the position from screen initialization or rendered frames: a later write can pull the cursor after real player movement and is perceived as dragging. When one GUI replaces another and Vanilla skips mouse release, place it once after the replacement screen completes its layout. Do not simulate dragging, clicking, or item movement.
 
 Save & Exit commits every changed point and switch. Reset All clears all points and disables optional container targets. Escape with changes opens the discard warning.
 
 ## Center Mouse Fix
 
-Center Mouse Fix corrects a Minecraft or platform recenter that can occur during extremely fast player-inventory opening. It must:
+Center Mouse Fix reinforces Minecraft's normal centered pointer release for the player inventory. It must:
 
 - Apply only to `InventoryScreen`, never chest, Ender Chest, barrel, furnace, crafting table, or any other container.
-- Work whether the player has a custom inventory cursor point or uses vanilla placement.
-- Observe a short bounded opening window and correct only an unexpected recenter event.
-- Stop after the screen stabilizes or closes.
+- Leave a saved Cursor Landing point under Cursor Landing's separate local placement contract; use vanilla center when no custom inventory point exists.
+- Account for the real inventory rectangle, GUI Scaler transform, resolution, fullscreen state, and the vanilla Recipe Book offset before mouse release.
+- Use Minecraft's exact vanilla centered release coordinates. Super Fast Inventory may advance ordinary local screen construction; with it disabled, opening remains on the normal client tick.
+- Perform no second initialization-time warp, rendered-frame verification, interpolation, animation, delayed correction, or continuous verification.
+- Never issue a corrective warp after real player movement.
+- Never cancel `MouseHandler.onMove` events.
+- Never place the cursor when `Screen#init` runs for a window resize rather than for a screen opening.
+- If a confirmed raw-input owner can move or recenter the native pointer after Minecraft releases it, pause Cursor Landing and expose the reason in Issues Tracker. Do not reflect into the foreign mod, call undocumented handlers, or claim a compatibility adapter unless that exact version has a tested, reachable integration.
+
+## Super Fast Inventory
+
+Super Fast Inventory records physical input without opening a screen from inside the GLFW callback. At the beginning of `Minecraft#runTick`, after `RenderSystem.pollEvents()` has delivered the complete keyboard and mouse batch, it may consume the queued Inventory click and construct the ordinary local `InventoryScreen`. It must accept the configured keyboard mapping and a mouse button mapped to Inventory and prevent the next client tick from opening a duplicate screen. When any other non-movement mapping or queued Vanilla action is present in that batch—including offhand, hotbar, attack, use, drop, or pick—it must decline the early path without consuming Inventory and leave the complete batch to Vanilla. It must never cancel or recreate physical events, invoke `KeyMapping.click`, hide or restore `Minecraft#screen`, invoke slot actions, retry clicks, alter cooldowns, send packets directly, or accelerate a server-controlled inventory opening.
+
+The early ordinary-inventory opening is L0: that screen is local and sends no opening packet. All subsequent slot clicks and every overlapping gameplay action stay on Vanilla's menu/input paths with their original packet type, payload, count, ordering, synchronization and validation. A server-only anticheat cannot inspect the local opening time; an attested client can inspect the installed mod.
+- Release native-centering suppression when vanilla grabs the mouse for gameplay again.
 - Never continuously pin the pointer.
 - Never click, drag, select a slot, or modify container state.
 - Use the target Minecraft version's window-to-GUI coordinate conversion and native cursor API.
-
-## SuperFastInventory
-
-SuperFastInventory preserves rapid legitimate player input without inventing server actions. It coordinates the player-inventory open request and a nearly simultaneous offhand key press.
-
-Required behavior:
-
-- Opening remains immediate and responsive even when the player repeatedly taps the inventory key.
-- Maintain a small bounded client queue/state machine, not an unbounded list of repeated actions.
-- Coalesce duplicate open requests while the same screen transition is pending.
-- If the offhand key was pressed during the opening race, defer at most that single vanilla swap intent until `InventoryScreen` is initialized and rendered.
-- Resolve the real slot currently under the transformed GUI pointer after the screen is ready.
-- Invoke Minecraft's vanilla `SWAP`/offhand container action exactly once for that real slot.
-- If no valid slot is under the pointer, do nothing; never substitute the selected hotbar sword or another guessed slot.
-- Cancel the pending intent on timeout, screen replacement, disconnect, invalid player/game mode, or key release conditions required by the implementation.
-- Do not accelerate server acknowledgement, alter packets, predict inventory contents, or perform illegal multi-actions.
-
-The feature must be audited against rapid inventory toggling, simultaneous inventory/offhand input, scaled inventory coordinates, recipe-book layout, and high polling-rate mice/keyboards.
 
 ## Remove All Inventory Animations and anti-ghosting
 
@@ -205,7 +198,7 @@ The GUI Scaler opens as a unique full-screen adjustment screen over a visible wo
 - The On/Off control is centered above the inventory and has unmistakable visual state feedback.
 - Reset and Save & Exit are along the bottom.
 - There is no separate Back button.
-- Reset returns to disabled and 100%.
+- Reset returns to enabled and 200%.
 - When disabled, Minecraft's vanilla GUI scale determines the inventory.
 - When enabled, scale only the player inventory UI, including background, slots, items, labels, carried stack, recipe UI belonging to the inventory, and the player model.
 - The player model remains in its vanilla-relative rectangle, follows the mouse, and grows/shrinks exactly once with the inventory.
@@ -214,7 +207,7 @@ The GUI Scaler opens as a unique full-screen adjustment screen over a visible wo
 
 An `Affect Containers` button sits in the right control rail without shifting the centered inventory. It opens a second full-screen calibration view. While the switch is disabled, the centered container preview stays at vanilla 100%; while enabled, it immediately uses the currently selected inventory scale. Left/right arrows cycle only single chest, double chest, Shulker Box, barrel, and Ender Chest. The right-side `Affect all containers` switch is on by default for new installations, while an explicitly saved user choice remains authoritative. Enabling it always shows a translated warning naming those supported containers and explaining that more screens, such as villager trading, may be added later. When enabled, the full container background, labels, slots, carried item, hover position, clicks, releases, and drags use the same centered scale transform; unsupported containers remain vanilla.
 
-The nominal range is 65% to 175%, further clamped when required so controls and the inventory remain usable in the actual window.
+The nominal range is 65% to 315%, further clamped when required so controls and the inventory remain usable in the actual window. The stored percentage is a physical-size multiplier referenced to Vanilla GUI Scale 2x. Rendering converts that percentage to the current logical surface scale, so changing Minecraft's global GUI scale must not silently resize the configured inventory.
 
 ## Resource packs and reloads
 
@@ -228,17 +221,25 @@ Every live preview and real container customization must use resources loaded by
 
 Item models, item textures, fonts, and layout changes supplied by packs remain Minecraft's responsibility. The mod draws its highlight/frame layers around those renders.
 
-## Herzium integration
+## Dependent option-tree contract
 
-The main menu contains a Herzium button. When Herzium is installed, the button is vivid and surrounded by animated sparkles; clicking it opens Herzium's Mod Menu configuration screen. When missing, it is dim and its hover text explains that Herzium must be installed; clicking opens a warning with a link to the Herzium releases page.
+Profiles, Smart Highlighter, and the general Advanced Tools catalogue are not exposed or executed. Item Highlighter contains only explicit per-item rules. Customization owns Player Visibility, and GUI Scaler owns container scaling. A dependent control exists in the widget tree only while its parent is enabled. In particular, Visible-player depth intensity appears only while Player Visibility is enabled. Rebuilding the tree must preserve sanitized child values, reset scroll bounds, keep clipping aligned with hit testing, and never allow controls from a collapsed branch to receive input.
 
-Integration is optional. Never create a hard dependency, crash when Herzium is absent, or directly copy Herzium classes into this mod. Resolve its entry point/config screen defensively.
+Every inventory-affecting option must use the same resolver in previews and real screens. This includes selected Vanilla/Applied textures, custom colors and opacity, static or animated background frame, explicit item highlights, Player Visibility, and effective inventory/container scale. A compact layout may hide a secondary preview, but never clip the primary controls outside the logical window.
+
+The visible-player tint/light is an L0 local presentation feature. It may run only while the player inventory is open, must reject the local player and invisible entities, must suppress itself where the projected model overlaps the scaled inventory bounds, and must remain on the ordinary depth-tested model pass so blocks occlude it. Its editor preview must use a newly extracted render state from the current player's real skin/equipment, animate only that render-state copy, and show the inventory as a protected visual region. Do not use glowing/outline state, packets, entity metadata, targeting, live-entity rotation, input changes, or world mutation.
+
+## Herzium ownership boundary
+
+KoHs Inventory Tweaks does not expose a Herzium card, call Herzium classes, inspect its mixins, report it in Issues Tracker, or change feature availability because Herzium is installed. Herzium is excluded from the compatibility scanner so both mods retain independent ownership of their behavior.
 
 ## Issues Tracker and incompatibility alerts
 
 Issues Tracker lists detected problematic mods with icon, name, author, severity, and technical reason. Detection must be based on confirmed mod identifiers and confirmed injection/render conflicts, not guesses.
 
 Better Screens (`betterscreens`) is an explicit blocking conflict. Its container-scale implementation owns global screen extraction, renderer state, window GUI scale, and mouse-coordinate conversion, which cannot safely run alongside KoHs' centered container transform. When detected, KoHs must gate every gameplay mixin, skip normal runtime registration, show the localized close-only blocker, and list the confirmed overlap points.
+
+A confirmed mouse-position overlap may remain `ADAPTABLE` only when the installed version has a tested, reachable, bounded adapter. Without that proof, classify it as `DEGRADED`, pause only custom `CURSOR_LANDING`, and report the exact overlap in Issues Tracker. Raw Input Buffer (`rawinputbuffer`), Ixeris (`ixeris`), KoHs Synapse (`kohs_synapse`), and the Ixeris plus Raw Input Buffer combination follow this degraded policy. Center Mouse Fix remains an Inventory Tweaks feature and continues using the vanilla player-inventory center; Remove All Inventory Animations also remains available. Herzium (`herzium`) is deliberately outside this policy and is ignored by the compatibility scanner. Never claim that foreign mixins were disabled.
 
 For an adaptable conflict, show a semi-transparent animated warning with abundant purple particles before normal play. Explain that removing the other mod is recommended but allow continuation when KoHs Inventory Tweaks can safely disable only its own conflicting hooks or use a confirmed compatibility path. A foreign redirect may be suppressed by mixin priority only for an explicit, tested rule whose exact invocation collision is known; never generalize that priority override to unknown mods.
 
@@ -284,14 +285,16 @@ At minimum, verify:
 - Main menu at GUI scales 1 through 4, small window, fullscreen, and resize.
 - Cursor Landing for every target and every On/Off fallback.
 - Center Mouse Fix affects only the player inventory.
-- SuperFastInventory with repeated inventory taps and near-simultaneous offhand input.
+- Super Fast Inventory on/off with keyboard and remapped mouse input, repeated taps, held-key repeat, server-controlled inventory, and both input orders for near-simultaneous offhand/hotbar/attack/use/drop/pick actions. Confirm one logical click per physical press, the Vanilla packet type/count/order on the next keybind tick, no provisional container click, and no duplicated screen opening.
 - GUI Scaler minimum, 100%, maximum, disabled fallback, pointer hit testing, carried item, and player model.
 - Customization on all supported container previews and real screens.
 - Applied and Vanilla texture sources across a resource reload.
 - Static image, GIF, accepted video conversion, mandatory crop, invalid file, and animation removal.
 - Item Highlighter static, dynamic real-inventory behavior, hotbar behavior, modal focus, reset, and restart persistence.
 - Remove All Inventory Animations and visual anti-ghosting without changing real stack state.
-- Herzium installed and absent.
+- Raw Input Buffer, Ixeris, and KoHs Synapse individually: only custom Cursor Landing unavailable; Center Mouse Fix and every other Inventory Tweaks control remain usable, and the issue remains after the notification fades.
+- Herzium individually: no compatibility issue or notification, and every KoHs feature remains available.
+- Ixeris plus Raw Input Buffer: normal startup, compact warning, only custom Cursor Landing unavailable, and every Inventory Tweaks function including Center Mouse Fix still active.
 - Issues Tracker with no conflict, adaptable conflict, and blocking conflict fixtures.
 - No remap warnings and no mixin/application errors in `latest.log`.
 

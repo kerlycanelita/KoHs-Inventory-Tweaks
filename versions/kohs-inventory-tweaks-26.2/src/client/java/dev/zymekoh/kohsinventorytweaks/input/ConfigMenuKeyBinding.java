@@ -2,7 +2,9 @@ package dev.zymekoh.kohsinventorytweaks.input;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.zymekoh.kohsinventorytweaks.KoHsInventoryTweaksClient;
+import dev.zymekoh.kohsinventorytweaks.compat.MouseConflictNotificationController;
 import dev.zymekoh.kohsinventorytweaks.screen.InventoryTweaksScreen;
+import dev.zymekoh.kohsinventorytweaks.screen.IssuesTrackerScreen;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -35,7 +37,12 @@ public final class ConfigMenuKeyBinding {
 		while (OPEN_CONFIG.consumeClick()) {
 			// Never steal input from chat, inventories, or another configuration screen.
 			if (minecraft.gui.screen() == null && minecraft.player != null && minecraft.gameMode != null) {
-				minecraft.gui.setScreen(new InventoryTweaksScreen(null));
+				InventoryTweaksScreen menu = new InventoryTweaksScreen(null);
+				if (MouseConflictNotificationController.consumeIssuesTrackerRoute()) {
+					minecraft.gui.setScreen(new IssuesTrackerScreen(menu));
+				} else {
+					minecraft.gui.setScreen(menu);
+				}
 			}
 		}
 	}
@@ -48,5 +55,22 @@ public final class ConfigMenuKeyBinding {
 		OPEN_CONFIG.setKey(key);
 		KeyMapping.resetMapping();
 		minecraft.options.save();
+	}
+
+	public static void reset(final Minecraft minecraft) {
+		assign(minecraft, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_Y));
+	}
+
+	public static int conflictCount(final Minecraft minecraft) {
+		if (minecraft == null || minecraft.options == null) {
+			return 0;
+		}
+		int conflicts = 0;
+		for (KeyMapping mapping : minecraft.options.keyMappings) {
+			if (mapping != OPEN_CONFIG && mapping.same(OPEN_CONFIG)) {
+				conflicts++;
+			}
+		}
+		return conflicts;
 	}
 }

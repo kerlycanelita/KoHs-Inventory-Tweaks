@@ -2,6 +2,8 @@ package dev.zymekoh.kohsinventorytweaks.cursor;
 
 import com.mojang.blaze3d.platform.Window;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.CursorPoint;
 import dev.zymekoh.kohsinventorytweaks.mixin.AbstractContainerScreenAccessor;
 import dev.zymekoh.kohsinventorytweaks.mixin.MouseHandlerAccessor;
@@ -15,97 +17,140 @@ import net.minecraft.client.gui.screens.inventory.MenuAccess;
 import net.minecraft.client.gui.screens.inventory.ShulkerBoxScreen;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.inventory.ChestMenu;
+import net.fabricmc.loader.api.FabricLoader;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.system.MemoryStack;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.DoubleBuffer;
 
 public final class CursorLandingController {
-	private static final long CENTER_GUARD_NANOS = 100_000_000L;
-	private static final double CENTER_EVENT_TOLERANCE = 1.25;
+	private static final double CURSOR_POSITION_EPSILON = 0.5;
 	private static Screen openingScreen;
 	private static CursorTarget openingTarget;
-	private static Screen verificationScreen;
-	private static boolean verificationPending;
-	private static long centerGuardUntil;
+	private static Screen releasePlacementScreen;
+	private static double[] releasePlacementPosition;
+	private static volatile boolean suppressNativeCursorCentering;
+	private static boolean rawInputLookupComplete;
+	private static Method rawInputGetHandler;
+	private static Method rawInputTick;
+	private static Method rawInputResetDeltas;
 
 	private CursorLandingController() {
 	}
 
 	public static void onScreenRequested(final Screen screen) {
+		suppressNativeCursorCentering = screen != null
+			&& CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CURSOR_LANDING);
 		openingScreen = screen;
 		openingTarget = classify(screen);
-		verificationPending = false;
-		verificationScreen = null;
-		centerGuardUntil = 0L;
+		releasePlacementScreen = null;
+		releasePlacementPosition = null;
+	}
+
+	public static void onMouseGrabRequested() {
+		suppressNativeCursorCentering = false;
+	}
+
+	public static boolean shouldSuppressNativeCursorCentering() {
+		return suppressNativeCursorCentering;
 	}
 
 	public static double[] overrideReleasePosition(final Minecraft minecraft) {
 		Screen screen = minecraft == null ? null : minecraft.screen;
 		CursorTarget target = screen == openingScreen ? openingTarget : classify(screen);
-		return target == null || !shouldPlaceCursor(target)
-			? null
-			: resolvePhysicalPosition(minecraft, screen, target, false);
+		if (target == null || !shouldPlaceCursor(target)) {
+			return null;
+		}
+
+		// Raw Input Buffer changes its screen/game-focus flag on its own client tick.
+		// If an inventory opens between two of those ticks, its raw-input thread may
+		// still center the Windows cursor once. Synchronizing its public handler here
+		// prevents that stale center operation without adding a hard dependency.
+		synchronizeRawInputScreenState();
+
+		double[] position = resolvePhysicalPosition(minecraft, screen, target, false);
+		releasePlacementScreen = screen;
+		releasePlacementPosition = position;
+		return position;
+	}
+
+	/**
+	 * Commits the same release target after GLFW has switched from captured to
+	 * visible cursor mode. Under a native raw-input owner, the cursor-position
+	 * write performed while captured may update only GLFW's virtual coordinates;
+	 * this conditional commit keeps the physical pointer and Minecraft state in
+	 * agreement without scheduling a later correction or pinning the cursor.
+	 */
+	public static void onMouseReleased(final Minecraft minecraft) {
+		if (minecraft == null
+			|| minecraft.screen != releasePlacementScreen
+			|| releasePlacementPosition == null) {
+			return;
+		}
+		warp(minecraft, releasePlacementPosition);
 	}
 
 	public static void onContainerScreenInitialized(final Minecraft minecraft, final Screen screen) {
 		CursorTarget target = classify(screen);
 		if (target == null || !shouldPlaceCursor(target)) {
-			openingScreen = null;
-			openingTarget = null;
+			clearOpeningState();
 			return;
 		}
 
-		warp(minecraft, resolvePhysicalPosition(minecraft, screen, target, true));
-		if (isCenterMouseFixTarget(target)) {
-			verificationPending = true;
-			verificationScreen = screen;
-			centerGuardUntil = System.nanoTime() + CENTER_GUARD_NANOS;
+		if (screen == releasePlacementScreen && releasePlacementPosition != null) {
+			// Normally onMouseReleased already committed this exact point after GLFW
+			// exposed the cursor. Rechecking the physical coordinates here is a no-op
+			// unless another native input owner changed them during screen setup.
+			warp(minecraft, releasePlacementPosition);
+		} else {
+			// releaseMouse is skipped when one GUI replaces another. In that case the
+			// initialized layout is the only placement point. A screen opened from
+			// gameplay retains the exact release target stored above.
+			synchronizeRawInputScreenState();
+			warp(minecraft, resolvePhysicalPosition(minecraft, screen, target, true));
 		}
+		clearOpeningState();
+	}
+
+	private static void clearOpeningState() {
 		openingScreen = null;
 		openingTarget = null;
+		releasePlacementScreen = null;
+		releasePlacementPosition = null;
 	}
 
-	public static void onClientTick(final Minecraft minecraft) {
-		if (!verificationPending) {
+	private static void synchronizeRawInputScreenState() {
+		if (!FabricLoader.getInstance().isModLoaded("rawinputbuffer")) {
 			return;
 		}
 
-		verificationPending = false;
-		if (minecraft == null || minecraft.screen != verificationScreen || System.nanoTime() > centerGuardUntil) {
-			return;
+		try {
+			if (!rawInputLookupComplete) {
+				Class<?> rawInputClass = Class.forName("walksy.rawinput.RawInput");
+				Class<?> handlerClass = Class.forName("walksy.rawinput.RawInputHandler");
+				rawInputGetHandler = rawInputClass.getMethod("getInputHandler");
+				rawInputTick = handlerClass.getMethod("tick");
+				rawInputResetDeltas = handlerClass.getMethod("resetDeltas");
+				rawInputLookupComplete = true;
+			}
+			if (rawInputGetHandler != null && rawInputTick != null && rawInputResetDeltas != null) {
+				Object handler = rawInputGetHandler.invoke(null);
+				if (handler != null) {
+					rawInputTick.invoke(handler);
+					rawInputResetDeltas.invoke(handler);
+				}
+			}
+		} catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
+			// Raw Input Buffer may change its internals in a future release. Cursor
+			// landing remains fully functional; only this optional race workaround is
+			// skipped when its public API no longer matches.
+			rawInputLookupComplete = true;
+			rawInputGetHandler = null;
+			rawInputTick = null;
+			rawInputResetDeltas = null;
 		}
-
-		CursorTarget target = classify(minecraft.screen);
-		if (target != null && shouldPlaceCursor(target)) {
-			warp(minecraft, resolvePhysicalPosition(minecraft, minecraft.screen, target, true));
-		}
-	}
-
-	public static boolean recoverUnexpectedCenterEvent(final Minecraft minecraft, final double x, final double y) {
-		if (minecraft == null
-			|| minecraft.screen == null
-			|| !ConfigStore.get().centerMouseFix
-			|| System.nanoTime() > centerGuardUntil) {
-			return false;
-		}
-
-		CursorTarget target = classify(minecraft.screen);
-		if (target == null || !shouldPlaceCursor(target)) {
-			return false;
-		}
-
-		Window window = minecraft.getWindow();
-		double centerX = window.getScreenWidth() * 0.5;
-		double centerY = window.getScreenHeight() * 0.5;
-		double[] desired = resolvePhysicalPosition(minecraft, minecraft.screen, target, true);
-		boolean desiredIsCenter = Math.abs(desired[0] - centerX) <= CENTER_EVENT_TOLERANCE
-			&& Math.abs(desired[1] - centerY) <= CENTER_EVENT_TOLERANCE;
-		boolean eventIsCenter = Math.abs(x - centerX) <= CENTER_EVENT_TOLERANCE
-			&& Math.abs(y - centerY) <= CENTER_EVENT_TOLERANCE;
-		if (desiredIsCenter || !eventIsCenter) {
-			return false;
-		}
-
-		warp(minecraft, desired);
-		return true;
 	}
 
 	private static void warp(final Minecraft minecraft, final double[] position) {
@@ -115,7 +160,18 @@ public final class CursorLandingController {
 
 		((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$setXpos(position[0]);
 		((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$setYpos(position[1]);
-		GLFW.glfwSetCursorPos(minecraft.getWindow().handle(), position[0], position[1]);
+
+		long handle = minecraft.getWindow().handle();
+		try (MemoryStack stack = MemoryStack.stackPush()) {
+			DoubleBuffer currentX = stack.mallocDouble(1);
+			DoubleBuffer currentY = stack.mallocDouble(1);
+			GLFW.glfwGetCursorPos(handle, currentX, currentY);
+			if (Math.abs(currentX.get(0) - position[0]) <= CURSOR_POSITION_EPSILON
+				&& Math.abs(currentY.get(0) - position[1]) <= CURSOR_POSITION_EPSILON) {
+				return;
+			}
+		}
+		GLFW.glfwSetCursorPos(handle, position[0], position[1]);
 	}
 
 	private static double[] resolvePhysicalPosition(
@@ -144,9 +200,17 @@ public final class CursorLandingController {
 		if (screen instanceof AbstractContainerScreenAccessor accessor) {
 			imageWidth = accessor.kohsInventoryTweaks$getImageWidth();
 			imageHeight = accessor.kohsInventoryTweaks$getImageHeight();
-			if (initialized || screen.width > 0) {
+			if (initialized) {
 				left = accessor.kohsInventoryTweaks$getLeftPos();
 				top = accessor.kohsInventoryTweaks$getTopPos();
+			} else if (screen instanceof InventoryScreen inventoryScreen
+				&& guiWidth >= 379
+				&& minecraft.player != null
+				&& minecraft.player.getRecipeBook().isOpen(inventoryScreen.getMenu().getRecipeBookType())) {
+				// AbstractRecipeBookScreen shifts the player inventory during init when
+				// its book is open. Reproducing that vanilla calculation here avoids a
+				// visible second jump after initialization.
+				left = 177 + (guiWidth - imageWidth - 200) / 2;
 			}
 		}
 
@@ -167,7 +231,8 @@ public final class CursorLandingController {
 	}
 
 	private static boolean shouldPlaceCursor(final CursorTarget target) {
-		return ConfigStore.get().isCursorEnabled(target) || isCenterMouseFixTarget(target);
+		return CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CURSOR_LANDING)
+			&& (ConfigStore.get().isCursorEnabled(target) || isCenterMouseFixTarget(target));
 	}
 
 	private static boolean isCenterMouseFixTarget(final CursorTarget target) {

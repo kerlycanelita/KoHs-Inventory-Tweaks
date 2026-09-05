@@ -530,16 +530,33 @@ public final class BackgroundMediaManager {
 	public record AnimationFrame(int[] pixels, int delayMs) {
 	}
 
-	public record AnimatedBackground(List<AnimationFrame> frames) {
-		public AnimationFrame frameAt(final long elapsedMs) {
-			if (this.frames.size() == 1) {
-				return this.frames.getFirst();
-			}
+	/**
+	 * An imported background. The loop length is measured once at load time: the
+	 * composer asks for the current frame on every rendered frame of every
+	 * customized surface.
+	 */
+	public static final class AnimatedBackground {
+		private final List<AnimationFrame> frames;
+		private final long durationMs;
+
+		public AnimatedBackground(final List<AnimationFrame> frames) {
+			this.frames = List.copyOf(frames);
 			long duration = 0L;
 			for (AnimationFrame frame : this.frames) {
 				duration += frame.delayMs;
 			}
-			long position = Math.floorMod(elapsedMs, Math.max(1L, duration));
+			this.durationMs = Math.max(1L, duration);
+		}
+
+		public List<AnimationFrame> frames() {
+			return this.frames;
+		}
+
+		public AnimationFrame frameAt(final long elapsedMs) {
+			if (this.frames.size() == 1) {
+				return this.frames.getFirst();
+			}
+			long position = Math.floorMod(elapsedMs, this.durationMs);
 			for (AnimationFrame frame : this.frames) {
 				if (position < frame.delayMs) {
 					return frame;

@@ -1,22 +1,41 @@
 package dev.zymekoh.kohsinventorytweaks.config;
 
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorTarget;
+import dev.zymekoh.kohsinventorytweaks.inventory.ContainerScaleTarget;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 public final class InventoryTweaksConfig {
+	public static final double DEFAULT_INVENTORY_GUI_SCALE = 2.00;
 	public enum TextureSource {
 		APPLIED,
 		VANILLA
 	}
 
+	public enum ProfilePreset {
+		CUSTOM,
+		VANILLA,
+		PVP,
+		BUILDING,
+		PERFORMANCE;
+
+		public ProfilePreset next() {
+			ProfilePreset[] values = values();
+			return values[(this.ordinal() + 1) % values.length];
+		}
+	}
+
 	public boolean centerMouseFix = true;
 	public boolean superFastInventory = true;
 	public boolean removeAllInventoryAnimations;
-	public boolean inventoryGuiScalerEnabled;
-	public double inventoryGuiScale = 1.0;
+	public ProfilePreset activeProfile = ProfilePreset.CUSTOM;
+	public boolean autoProfileSwitch;
+	public ProfilePreset singleplayerProfile = ProfilePreset.BUILDING;
+	public ProfilePreset multiplayerProfile = ProfilePreset.PVP;
+	public boolean inventoryGuiScalerEnabled = true;
+	public double inventoryGuiScale = DEFAULT_INVENTORY_GUI_SCALE;
 	public boolean guiScalerWarningDismissed;
 	public boolean affectAllContainers = true;
 	public boolean chestCursorEnabled;
@@ -30,8 +49,45 @@ public final class InventoryTweaksConfig {
 	public int slotOpacity = 255;
 	public int backgroundOpacity = 255;
 	public int inventoryBackdropOpacity = 208;
+	public int visiblePlayerDepthIntensity = 220;
+	public boolean smartHighlighterEnabled;
+	public boolean smartLowDurabilityEnabled = true;
+	public int smartLowDurabilityThreshold = 15;
+	public int smartLowDurabilityColor = 0xFF4D75;
+	public boolean smartEnchantedEnabled = true;
+	public int smartEnchantedColor = 0xB05CFF;
+	public boolean smartHighlighterHotbar;
+	public boolean accessibilitySlotFocusEnabled;
+	public boolean accessibilitySlotFocusPulse = true;
+	public int accessibilitySlotFocusOpacity = 210;
+	public int accessibilitySlotFocusColor = 0xD7A3FF;
+	public boolean visiblePlayerGlowEnabled;
+	public boolean visiblePlayerHighlightEnabled = true;
+	public boolean visiblePlayerLightGlowEnabled = true;
+	public int visiblePlayerGlowIntensity = 120;
+	public int visiblePlayerGlowBrightness = 96;
+	public int visiblePlayerGlowDistance = 32;
+	public boolean visiblePlayerGlowPulse = true;
+	public int visiblePlayerGlowColor = 0xB86BFF;
+	public boolean containerProfilesEnabled;
+	public boolean chestContainerScaleEnabled = true;
+	public double chestContainerScale = 1.0;
+	public boolean shulkerContainerScaleEnabled = true;
+	public double shulkerContainerScale = 1.0;
+	public boolean enderChestContainerScaleEnabled = true;
+	public double enderChestContainerScale = 1.0;
+	public boolean barrelContainerScaleEnabled = true;
+	public double barrelContainerScale = 1.0;
+	public int menuParticleDensity = 100;
+	public int animatedBackgroundFps = 30;
+	public boolean pauseAnimatedBackgroundWhenUnfocused = true;
+	public boolean reduceParticlesWhenUnfocused = true;
+	public boolean automaticBackups = true;
+	public int backupRetention = 5;
 	public @Nullable String customBackgroundFile;
 	public List<ItemHighlight> itemHighlights = new ArrayList<>();
+	/** Item the player inventory landing follows, by registry id, or null. */
+	public @Nullable String inventoryLandingItem;
 	public @Nullable CursorPoint inventory;
 	public @Nullable CursorPoint chestSingle;
 	public @Nullable CursorPoint chestDouble;
@@ -44,6 +100,10 @@ public final class InventoryTweaksConfig {
 		copy.centerMouseFix = this.centerMouseFix;
 		copy.superFastInventory = this.superFastInventory;
 		copy.removeAllInventoryAnimations = this.removeAllInventoryAnimations;
+		copy.activeProfile = this.activeProfile;
+		copy.autoProfileSwitch = this.autoProfileSwitch;
+		copy.singleplayerProfile = this.singleplayerProfile;
+		copy.multiplayerProfile = this.multiplayerProfile;
 		copy.inventoryGuiScalerEnabled = this.inventoryGuiScalerEnabled;
 		copy.inventoryGuiScale = this.inventoryGuiScale;
 		copy.guiScalerWarningDismissed = this.guiScalerWarningDismissed;
@@ -59,6 +119,41 @@ public final class InventoryTweaksConfig {
 		copy.slotOpacity = this.slotOpacity;
 		copy.backgroundOpacity = this.backgroundOpacity;
 		copy.inventoryBackdropOpacity = this.inventoryBackdropOpacity;
+		copy.visiblePlayerDepthIntensity = this.visiblePlayerDepthIntensity;
+		copy.smartHighlighterEnabled = this.smartHighlighterEnabled;
+		copy.smartLowDurabilityEnabled = this.smartLowDurabilityEnabled;
+		copy.smartLowDurabilityThreshold = this.smartLowDurabilityThreshold;
+		copy.smartLowDurabilityColor = this.smartLowDurabilityColor;
+		copy.smartEnchantedEnabled = this.smartEnchantedEnabled;
+		copy.smartEnchantedColor = this.smartEnchantedColor;
+		copy.smartHighlighterHotbar = this.smartHighlighterHotbar;
+		copy.accessibilitySlotFocusEnabled = this.accessibilitySlotFocusEnabled;
+		copy.accessibilitySlotFocusPulse = this.accessibilitySlotFocusPulse;
+		copy.accessibilitySlotFocusOpacity = this.accessibilitySlotFocusOpacity;
+		copy.accessibilitySlotFocusColor = this.accessibilitySlotFocusColor;
+		copy.visiblePlayerGlowEnabled = this.visiblePlayerGlowEnabled;
+		copy.visiblePlayerHighlightEnabled = this.visiblePlayerHighlightEnabled;
+		copy.visiblePlayerLightGlowEnabled = this.visiblePlayerLightGlowEnabled;
+		copy.visiblePlayerGlowIntensity = this.visiblePlayerGlowIntensity;
+		copy.visiblePlayerGlowBrightness = this.visiblePlayerGlowBrightness;
+		copy.visiblePlayerGlowDistance = this.visiblePlayerGlowDistance;
+		copy.visiblePlayerGlowPulse = this.visiblePlayerGlowPulse;
+		copy.visiblePlayerGlowColor = this.visiblePlayerGlowColor;
+		copy.containerProfilesEnabled = this.containerProfilesEnabled;
+		copy.chestContainerScaleEnabled = this.chestContainerScaleEnabled;
+		copy.chestContainerScale = this.chestContainerScale;
+		copy.shulkerContainerScaleEnabled = this.shulkerContainerScaleEnabled;
+		copy.shulkerContainerScale = this.shulkerContainerScale;
+		copy.enderChestContainerScaleEnabled = this.enderChestContainerScaleEnabled;
+		copy.enderChestContainerScale = this.enderChestContainerScale;
+		copy.barrelContainerScaleEnabled = this.barrelContainerScaleEnabled;
+		copy.barrelContainerScale = this.barrelContainerScale;
+		copy.menuParticleDensity = this.menuParticleDensity;
+		copy.animatedBackgroundFps = this.animatedBackgroundFps;
+		copy.pauseAnimatedBackgroundWhenUnfocused = this.pauseAnimatedBackgroundWhenUnfocused;
+		copy.reduceParticlesWhenUnfocused = this.reduceParticlesWhenUnfocused;
+		copy.automaticBackups = this.automaticBackups;
+		copy.backupRetention = this.backupRetention;
 		copy.customBackgroundFile = this.customBackgroundFile;
 		copy.itemHighlights = new ArrayList<>();
 		for (ItemHighlight highlight : this.itemHighlights) {
@@ -66,6 +161,7 @@ public final class InventoryTweaksConfig {
 				copy.itemHighlights.add(highlight.copy());
 			}
 		}
+		copy.inventoryLandingItem = this.inventoryLandingItem;
 		copy.inventory = copyPoint(this.inventory);
 		copy.chestSingle = copyPoint(this.chestSingle);
 		copy.chestDouble = copyPoint(this.chestDouble);
@@ -124,6 +220,7 @@ public final class InventoryTweaksConfig {
 		this.shulkerCursorEnabled = false;
 		this.enderChestCursorEnabled = false;
 		this.barrelCursorEnabled = false;
+		this.inventoryLandingItem = null;
 		this.inventory = null;
 		this.chestSingle = null;
 		this.chestDouble = null;
@@ -140,13 +237,84 @@ public final class InventoryTweaksConfig {
 		this.slotOpacity = 255;
 		this.backgroundOpacity = 255;
 		this.inventoryBackdropOpacity = 208;
+		this.visiblePlayerDepthIntensity = 220;
 		this.customBackgroundFile = null;
 	}
 
 	public void resetGuiScaler() {
-		this.inventoryGuiScalerEnabled = false;
-		this.inventoryGuiScale = 1.0;
+		this.inventoryGuiScalerEnabled = true;
+		this.inventoryGuiScale = DEFAULT_INVENTORY_GUI_SCALE;
 		this.affectAllContainers = true;
+	}
+
+	public boolean isContainerScaleEnabled(final ContainerScaleTarget target) {
+		return switch (target) {
+			case CHEST_SINGLE, CHEST_DOUBLE -> this.chestContainerScaleEnabled;
+			case SHULKER -> this.shulkerContainerScaleEnabled;
+			case ENDER_CHEST -> this.enderChestContainerScaleEnabled;
+			case BARREL -> this.barrelContainerScaleEnabled;
+		};
+	}
+
+	public double containerScale(final ContainerScaleTarget target) {
+		return switch (target) {
+			case CHEST_SINGLE, CHEST_DOUBLE -> this.chestContainerScale;
+			case SHULKER -> this.shulkerContainerScale;
+			case ENDER_CHEST -> this.enderChestContainerScale;
+			case BARREL -> this.barrelContainerScale;
+		};
+	}
+
+	/** Applies only behavior and performance defaults; personal art and item lists survive. */
+	public void applyProfile(final ProfilePreset requested) {
+		ProfilePreset preset = requested == null ? ProfilePreset.CUSTOM : requested;
+		this.activeProfile = preset;
+		switch (preset) {
+			case CUSTOM -> {
+			}
+			case VANILLA -> {
+				this.centerMouseFix = true;
+				this.superFastInventory = false;
+				this.removeAllInventoryAnimations = false;
+				this.inventoryGuiScalerEnabled = false;
+				this.smartHighlighterEnabled = false;
+				this.accessibilitySlotFocusEnabled = false;
+				this.visiblePlayerGlowEnabled = false;
+				this.menuParticleDensity = 100;
+				this.animatedBackgroundFps = 60;
+			}
+			case PVP -> {
+				this.centerMouseFix = true;
+				this.superFastInventory = true;
+				this.removeAllInventoryAnimations = true;
+				this.smartHighlighterEnabled = true;
+				this.smartLowDurabilityEnabled = true;
+				this.smartHighlighterHotbar = true;
+				this.visiblePlayerGlowEnabled = false;
+				this.menuParticleDensity = 35;
+				this.animatedBackgroundFps = 20;
+			}
+			case BUILDING -> {
+				this.centerMouseFix = true;
+				this.superFastInventory = true;
+				this.removeAllInventoryAnimations = false;
+				this.smartHighlighterEnabled = false;
+				this.accessibilitySlotFocusEnabled = true;
+				this.visiblePlayerGlowEnabled = false;
+				this.menuParticleDensity = 100;
+				this.animatedBackgroundFps = 30;
+			}
+			case PERFORMANCE -> {
+				this.centerMouseFix = true;
+				this.superFastInventory = true;
+				this.removeAllInventoryAnimations = true;
+				this.smartHighlighterEnabled = false;
+				this.accessibilitySlotFocusEnabled = false;
+				this.visiblePlayerGlowEnabled = false;
+				this.menuParticleDensity = 0;
+				this.animatedBackgroundFps = 5;
+			}
+		}
 	}
 
 	public @Nullable ItemHighlight findItemHighlight(final String itemId) {
@@ -182,6 +350,10 @@ public final class InventoryTweaksConfig {
 			&& this.centerMouseFix == other.centerMouseFix
 			&& this.superFastInventory == other.superFastInventory
 			&& this.removeAllInventoryAnimations == other.removeAllInventoryAnimations
+			&& this.activeProfile == other.activeProfile
+			&& this.autoProfileSwitch == other.autoProfileSwitch
+			&& this.singleplayerProfile == other.singleplayerProfile
+			&& this.multiplayerProfile == other.multiplayerProfile
 			&& this.inventoryGuiScalerEnabled == other.inventoryGuiScalerEnabled
 			&& Double.compare(this.inventoryGuiScale, other.inventoryGuiScale) == 0
 			&& this.guiScalerWarningDismissed == other.guiScalerWarningDismissed
@@ -197,8 +369,44 @@ public final class InventoryTweaksConfig {
 			&& this.slotOpacity == other.slotOpacity
 			&& this.backgroundOpacity == other.backgroundOpacity
 			&& this.inventoryBackdropOpacity == other.inventoryBackdropOpacity
+			&& this.visiblePlayerDepthIntensity == other.visiblePlayerDepthIntensity
+			&& this.smartHighlighterEnabled == other.smartHighlighterEnabled
+			&& this.smartLowDurabilityEnabled == other.smartLowDurabilityEnabled
+			&& this.smartLowDurabilityThreshold == other.smartLowDurabilityThreshold
+			&& this.smartLowDurabilityColor == other.smartLowDurabilityColor
+			&& this.smartEnchantedEnabled == other.smartEnchantedEnabled
+			&& this.smartEnchantedColor == other.smartEnchantedColor
+			&& this.smartHighlighterHotbar == other.smartHighlighterHotbar
+			&& this.accessibilitySlotFocusEnabled == other.accessibilitySlotFocusEnabled
+			&& this.accessibilitySlotFocusPulse == other.accessibilitySlotFocusPulse
+			&& this.accessibilitySlotFocusOpacity == other.accessibilitySlotFocusOpacity
+			&& this.accessibilitySlotFocusColor == other.accessibilitySlotFocusColor
+			&& this.visiblePlayerGlowEnabled == other.visiblePlayerGlowEnabled
+			&& this.visiblePlayerHighlightEnabled == other.visiblePlayerHighlightEnabled
+			&& this.visiblePlayerLightGlowEnabled == other.visiblePlayerLightGlowEnabled
+			&& this.visiblePlayerGlowIntensity == other.visiblePlayerGlowIntensity
+			&& this.visiblePlayerGlowBrightness == other.visiblePlayerGlowBrightness
+			&& this.visiblePlayerGlowDistance == other.visiblePlayerGlowDistance
+			&& this.visiblePlayerGlowPulse == other.visiblePlayerGlowPulse
+			&& this.visiblePlayerGlowColor == other.visiblePlayerGlowColor
+			&& this.containerProfilesEnabled == other.containerProfilesEnabled
+			&& this.chestContainerScaleEnabled == other.chestContainerScaleEnabled
+			&& Double.compare(this.chestContainerScale, other.chestContainerScale) == 0
+			&& this.shulkerContainerScaleEnabled == other.shulkerContainerScaleEnabled
+			&& Double.compare(this.shulkerContainerScale, other.shulkerContainerScale) == 0
+			&& this.enderChestContainerScaleEnabled == other.enderChestContainerScaleEnabled
+			&& Double.compare(this.enderChestContainerScale, other.enderChestContainerScale) == 0
+			&& this.barrelContainerScaleEnabled == other.barrelContainerScaleEnabled
+			&& Double.compare(this.barrelContainerScale, other.barrelContainerScale) == 0
+			&& this.menuParticleDensity == other.menuParticleDensity
+			&& this.animatedBackgroundFps == other.animatedBackgroundFps
+			&& this.pauseAnimatedBackgroundWhenUnfocused == other.pauseAnimatedBackgroundWhenUnfocused
+			&& this.reduceParticlesWhenUnfocused == other.reduceParticlesWhenUnfocused
+			&& this.automaticBackups == other.automaticBackups
+			&& this.backupRetention == other.backupRetention
 			&& Objects.equals(this.customBackgroundFile, other.customBackgroundFile)
 			&& Objects.equals(this.itemHighlights, other.itemHighlights)
+			&& Objects.equals(this.inventoryLandingItem, other.inventoryLandingItem)
 			&& Objects.equals(this.inventory, other.inventory)
 			&& Objects.equals(this.chestSingle, other.chestSingle)
 			&& Objects.equals(this.chestDouble, other.chestDouble)

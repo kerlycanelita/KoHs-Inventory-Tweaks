@@ -2,7 +2,6 @@ package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
-import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
@@ -58,10 +57,6 @@ public abstract class InventoryScreenMixin {
 		final float a,
 		final CallbackInfo callbackInfo
 	) {
-		SuperFastInventoryController.onInventoryRendered(
-			Minecraft.getInstance(),
-			(InventoryScreen) (Object) this
-		);
 	}
 
 	@ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 0)

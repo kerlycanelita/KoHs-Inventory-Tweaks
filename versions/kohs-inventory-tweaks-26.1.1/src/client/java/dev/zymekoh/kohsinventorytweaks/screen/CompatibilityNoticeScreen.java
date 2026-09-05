@@ -91,7 +91,6 @@ public final class CompatibilityNoticeScreen extends Screen {
 			particle.tick(this.width, this.height);
 		}
 		if (this.closing && System.nanoTime() - this.closingAtNanos >= MOTION_NANOS) {
-			CompatibilityIssueManager.enableAdaptation();
 			CompatibilityNoticeController.acknowledge();
 			this.minecraft.setScreen(this.parent);
 		}

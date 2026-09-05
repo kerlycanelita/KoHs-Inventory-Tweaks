@@ -9,22 +9,25 @@
     "AbstractContainerScreenMixin",
     "AbstractRecipeBookScreenAccessor",
     "AbstractRecipeBookScreenMixin",
-    "ContainerScreenMixin",
     "ClientBundleTooltipMixin",
+    "ContainerScreenMixin",
     "CyclingSlotBackgroundMixin",
     "EnchantmentScreenMixin",
-    "GuiMixin",
     "GuiGraphicsMixin",
+    "GuiMixin",
     "InventoryScreenMixin",
     "ItemStackMixin",
+    "KeyMappingAccessor",
     "KeyboardHandlerMixin",
     "MinecraftScreenMixin",
     "MouseHandlerAccessor",
     "MouseHandlerMixin",
+    "RawInputBufferMixin",
     "RecipeBookComponentMixin",
     "RecipeBookTabButtonMixin",
     "RecipeButtonMixin",
-    "ScreenBackgroundMixin"
+    "ScreenBackgroundMixin",
+    "WindowMixin"
   ],
   "injectors": {
     "defaultRequire": 1

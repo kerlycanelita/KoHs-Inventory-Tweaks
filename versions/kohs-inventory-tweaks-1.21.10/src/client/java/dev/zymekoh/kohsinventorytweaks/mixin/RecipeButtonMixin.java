@@ -1,6 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
-import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.render.InventoryAnimationController;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.recipebook.RecipeButton;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,7 +21,7 @@ public abstract class RecipeButtonMixin {
 		final float partialTick,
 		final CallbackInfo callbackInfo
 	) {
-		if (ConfigStore.get().removeAllInventoryAnimations) {
+		if (InventoryAnimationController.suppressAllInventoryAnimations()) {
 			this.animationTime = 0.0F;
 		}
 	}

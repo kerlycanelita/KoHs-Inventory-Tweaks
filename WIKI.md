@@ -79,20 +79,15 @@ Chest, Shulker Box, Ender Chest, and Barrel have independent switches. When one 
 
 ### Center Mouse Fix
 
-Minecraft or another mod may produce an unexpected centering event while the player's inventory is opening. Center Mouse Fix keeps a verification window of approximately 100 ms and restores the configured position once if it detects that event.
+Center Mouse Fix supplies the custom or vanilla centered coordinates to `MouseHandler#releaseMouse` exactly once for each player-inventory opening. It performs no initialization-time refinement, rendered-frame verification, interpolation, or later corrective movement.
 
-It does not create a dragging effect, block later mouse movement, or affect chests, Ender Chests, barrels, or other containers. If no custom inventory position exists, it also works with the inventory's normal vanilla center position.
+It does not create a dragging effect, block later mouse movement, or affect chests, Ender Chests, barrels, or other containers. A separately configured Cursor Landing position remains a local visual placement and never changes an inventory action.
 
-### SuperFastInventory
+### Super Fast Inventory
 
-SuperFastInventory removes unnecessary delay while creating the local inventory screen and protects rapid inventory/offhand input combinations:
+When enabled, a physical inventory-key press—or a mouse button remapped to Inventory—constructs the ordinary local `InventoryScreen` immediately instead of waiting for the next client tick. It consumes only the logical inventory click Vanilla just queued, preventing the next tick from opening a duplicate screen. If offhand, hotbar, attack, use, drop, or pick input is already queued in that tick, KoHs does not open early and lets Vanilla process the complete input batch. It does not queue offhand input, synthesize clicks, retry actions, reset cooldowns, or send packets directly. Server-controlled inventory openings always stay on Vanilla's tick and packet path.
 
-- It preserves an offhand key press made almost simultaneously with the inventory key for up to 125 ms.
-- It waits until Minecraft has calculated the real slot under the pointer.
-- It performs one vanilla **SWAP** action using the offhand button on that slot.
-- It cancels the operation if the cursor is carrying an item, the player is a spectator, the screen changes, or the server controls the inventory opening.
-
-The feature does not duplicate items, automate repeated clicks, or modify packets to exceed vanilla rules.
+This changes local opening and possible follow-up input timing by up to one client tick. Packet types, payloads, ordering, slot validation, and action handlers remain Vanilla, but a server can observe the naturally earlier timing of a click the player performs after the early screen appears.
 
 ### Remove absolutely all inventory animations
 
@@ -173,7 +168,7 @@ GUI Scaler changes the player's inventory without changing Minecraft's global GU
 1. Open **GUI Scaler**.
 2. Read and accept the warning. You may select **Do Not Show Again**.
 3. Enable the switch at the top.
-4. Adjust the vertical slider between **65% and 175%**.
+4. Adjust the vertical slider between **65% and 315%**. A fresh installation and Reset start at **200%**.
 
 Use **Affect Containers** to preview each supported container. When its switch is disabled, the preview remains at vanilla 100%. When enabled, the preview and real supported containers use the selected inventory scale. This switch is enabled by default on a new installation and can be disabled at any time.
 
@@ -227,6 +222,14 @@ Previews and items use the currently active resources:
 
 After resource packs are reloaded, composed textures are invalidated and generated again.
 
+## Player Visibility
+
+Open **Customization**, scroll to **Player Visibility**, and select **Configure**. It provides palette-based model highlighting, local light intensity, distance, and an optional pulse. Its preview extracts the current player's active skin and equipment into an animated walking render without modifying the live entity.
+
+The effect runs only while the player inventory is open and only outside its panel. Blocks still occlude players and it never uses a through-wall outline. Dependent settings remain hidden while Player Visibility is disabled; **Visible-player depth intensity** appears only after Player Visibility is enabled.
+
+Profiles, Smart Highlighter, and the general Advanced Tools catalogue are not part of the current interface. Item Highlighter applies only explicit per-item rules selected by the user.
+
 ## Saving and files
 
 Changes are saved when controls are used and when confirmation buttons close their screens. The main configuration file is:
@@ -253,7 +256,7 @@ Make sure the Chest switch is enabled and that you saved a position for the corr
 
 Check its format, file size, resolution, duration, and frame count against the limits above. Some MOV or MP4 files use codecs that JCodec cannot decode.
 
-### The inventory cannot reach 175%
+### The inventory cannot reach 315%
 
 The upper limit adapts to the window to prevent slots or buttons from leaving the screen. A visible recipe book reduces the safe maximum further.
 
