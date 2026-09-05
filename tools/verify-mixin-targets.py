@@ -147,21 +147,40 @@ class JarIndex:
                     names.add(parts[-1])
         return names
 
+    @staticmethod
+    def _without_type_arguments(header: str) -> str:
+        """Drops every <...> group, nesting included.
+
+        A generic parameter list carries its own bounds, so `class Foo<R extends
+        Runnable> extends Bar<R>` contains the word `extends` twice. Splitting the
+        raw header on the first one reads `Runnable` as the superclass and loses
+        the real chain, which made inherited members look absent.
+        """
+        result = []
+        depth = 0
+        for character in header:
+            if character == "<":
+                depth += 1
+            elif character == ">":
+                depth = max(0, depth - 1)
+            elif depth == 0:
+                result.append(character)
+        return "".join(result)
+
     def _supertypes(self, binary_name: str) -> list[str]:
         header = ""
         for line in self._javap(binary_name).splitlines():
             if "class " in line or "interface " in line:
-                header = line
+                header = self._without_type_arguments(line)
                 break
         parents: list[str] = []
+        # Matched instead of split on the keyword: `extends A implements B` would
+        # otherwise yield the single token `A implements B`, and the chain stopped
+        # at the first class with both clauses.
         for keyword in ("extends", "implements"):
-            if keyword in header:
-                tail = header.split(keyword, 1)[1]
-                tail = tail.split("{", 1)[0]
-                for token in tail.split(","):
-                    token = token.strip().split("<", 1)[0].strip()
-                    if token and token not in ("extends", "implements"):
-                        parents.append(token)
+            match = re.search(keyword + r"\s+(?P<names>[\w.$]+(?:\s*,\s*[\w.$]+)*)", header)
+            if match:
+                parents += [name.strip() for name in match.group("names").split(",")]
         return parents
 
 
