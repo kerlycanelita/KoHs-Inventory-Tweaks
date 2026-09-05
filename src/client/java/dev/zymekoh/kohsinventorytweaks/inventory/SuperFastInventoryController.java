@@ -108,6 +108,16 @@ public final class SuperFastInventoryController {
 			return;
 		}
 
+		if (inventoryPhysicalInputNanos == 0L) {
+			// The queued click was pressed in an earlier batch, and that batch already
+			// decided what to do with it. Frames run far faster than the 20 TPS tick
+			// that consumes the queue, so a press handed to Vanilla is still sitting
+			// there several batches later; re-deciding it here would take it back and
+			// strand whatever action it was handed over for until the screen closes.
+			// Only the batch that contains the press decides it.
+			return;
+		}
+
 		if (physicalConflict) {
 			finishDecision("vanilla-fallback", "physical-conflict:" + physicalConflictMappings);
 			inventoryPhysicalInputNanos = 0L;
