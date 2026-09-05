@@ -31,8 +31,8 @@ import java.util.Locale;
 
 public final class CursorLandingController {
 	private static final double CURSOR_POSITION_EPSILON = 0.5;
+	/** Hotbar and main storage. Armor sits at 36-39 and the offhand at 40. */
 	private static final int LAST_MAIN_INVENTORY_SLOT = 35;
-	private static final int OFFHAND_SLOT = 40;
 	private static @Nullable Screen openingScreen;
 	private static @Nullable CursorTarget openingTarget;
 	private static @Nullable Screen releasePlacementScreen;
@@ -214,8 +214,9 @@ public final class CursorLandingController {
 	 *
 	 * <p>A stored fraction is a position on the screen; during a fight the item is
 	 * what the player is aiming for, and it moves. Resolving the slot at the moment
-	 * the screen opens follows it. The offhand slot is skipped: landing on it would
-	 * aim the swap at the item that is already in hand.</p>
+	 * the screen opens follows it. Only the hotbar and the main storage are
+	 * searched: landing on the offhand would aim the swap at the item that is
+	 * already in hand, and armor cannot be picked up by the swap either.</p>
 	 */
 	private static @Nullable Slot landingSlot(
 		final Minecraft minecraft,
@@ -231,8 +232,7 @@ public final class CursorLandingController {
 				|| slot.container != minecraft.player.getInventory()
 				|| slot.getContainerSlot() < 0
 				|| slot.getContainerSlot() > LAST_MAIN_INVENTORY_SLOT
-				|| slot.getItem().getItem() != item
-				|| slot.getContainerSlot() == OFFHAND_SLOT) {
+				|| slot.getItem().getItem() != item) {
 				continue;
 			}
 			return slot;
