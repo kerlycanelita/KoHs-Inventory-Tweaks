@@ -45,3 +45,4 @@ premisa no verificada, asi que las dos cayeron juntas.
 | 2026-09-05 | [Retraso al abrir el inventario](partes/2026-09-05-retraso-al-abrir.md) | Regresion propia, revertida |
 | 2026-09-05 | [El totem no entra en la offhand](partes/2026-09-05-totem-offhand.md) | Real, es configuracion |
 | 2026-09-05 | [Pulsacion cedida que se recuperaba](partes/2026-09-05-pulsacion-cedida.md) | Corregido |
+| 2026-09-06 | [Held inventory key and PvP input audit](partes/2026-09-06-held-inventory-audit.md) | Repeat-toggle reproduced and corregido; regression passed |

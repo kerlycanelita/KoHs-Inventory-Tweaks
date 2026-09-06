@@ -161,3 +161,23 @@ apuntar por el centro.
 Verificado en septiembre de 2026. Reparte hacia `extractContents`, de modo que
 un inyector sobre `AbstractContainerScreen#extractRenderState` **nunca se aplica**
 a las pantallas con recetario, el inventario del jugador incluido.
+
+## 9. A held inventory key can toggle screens through GLFW_REPEAT
+
+Verified against the 26.1.2 client sources and a development run on 2026-09-06.
+`KeyboardHandler.keyPress` passes action 1 (PRESS) and 2 (REPEAT) to
+`screen.keyPressed`; with no screen, either can reach `KeyMapping.click`.
+`AbstractContainerScreen.keyPressed` closes on the inventory mapping regardless
+of which action produced the KeyEvent (the KeyEvent itself has no action field).
+The automatic keyboard repeat can therefore alternate close and open without
+a second physical press. Our previous tests emitted only PRESS/RELEASE.
+
+```powershell
+$clientJar = 'C:\Users\KoH\.gradle\caches\fabric-loom\26.1.2\minecraft-client.jar'
+javap -c -p -classpath $clientJar net.minecraft.client.KeyboardHandler
+javap -c -p -classpath $clientJar net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
+```
+
+The recipe book's search field can consume the same key before container
+closure, so repeat filtering must preserve that text-editing context.
+See [the reproduction and boundary analysis](partes/2026-09-06-held-inventory-audit.md).
