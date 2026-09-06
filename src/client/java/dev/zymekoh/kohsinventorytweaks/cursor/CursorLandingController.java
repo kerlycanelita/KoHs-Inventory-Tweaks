@@ -93,6 +93,12 @@ public final class CursorLandingController {
 
 		double[] placement = resolvePhysicalPosition(minecraft, screen, target, true);
 		warp(minecraft, placement);
+		// A Vanilla fallback can also open before handleAccumulatedMovement. Deltas
+		// sampled before this synchronous landing belong to the old screen/camera,
+		// not to a drag in the new inventory. Future callbacks remain untouched.
+		MouseHandlerAccessor mouse = (MouseHandlerAccessor) minecraft.mouseHandler;
+		mouse.kohsInventoryTweaks$setAccumulatedDX(0.0);
+		mouse.kohsInventoryTweaks$setAccumulatedDY(0.0);
 		clearOpeningState();
 	}
 

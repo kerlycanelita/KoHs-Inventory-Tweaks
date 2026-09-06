@@ -5,12 +5,15 @@ import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.mixin.KeyMappingAccessor;
 import dev.zymekoh.kohsinventorytweaks.mixin.MouseHandlerAccessor;
+import dev.zymekoh.kohsinventorytweaks.mixin.AbstractRecipeBookScreenAccessor;
+import dev.zymekoh.kohsinventorytweaks.mixin.RecipeBookComponentAccessor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -38,8 +41,38 @@ public final class SuperFastInventoryController {
 	private static String lastDecision = "idle";
 	private static String lastDecisionReason = "not-evaluated";
 	private static long lastDecisionNanos;
+	private static long decisionRevision;
 
 	private SuperFastInventoryController() {
+	}
+
+	/** No debounce timer: a fresh press always retains Vanilla's immediate path. */
+	public static boolean suppressInventoryKeyRepeat(
+		final Minecraft minecraft, final long windowHandle, final int action, final KeyEvent event
+	) {
+		if (action != GLFW.GLFW_REPEAT || minecraft == null
+			|| windowHandle != minecraft.getWindow().handle()
+			|| !ConfigStore.get().superFastInventory
+			|| !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)
+			|| !minecraft.options.keyInventory.matches(event)
+			|| minecraft.player == null || minecraft.gameMode == null
+			|| minecraft.gameMode.isServerControlledInventory()
+			|| minecraft.getOverlay() != null
+			|| (minecraft.screen != null && !(minecraft.screen instanceof InventoryScreen))
+			|| event.isEscape() || minecraft.options.keyDebugModifier.isDown()) {
+			return false;
+		}
+		// Do not suppress the repeat of another action that shares this key.
+		for (KeyMapping mapping : minecraft.options.keyMappings) {
+			if (mapping != minecraft.options.keyInventory && mapping.matches(event)) return false;
+		}
+		if (minecraft.screen != null) {
+			if (minecraft.screen.getFocused() instanceof EditBox edit && edit.canConsumeInput()) return false;
+			var book = ((AbstractRecipeBookScreenAccessor) minecraft.screen).kohsInventoryTweaks$getRecipeBookComponent();
+			EditBox search = ((RecipeBookComponentAccessor) book).kohsInventoryTweaks$getSearchBox();
+			if (book.isVisible() && search != null && search.canConsumeInput()) return false;
+		}
+		return true;
 	}
 
 	public static void onKeyboardEvent(
@@ -126,6 +159,14 @@ public final class SuperFastInventoryController {
 			return;
 		}
 
+		if (queuedClicks(minecraft.options.keyInventory) != 1) {
+			// A second fresh press must not reclaim a still-queued press whose earlier
+			// batch already yielded to Vanilla (possibly for a mod-owned key action).
+			finishDecision("vanilla-fallback", "multiple-inventory-clicks");
+			inventoryPhysicalInputNanos = 0L;
+			return;
+		}
+
 		String queuedConflict = queuedVanillaActions(minecraft);
 		if (!queuedConflict.equals("none")) {
 			finishDecision("vanilla-fallback", "queued-conflict:" + queuedConflict);
@@ -145,10 +186,6 @@ public final class SuperFastInventoryController {
 			inventoryPhysicalInputNanos = 0L;
 			return;
 		}
-		while (minecraft.options.keyInventory.consumeClick()) {
-			// Vanilla can only display one local InventoryScreen for this batch.
-		}
-
 		minecraft.getTutorial().onOpenInventory();
 		minecraft.setScreen(new InventoryScreen(minecraft.player));
 		discardPreOpenWorldMovement(minecraft);
@@ -203,6 +240,7 @@ public final class SuperFastInventoryController {
 	public static String lastDecisionSnapshot() {
 		long now = System.nanoTime();
 		return "decision=" + lastDecision
+			+ "; revision=" + decisionRevision
 			+ "; reason=" + lastDecisionReason
 			+ "; age=" + nanosToMicros(now - lastDecisionNanos, lastDecisionNanos) + "us";
 	}
@@ -239,18 +277,19 @@ public final class SuperFastInventoryController {
 		final Minecraft minecraft,
 		final Predicate<KeyMapping> matches
 	) {
-		StringBuilder result = new StringBuilder();
+		StringBuilder result = null;
 		for (KeyMapping mapping : minecraft.options.keyMappings) {
 			if (mapping != minecraft.options.keyInventory
 				&& mapping.getCategory() != KeyMapping.Category.MOVEMENT
 				&& matches.test(mapping)) {
+				if (result == null) result = new StringBuilder();
 				if (!result.isEmpty()) {
 					result.append(',');
 				}
 				result.append(mapping.getName());
 			}
 		}
-		return result.isEmpty() ? "none" : result.toString();
+		return result == null ? "none" : result.toString();
 	}
 
 	private static String queuedVanillaActions(final Minecraft minecraft) {
@@ -288,6 +327,9 @@ public final class SuperFastInventoryController {
 	}
 
 	private static String unavailableReason(final Minecraft minecraft) {
+		if (!minecraft.isWindowActive() || !minecraft.getWindow().isFocused() || minecraft.getWindow().isMinimized()) {
+			return "window-not-active";
+		}
 		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)) {
 			return "inventory-tweaks-unavailable";
 		}
@@ -342,6 +384,7 @@ public final class SuperFastInventoryController {
 		lastDecision = decision;
 		lastDecisionReason = reason;
 		lastDecisionNanos = System.nanoTime();
+		decisionRevision++;
 	}
 
 	private static int queuedClicks(final KeyMapping mapping) {
