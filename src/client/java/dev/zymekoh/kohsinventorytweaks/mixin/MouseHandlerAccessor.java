@@ -11,4 +11,10 @@ public interface MouseHandlerAccessor {
 
 	@Accessor("ypos")
 	void kohsInventoryTweaks$setYpos(double value);
+
+	@Accessor("accumulatedDX")
+	void kohsInventoryTweaks$setAccumulatedDX(double value);
+
+	@Accessor("accumulatedDY")
+	void kohsInventoryTweaks$setAccumulatedDY(double value);
 }

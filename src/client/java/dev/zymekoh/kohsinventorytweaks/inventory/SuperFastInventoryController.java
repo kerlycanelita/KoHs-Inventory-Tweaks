@@ -4,6 +4,7 @@ import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.mixin.KeyMappingAccessor;
+import dev.zymekoh.kohsinventorytweaks.mixin.MouseHandlerAccessor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
@@ -49,7 +50,8 @@ public final class SuperFastInventoryController {
 	) {
 		if (minecraft == null
 			|| action != GLFW.GLFW_PRESS
-			|| windowHandle != minecraft.getWindow().handle()) {
+			|| windowHandle != minecraft.getWindow().handle()
+			|| !canObserveFastOpen(minecraft)) {
 			return;
 		}
 
@@ -73,7 +75,8 @@ public final class SuperFastInventoryController {
 		if (minecraft == null
 			|| action != GLFW.GLFW_PRESS
 			|| windowHandle != minecraft.getWindow().handle()
-			|| buttonInfo == null) {
+			|| buttonInfo == null
+			|| !canObserveFastOpen(minecraft)) {
 			return;
 		}
 
@@ -148,6 +151,7 @@ public final class SuperFastInventoryController {
 
 		minecraft.getTutorial().onOpenInventory();
 		minecraft.setScreen(new InventoryScreen(minecraft.player));
+		discardPreOpenWorldMovement(minecraft);
 		finishDecision("early-open", "sole-inventory-input");
 		inventoryPhysicalInputNanos = 0L;
 	}
@@ -306,6 +310,32 @@ public final class SuperFastInventoryController {
 			return "server-controlled-inventory";
 		}
 		return null;
+	}
+
+	/**
+	 * Avoids scanning every modded key mapping for clicks that cannot possibly
+	 * open the player inventory. In particular, slot/offhand input inside an open
+	 * GUI must stay entirely on Vanilla's hot path.
+	 */
+	private static boolean canObserveFastOpen(final Minecraft minecraft) {
+		return minecraft.screen == null
+			&& minecraft.getOverlay() == null
+			&& ConfigStore.get().superFastInventory
+			&& CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
+	}
+
+	/**
+	 * A fast open happens before {@code handleAccumulatedMovement}. The deltas
+	 * already present at that boundary were sampled while the mouse controlled the
+	 * camera; forwarding them to the newly-created screen can synthesize a hover or
+	 * drag at the landing point. Clear only that inherited pair after the synchronous
+	 * open. Any movement sampled from the next GLFW poll remains untouched and is
+	 * delivered to the inventory immediately.
+	 */
+	private static void discardPreOpenWorldMovement(final Minecraft minecraft) {
+		MouseHandlerAccessor mouse = (MouseHandlerAccessor) minecraft.mouseHandler;
+		mouse.kohsInventoryTweaks$setAccumulatedDX(0.0);
+		mouse.kohsInventoryTweaks$setAccumulatedDY(0.0);
 	}
 
 	private static void finishDecision(final String decision, final String reason) {

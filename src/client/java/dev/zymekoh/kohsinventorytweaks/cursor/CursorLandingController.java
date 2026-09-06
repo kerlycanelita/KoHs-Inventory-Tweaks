@@ -35,7 +35,6 @@ public final class CursorLandingController {
 	private static final int LAST_MAIN_INVENTORY_SLOT = 35;
 	private static @Nullable Screen openingScreen;
 	private static @Nullable CursorTarget openingTarget;
-	private static @Nullable Screen releasePlacementScreen;
 
 	private CursorLandingController() {
 	}
@@ -47,7 +46,6 @@ public final class CursorLandingController {
 		}
 		openingScreen = screen;
 		openingTarget = classify(screen);
-		releasePlacementScreen = null;
 	}
 
 	public static @Nullable double[] overrideReleasePosition(final Minecraft minecraft) {
@@ -57,42 +55,44 @@ public final class CursorLandingController {
 			return null;
 		}
 
-		// Reaching Vanilla's native release call is enough to mark this opening as
-		// handled. Center Mouse Fix deliberately returns null when no custom point
-		// exists: Minecraft then supplies its own center at its normal release point,
-		// with no extra write from this mod.
-		releasePlacementScreen = screen;
+		// A custom target replaces Vanilla's release-time center so the cursor never
+		// flashes through an unrelated point. Center Mouse Fix deliberately returns
+		// null here and lets Vanilla perform its normal release-time center.
 		return customPoint(target) == null && landingItem(target) == null
 			? null
 			: resolvePhysicalPosition(minecraft, screen, target, false);
 	}
 
-	public static void onContainerScreenInitialized(final Minecraft minecraft, final Screen screen) {
+	/**
+	 * Finalizes one cursor placement after {@link Minecraft#setScreen(Screen)} has
+	 * completed the whole synchronous opening transaction.
+	 *
+	 * <p>This is still the same input event/frame: no tick, render or scheduled
+	 * task is crossed. It runs after mouse release, every other release hook and
+	 * the screen layout. The final read-back closes the race where an input mod or
+	 * a release hook overwrote the pointer during that transaction. Once this
+	 * method returns, real player movement owns the cursor again; there is no
+	 * render-loop correction and therefore no dragging effect.</p>
+	 */
+	public static void onScreenOpened(final Minecraft minecraft, final @Nullable Screen requestedScreen) {
+		Screen screen = minecraft == null ? null : minecraft.screen;
+		if (screen == null || screen != requestedScreen || screen != openingScreen) {
+			clearAllState();
+			return;
+		}
 		if (!isScreenHandlingAvailable(screen)) {
 			clearAllState();
 			return;
 		}
-		if (screen != openingScreen) {
-			// Screen#init also runs on every window resize. Only opening a screen
-			// places the cursor; resizing must never move the pointer.
-			return;
-		}
 
-		CursorTarget target = classify(screen);
+		CursorTarget target = openingTarget != null ? openingTarget : classify(screen);
 		if (target == null || !shouldPlaceCursor(target)) {
 			clearOpeningState();
 			return;
 		}
 
 		double[] placement = resolvePhysicalPosition(minecraft, screen, target, true);
-		if (screen != releasePlacementScreen) {
-			// releaseMouse is skipped when one GUI replaces another. In that case the
-			// initialized layout is the single placement point.
-			warp(minecraft, placement);
-		}
-		// When releaseMouse ran, its one-shot target is authoritative. Never refine,
-		// verify or reapply it on init/render: that later correction was perceived as
-		// the cursor being dragged back after the player had already started moving.
+		warp(minecraft, placement);
 		clearOpeningState();
 	}
 
@@ -116,7 +116,6 @@ public final class CursorLandingController {
 	private static void clearOpeningState() {
 		openingScreen = null;
 		openingTarget = null;
-		releasePlacementScreen = null;
 	}
 
 	private static void clearAllState() {
@@ -178,8 +177,11 @@ public final class CursorLandingController {
 
 		// The slot carries menu-relative coordinates, the same space the stored
 		// fraction resolves into, so both land through the identical transform.
-		double localX = itemSlot != null ? itemSlot.x + 8.0 : point.x() * imageWidth;
-		double localY = itemSlot != null ? itemSlot.y + 8.0 : point.y() * imageHeight;
+		// Saved fractions are authored against the preview's inclusive pixel range
+		// (0..width - 1 / 0..height - 1). Use that same range at runtime so an
+		// edge click cannot drift one logical pixel outside the inventory.
+		double localX = itemSlot != null ? itemSlot.x + 8.0 : point.x() * Math.max(0, imageWidth - 1);
+		double localY = itemSlot != null ? itemSlot.y + 8.0 : point.y() * Math.max(0, imageHeight - 1);
 		double logicalX = left + localX;
 		double logicalY = top + localY;
 		// Minecraft releases the mouse before it initializes the screen, so the
