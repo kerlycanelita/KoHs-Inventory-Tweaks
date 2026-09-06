@@ -10,6 +10,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -21,6 +22,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 // Unknown collisions remain blocked instead of being forced optimistically.
 @Mixin(value = InventoryScreen.class, priority = 2000)
 public abstract class InventoryScreenMixin {
+	@Unique
+	private boolean kohsInventoryTweaks$backgroundScalePushed;
+
 	@Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", at = @At("HEAD"))
 	private void kohsInventoryTweaks$beginInventoryScale(
 		final GuiGraphicsExtractor graphics,
@@ -50,15 +54,34 @@ public abstract class InventoryScreenMixin {
 		final CallbackInfo callbackInfo
 	) {
 		InventoryScreen screen = (InventoryScreen) (Object) this;
+		this.kohsInventoryTweaks$backgroundScalePushed = false;
+		if (InventoryGuiScaler.hasActiveSurfaceScope()) {
+			// A narrow, open recipe book asks InventoryScreen to extract its
+			// background from inside extractRenderState. That call already lives in
+			// the inventory scale scope and must not multiply the scale a second time.
+			return;
+		}
 		float scale = (float) InventoryGuiScaler.appliedScale(screen, ConfigStore.get());
 		InventoryGuiScaler.beginScaledSurface(graphics, screen.width * 0.5F, screen.height * 0.5F, scale);
+		this.kohsInventoryTweaks$backgroundScalePushed = true;
 	}
 
-	@Inject(method = {
-		"extractBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
-		"extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V"
-	}, at = @At("RETURN"))
-	private void kohsInventoryTweaks$endInventoryScale(
+	@Inject(method = "extractBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", at = @At("RETURN"))
+	private void kohsInventoryTweaks$endInventoryBackgroundScale(
+		final GuiGraphicsExtractor graphics,
+		final int mouseX,
+		final int mouseY,
+		final float a,
+		final CallbackInfo callbackInfo
+	) {
+		if (this.kohsInventoryTweaks$backgroundScalePushed) {
+			InventoryGuiScaler.endScaledSurface(graphics);
+			this.kohsInventoryTweaks$backgroundScalePushed = false;
+		}
+	}
+
+	@Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", at = @At("RETURN"))
+	private void kohsInventoryTweaks$endInventoryRenderScale(
 		final GuiGraphicsExtractor graphics,
 		final int mouseX,
 		final int mouseY,

@@ -69,6 +69,11 @@ public final class InventoryGuiScaler {
 		return Math.abs(activeSurfaceScale() - 1.0) >= SCALE_EPSILON;
 	}
 
+	/** Whether a caller currently owns a GUI pose scope, even when its scale is 1. */
+	public static boolean hasActiveSurfaceScope() {
+		return surfaceDepth > 0;
+	}
+
 	public static int toScreenX(final int surfaceX) {
 		return toScreenCoordinate(surfaceX, surfaceCenterX);
 	}
