@@ -38,6 +38,7 @@ public final class SuperFastInventoryController {
 	private static String conflictingPhysicalMappings = "none";
 	private static long firstPhysicalInputNanos;
 	private static long inventoryPhysicalInputNanos;
+	private static int inventoryPressesThisPoll;
 	private static String lastDecision = "idle";
 	private static String lastDecisionReason = "not-evaluated";
 	private static long lastDecisionNanos;
@@ -92,6 +93,7 @@ public final class SuperFastInventoryController {
 		observePhysicalInput(now);
 		if (minecraft.options.keyInventory.matches(event)) {
 			inventoryPhysicalInputNanos = now;
+			inventoryPressesThisPoll++;
 		}
 		appendPhysicalConflicts(matchingNonMovementMappings(
 			minecraft,
@@ -118,6 +120,7 @@ public final class SuperFastInventoryController {
 		observePhysicalInput(now);
 		if (minecraft.options.keyInventory.matchesMouse(event)) {
 			inventoryPhysicalInputNanos = now;
+			inventoryPressesThisPoll++;
 		}
 		appendPhysicalConflicts(matchingNonMovementMappings(
 			minecraft,
@@ -132,6 +135,8 @@ public final class SuperFastInventoryController {
 		}
 
 		boolean physicalConflict = conflictingPhysicalInputObserved;
+		int inventoryPresses = inventoryPressesThisPoll;
+		inventoryPressesThisPoll = 0;
 		String physicalConflictMappings = conflictingPhysicalMappings;
 		physicalInputObserved = false;
 		conflictingPhysicalInputObserved = false;
@@ -150,6 +155,19 @@ public final class SuperFastInventoryController {
 			// there several batches later; re-deciding it here would take it back and
 			// strand whatever action it was handed over for until the screen closes.
 			// Only the batch that contains the press decides it.
+			return;
+		}
+
+		// Two distinct presses can arrive before the first opening is constructed.
+		// Vanilla queues them both as "open" and releaseAll during init erases the
+		// second, so the user's close intent is lost. Cancel only this poll's exact
+		// pair; never reclaim an older queued click or touch other action mappings.
+		if (inventoryPresses == 2 && queuedClicks(minecraft.options.keyInventory) == 2
+			&& unavailableReason(minecraft) == null && !hasSharedInventoryBinding(minecraft)) {
+			minecraft.options.keyInventory.consumeClick();
+			minecraft.options.keyInventory.consumeClick();
+			finishDecision("cancelled-before-open", "two-fresh-inventory-presses");
+			inventoryPhysicalInputNanos = 0L;
 			return;
 		}
 
@@ -230,6 +248,7 @@ public final class SuperFastInventoryController {
 	public static String pendingInputSnapshot() {
 		long now = System.nanoTime();
 		return "observed=" + physicalInputObserved
+			+ "; inventoryPresses=" + inventoryPressesThisPoll
 			+ "; conflict=" + conflictingPhysicalInputObserved
 			+ "; conflictMappings=" + conflictingPhysicalMappings
 			+ "; firstInputAge=" + nanosToMicros(now - firstPhysicalInputNanos, firstPhysicalInputNanos) + "us"
@@ -352,6 +371,14 @@ public final class SuperFastInventoryController {
 			return "server-controlled-inventory";
 		}
 		return null;
+	}
+
+	private static boolean hasSharedInventoryBinding(final Minecraft minecraft) {
+		String inventoryKey = minecraft.options.keyInventory.saveString();
+		for (KeyMapping mapping : minecraft.options.keyMappings) {
+			if (mapping != minecraft.options.keyInventory && mapping.saveString().equals(inventoryKey)) return true;
+		}
+		return false;
 	}
 
 	/**

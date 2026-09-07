@@ -156,6 +156,49 @@ apuntar por el centro.
 
 ---
 
+## 9. Cerrar una pantalla desde `keyPressed` NO encola clic
+
+Verificado el 2026-09-07. Importa porque de lo contrario la tecla que cierra el
+inventario dejaria un clic que lo reabriria acto seguido.
+
+En `KeyboardHandler#keyPress`, tras despachar la tecla a la pantalla:
+
+```
+649: Screen.keyPressed(event)
+654: ifeq 714              <- si devolvio false, sigue al camino normal
+657: this.minecraft.screen
+664: ifnonnull 680         <- si la pantalla sigue abierta, retorna sin mas
+677: KeyMapping.set(key, FALSE)
+680: return                <- salida temprana: NUNCA llega a KeyMapping.click
+```
+
+Es decir: si el manejador devolvio `true` **y** la pantalla quedo en `null`,
+vanilla limpia el estado pulsado de la tecla y retorna. Nada se encola.
+
+Ojo con el matiz contrario: el booleano que decide si se encola clic
+(`local 12`, offset 818) se lee **despues** del despacho, con una lectura fresca
+de `this.minecraft.screen`. La salida temprana de 680 es lo unico que evita el
+reingreso.
+
+```bash
+javap -c -p -cp "$JAR" net.minecraft.client.KeyboardHandler > kh.txt
+sed -n '/private void keyPress(long, int/,/private void charTyped/p' kh.txt | sed -n '90,140p'
+```
+
+---
+
+## 10. Vanilla abre el inventario una vez por cada clic encolado
+
+Verificado el 2026-09-07 (ver hecho 4). `handleKeybinds` hace
+`while (keyInventory.consumeClick()) { ... setScreen(new InventoryScreen) }`.
+
+Consecuencia: **dos pulsaciones que caigan antes de que se procese la apertura
+dejan el inventario abierto**, no cerrado. La segunda, que el jugador queria
+como cierre, se pierde. Le pasa igual a vanilla; solo cambia la ventana en la
+que ocurre (un tick de 50 ms frente a un sondeo de unos 5 ms).
+
+---
+
 ## 8. `AbstractRecipeBookScreen#extractRenderState` no llama a `super`
 
 Verificado en septiembre de 2026. Reparte hacia `extractContents`, de modo que
