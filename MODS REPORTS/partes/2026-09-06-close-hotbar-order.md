@@ -110,11 +110,34 @@ alternar que pidio.
 
 ## Verificado / no verificado
 
-Verificado: bytecode real de `KeyboardHandler#keyPress` (hechos 9 y 10);
+Laboratorio `close-hotbar` ejecutado en mundo real, antes y despues del arreglo:
+
+| Informe | Ordenados/invertidos | Doble pulsacion |
+|---|---|---|
+| `20260906-230543` (linea base) | passed=32/32 | cases=8; **lateOpenings=8** |
+| `20260907-100841` (con arreglo) | passed=32/32 | cases=8; **lateOpenings=0** |
+
+Los ocho casos de doble pulsacion dejaban el inventario abierto y ahora ninguno
+lo hace, sin mover los 32 casos ordenados e invertidos. `maxCloseCallback` medido
+en 16344us, incluida la instrumentacion del propio macro dentro del sondeo.
+
+Se ejecuta con:
+
+```
+./gradlew.bat -p debug/kohs-inventory-debug-26.1.2 runClient --offline     -PdebugMacro=close-hotbar -PdebugWorld="KoHs Debug QA" -PdebugExit
+```
+
+El informe queda en `run/logs/kohs-inventory-debug/`, no en `latest.log`.
+
+Las 32 advertencias `CURSOR_SETTLE` con error de 146px son un artefacto del
+laboratorio, no un defecto: el objetivo registrado es el centro que coloca Center
+Mouse Fix y la posicion real es la casilla del totem, a donde el propio macro
+mueve el cursor a proposito. La espera de casilla apuntada paso en los 32 ciclos,
+asi que el puntero que el juego seguia era el correcto.
+
+Verificado ademas: bytecode real de `KeyboardHandler#keyPress` (hechos 9 y 10);
 compilacion; tabla de decision de 9 casos contrastando vanilla contra la ruta
-corregida, con el caso clave reproducido sin la correccion; laboratorio del
-2026-09-06 con 24 casos ordenados correctos, 8 invertidos reproduciendo el
-mecanismo 1 y 8 dobles reproduciendo el mecanismo 2.
+corregida, con el caso clave reproducido sin la correccion.
 
 No verificado:
 
