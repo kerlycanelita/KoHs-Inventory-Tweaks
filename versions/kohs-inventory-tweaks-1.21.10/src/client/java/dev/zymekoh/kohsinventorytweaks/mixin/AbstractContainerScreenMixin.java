@@ -13,6 +13,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.world.inventory.Slot;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -68,6 +69,36 @@ public abstract class AbstractContainerScreenMixin {
 		Screen screen = (Screen) (Object) this;
 		double scale = InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get());
 		return InventoryGuiScaler.toInventoryEvent(event, screen.width, screen.height, scale);
+	}
+
+	@ModifyVariable(method = "mouseDragged", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	private double kohsInventoryTweaks$scaleContainerDragX(final double dx) {
+		return this.kohsInventoryTweaks$scaleContainerDrag(dx);
+	}
+
+	@ModifyVariable(method = "mouseDragged", at = @At("HEAD"), argsOnly = true, ordinal = 1)
+	private double kohsInventoryTweaks$scaleContainerDragY(final double dy) {
+		return this.kohsInventoryTweaks$scaleContainerDrag(dy);
+	}
+
+	/**
+	 * Keeps the drag delta in the same space as the drag position.
+	 *
+	 * <p>The event above is already rewritten into surface coordinates, so a widget that
+	 * reads the delta instead of the position was being handed screen pixels next to a
+	 * surface point. {@code AbstractRecipeBookScreen} has scaled its own deltas since the
+	 * scaler shipped; this is the same rule for every other scaled container, and it is
+	 * skipped for the player inventory exactly like the event transform above, because
+	 * that screen is served once by the recipe-book mixin.</p>
+	 */
+	@Unique
+	private double kohsInventoryTweaks$scaleContainerDrag(final double delta) {
+		Screen screen = (Screen) (Object) this;
+		if (screen instanceof InventoryScreen) {
+			return delta;
+		}
+		double scale = InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get());
+		return delta / scale;
 	}
 
 	@Inject(

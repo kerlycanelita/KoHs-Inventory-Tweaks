@@ -24,6 +24,7 @@ import org.lwjgl.system.MemoryStack;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.DoubleBuffer;
+import java.util.Locale;
 
 public final class CursorLandingController {
 	private static final double CURSOR_POSITION_EPSILON = 0.5;
@@ -250,9 +251,12 @@ public final class CursorLandingController {
 			return null;
 		}
 
+		// Folded the same way ContainerScaleTarget folds it. The two classifiers have
+		// to agree on every screen: this one picks which stored point to land on, and
+		// that one picks the scale the landing is computed through.
 		String key = "";
 		if (screen.getTitle().getContents() instanceof TranslatableContents translatable) {
-			key = translatable.getKey();
+			key = translatable.getKey().toLowerCase(Locale.ROOT);
 		}
 		if (key.contains("enderchest")) {
 			return CursorTarget.ENDER_CHEST;

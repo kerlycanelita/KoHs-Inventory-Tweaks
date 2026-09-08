@@ -27,14 +27,14 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.DoubleBuffer;
+import java.util.Locale;
 
 public final class CursorLandingController {
 	private static final double CURSOR_POSITION_EPSILON = 0.5;
+	/** Hotbar and main storage. Armor sits at 36-39 and the offhand at 40. */
 	private static final int LAST_MAIN_INVENTORY_SLOT = 35;
-	private static final int OFFHAND_SLOT = 40;
 	private static @Nullable Screen openingScreen;
 	private static @Nullable CursorTarget openingTarget;
-	private static @Nullable Screen releasePlacementScreen;
 
 	private CursorLandingController() {
 	}
@@ -46,58 +46,75 @@ public final class CursorLandingController {
 		}
 		openingScreen = screen;
 		openingTarget = classify(screen);
-		releasePlacementScreen = null;
 	}
 
 	public static @Nullable double[] overrideReleasePosition(final Minecraft minecraft) {
 		Screen screen = minecraft == null ? null : minecraft.screen;
-		CursorTarget target = screen == openingScreen ? openingTarget : classify(screen);
+		// A later release/refocus is not another inventory opening. Never re-arm
+		// custom landing merely because the same inventory is still on screen.
+		if (screen == null || screen != openingScreen || !canPositionCursor(minecraft)) {
+			return null;
+		}
+		CursorTarget target = openingTarget;
 		if (target == null || !shouldPlaceCursor(target)) {
 			return null;
 		}
 
-		// Reaching Vanilla's native release call is enough to mark this opening as
-		// handled. Center Mouse Fix deliberately returns null when no custom point
-		// exists: Minecraft then supplies its own center at its normal release point,
-		// with no extra write from this mod.
-		releasePlacementScreen = screen;
+		// A custom target replaces Vanilla's release-time center so the cursor never
+		// flashes through an unrelated point. Center Mouse Fix deliberately returns
+		// null here and lets Vanilla perform its normal release-time center.
 		return customPoint(target) == null && landingItem(target) == null
 			? null
 			: resolvePhysicalPosition(minecraft, screen, target, false);
 	}
 
-	public static void onContainerScreenInitialized(final Minecraft minecraft, final Screen screen) {
-		if (!isScreenHandlingAvailable(screen)) {
+	/**
+	 * Finalizes one cursor placement after {@link Minecraft#setScreen(Screen)} has
+	 * completed the whole synchronous opening transaction.
+	 *
+	 * <p>This is still the same input event/frame: no tick, render or scheduled
+	 * task is crossed. It runs after Vanilla mouse release and the screen layout.
+	 * The final read-back corrects a mismatch observed at that boundary, without
+	 * attempting to fight another component that writes afterwards. Once this
+	 * method returns, real player movement owns the cursor again; there is no
+	 * render-loop correction and therefore no dragging effect.</p>
+	 */
+	public static void onScreenOpened(final Minecraft minecraft, final @Nullable Screen requestedScreen) {
+		Screen screen = minecraft == null ? null : minecraft.screen;
+		if (screen == null || screen != requestedScreen || screen != openingScreen) {
 			clearAllState();
 			return;
 		}
-		if (screen != openingScreen) {
-			// Screen#init also runs on every window resize. Only opening a screen
-			// places the cursor; resizing must never move the pointer.
+		if (!isScreenHandlingAvailable(screen) || !canPositionCursor(minecraft)) {
+			clearAllState();
 			return;
 		}
 
-		CursorTarget target = classify(screen);
+		CursorTarget target = openingTarget != null ? openingTarget : classify(screen);
 		if (target == null || !shouldPlaceCursor(target)) {
 			clearOpeningState();
 			return;
 		}
 
 		double[] placement = resolvePhysicalPosition(minecraft, screen, target, true);
-		if (screen != releasePlacementScreen) {
-			// releaseMouse is skipped when one GUI replaces another. In that case the
-			// initialized layout is the single placement point.
-			warp(minecraft, placement);
-		}
-		// When releaseMouse ran, its one-shot target is authoritative. Never refine,
-		// verify or reapply it on init/render: that later correction was perceived as
-		// the cursor being dragged back after the player had already started moving.
+		warp(minecraft, placement);
+		// A Vanilla fallback can also open before handleAccumulatedMovement. Deltas
+		// sampled before this synchronous landing belong to the old screen/camera,
+		// not to a drag in the new inventory. Future callbacks remain untouched.
+		MouseHandlerAccessor mouse = (MouseHandlerAccessor) minecraft.mouseHandler;
+		mouse.kohsInventoryTweaks$setAccumulatedDX(0.0);
+		mouse.kohsInventoryTweaks$setAccumulatedDY(0.0);
 		clearOpeningState();
 	}
 
 	private static boolean matches(final double[] current, final double[] expected) {
 		return Math.abs(current[0] - expected[0]) <= CURSOR_POSITION_EPSILON
 			&& Math.abs(current[1] - expected[1]) <= CURSOR_POSITION_EPSILON;
+	}
+
+	private static boolean canPositionCursor(final Minecraft minecraft) {
+		return minecraft != null && minecraft.isWindowActive()
+			&& !minecraft.getWindow().isMinimized();
 	}
 
 	private static double @Nullable [] pointerPosition(final Minecraft minecraft) {
@@ -115,7 +132,6 @@ public final class CursorLandingController {
 	private static void clearOpeningState() {
 		openingScreen = null;
 		openingTarget = null;
-		releasePlacementScreen = null;
 	}
 
 	private static void clearAllState() {
@@ -149,7 +165,8 @@ public final class CursorLandingController {
 		CursorPoint point = customPoint(target);
 		Slot itemSlot = landingSlot(minecraft, screen, target);
 		if (point == null && itemSlot == null) {
-			return new double[] {window.getScreenWidth() * 0.5, window.getScreenHeight() * 0.5};
+			// Match releaseMouse's integer center, including odd window dimensions.
+			return new double[] {window.getScreenWidth() / 2, window.getScreenHeight() / 2};
 		}
 
 		int guiWidth = window.getGuiScaledWidth();
@@ -175,8 +192,13 @@ public final class CursorLandingController {
 			}
 		}
 
-		double localX = itemSlot != null ? itemSlot.x + 8.0 : point.x() * imageWidth;
-		double localY = itemSlot != null ? itemSlot.y + 8.0 : point.y() * imageHeight;
+		// The slot carries menu-relative coordinates, the same space the stored
+		// fraction resolves into, so both land through the identical transform.
+		// Saved fractions are authored against the preview's inclusive pixel range
+		// (0..width - 1 / 0..height - 1). Use that same range at runtime so an
+		// edge click cannot drift one logical pixel outside the inventory.
+		double localX = itemSlot != null ? itemSlot.x + 8.0 : point.x() * Math.max(0, imageWidth - 1);
+		double localY = itemSlot != null ? itemSlot.y + 8.0 : point.y() * Math.max(0, imageHeight - 1);
 		double logicalX = left + localX;
 		double logicalY = top + localY;
 		// Minecraft releases the mouse before it initializes the screen, so the
@@ -190,7 +212,10 @@ public final class CursorLandingController {
 		logicalY = guiHeight * 0.5 + (logicalY - guiHeight * 0.5) * scale;
 		double x = logicalX * window.getScreenWidth() / Math.max(1.0, guiWidth);
 		double y = logicalY * window.getScreenHeight() / Math.max(1.0, guiHeight);
-		return new double[] {x, y};
+		// GLFW's desktop cursor has whole-pixel precision on Windows. Use the same
+		// pixel for Minecraft's hit testing and the visible pointer; fractions could
+		// otherwise trigger a redundant correction and disagree at slot edges.
+		return new double[] {Math.round(x), Math.round(y)};
 	}
 
 	private static boolean shouldPlaceCursor(final CursorTarget target) {
@@ -205,6 +230,16 @@ public final class CursorLandingController {
 		return isCenterMouseFixTarget(target);
 	}
 
+	/**
+	 * The slot the player inventory landing should follow, when one is configured
+	 * and the item is actually there.
+	 *
+	 * <p>A stored fraction is a position on the screen; during a fight the item is
+	 * what the player is aiming for, and it moves. Resolving the slot at the moment
+	 * the screen opens follows it. Only the hotbar and the main storage are
+	 * searched: landing on the offhand would aim the swap at the item that is
+	 * already in hand, and armor cannot be picked up by the swap either.</p>
+	 */
 	private static @Nullable Slot landingSlot(
 		final Minecraft minecraft,
 		final Screen screen,
@@ -219,8 +254,7 @@ public final class CursorLandingController {
 				|| slot.container != minecraft.player.getInventory()
 				|| slot.getContainerSlot() < 0
 				|| slot.getContainerSlot() > LAST_MAIN_INVENTORY_SLOT
-				|| slot.getItem().getItem() != item
-				|| slot.getContainerSlot() == OFFHAND_SLOT) {
+				|| slot.getItem().getItem() != item) {
 				continue;
 			}
 			return slot;
@@ -277,9 +311,12 @@ public final class CursorLandingController {
 			return null;
 		}
 
+		// Folded the same way ContainerScaleTarget folds it. The two classifiers have
+		// to agree on every screen: this one picks which stored point to land on, and
+		// that one picks the scale the landing is computed through.
 		String key = "";
 		if (screen.getTitle().getContents() instanceof TranslatableContents translatable) {
-			key = translatable.getKey();
+			key = translatable.getKey().toLowerCase(Locale.ROOT);
 		}
 		if (key.contains("enderchest")) {
 			return CursorTarget.ENDER_CHEST;
