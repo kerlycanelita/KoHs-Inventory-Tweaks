@@ -82,11 +82,14 @@ public final class CompatibilityIssueManager {
 		List<CompatibilityIssue> mousePosition = new ArrayList<>();
 		boolean modalNotice = false;
 		for (CompatibilityIssue issue : published) {
+			// Total yield. Any confirmed overlap disables the affected feature outright,
+			// whatever its severity: when two mods write the same thing the result stops
+			// being predictable from either one's code, and an optimisation that only
+			// usually wins is worse than not competing at all. The issue is still
+			// published, so the Issues Tracker names the mod that took over and why --
+			// stepping aside quietly and stepping aside invisibly are not the same thing.
 			for (CompatibilityFeature feature : issue.affectedFeatures()) {
-				if (feature == CompatibilityFeature.CURSOR_LANDING
-					|| issue.severity() != CompatibilityIssue.Severity.ADAPTABLE) {
-					availability[feature.ordinal()] = false;
-				}
+				availability[feature.ordinal()] = false;
 			}
 			if (issue.severity() == CompatibilityIssue.Severity.BLOCKING) {
 				blocking.add(issue);

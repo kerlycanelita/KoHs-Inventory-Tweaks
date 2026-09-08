@@ -170,12 +170,18 @@ public final class CompatibilityIssueManager {
 			.toList();
 	}
 
+	/**
+	 * Total yield: any confirmed overlap disables the affected feature outright,
+	 * whatever its severity.
+	 *
+	 * <p>When two mods write the same thing the result stops being predictable from
+	 * either one's code, and an optimisation that only usually wins is worse than not
+	 * competing at all. The issue is still published, so the Issues Tracker names the
+	 * mod that took over and why: stepping aside quietly and stepping aside invisibly
+	 * are not the same thing.</p>
+	 */
 	public static boolean isFeatureAvailable(final CompatibilityFeature feature) {
-		return issues().stream().noneMatch(issue ->
-			issue.affectedFeatures().contains(feature)
-				&& (feature == CompatibilityFeature.CURSOR_LANDING
-					|| issue.severity() != CompatibilityIssue.Severity.ADAPTABLE)
-		);
+		return issues().stream().noneMatch(issue -> issue.affectedFeatures().contains(feature));
 	}
 
 	public static List<CompatibilityIssue> issuesAffecting(final CompatibilityFeature feature) {
