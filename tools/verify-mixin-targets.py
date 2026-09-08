@@ -53,6 +53,8 @@ class JarIndex:
                 }
         self._members: dict[str, set[str]] = {}
         self._bodies: dict[str, dict[str, str]] = {}
+        self._javap_cache: dict[str, str] = {}
+        self._arities: dict[str, dict[str, set[int]]] = {}
 
     def has_class(self, binary_name: str) -> bool:
         return binary_name in self.classes
@@ -78,6 +80,24 @@ class JarIndex:
                     chain.append(parent)
             index += 1
         return chain
+
+    def method_arities(self, binary_name: str, method_name: str) -> set[int]:
+        """Parameter counts of every overload of that name, across the hierarchy."""
+        table = self._arities.get(binary_name)
+        if table is not None and method_name in table:
+            return table[method_name]
+        counts: set[int] = set()
+        for owner in self._hierarchy(binary_name):
+            for declaration in self._declarations(owner):
+                if "(" not in declaration:
+                    continue
+                head, _, tail = declaration.partition("(")
+                if head.split()[-1].rsplit(".", 1)[-1] != method_name:
+                    continue
+                params = tail.rsplit(")", 1)[0].strip()
+                counts.add(0 if not params else len(split_arguments(params)))
+        self._arities.setdefault(binary_name, {})[method_name] = counts
+        return counts
 
     def method_bodies(self, binary_name: str, method_name: str) -> str:
         """Disassembled bytecode of every method of that name, concatenated."""
@@ -115,12 +135,33 @@ class JarIndex:
         return {name: chr(10).join(lines) for name, lines in bodies.items()}
 
     def _javap(self, binary_name: str) -> str:
+        cached = self._javap_cache.get(binary_name)
+        if cached is not None:
+            return cached
         result = subprocess.run(
             ["javap", "-p", "-cp", self.classpath, binary_name],
             capture_output=True,
             text=True,
         )
-        return result.stdout if result.returncode == 0 else ""
+        output = result.stdout if result.returncode == 0 else ""
+        self._javap_cache[binary_name] = output
+        return output
+
+    def _declarations(self, binary_name: str) -> list[str]:
+        result: list[str] = []
+        declaration = ""
+        for raw_line in self._javap(binary_name).splitlines():
+            stripped = raw_line.strip()
+            if not declaration:
+                if not raw_line.startswith("  ") or raw_line.startswith("    "):
+                    continue
+                declaration = stripped
+            else:
+                declaration += stripped
+            if declaration.endswith(";"):
+                result.append(declaration[:-1])
+                declaration = ""
+        return result
 
     def _declared(self, binary_name: str) -> set[str]:
         names: set[str] = set()
@@ -182,6 +223,77 @@ class JarIndex:
             if match:
                 parents += [name.strip() for name in match.group("names").split(",")]
         return parents
+
+
+def split_arguments(params: str) -> list[str]:
+    """Splits a javap parameter list on the commas that separate arguments."""
+    parts: list[str] = []
+    depth = 0
+    current = ""
+    for character in params:
+        if character == "<":
+            depth += 1
+        elif character == ">":
+            depth -= 1
+        if character == "," and depth == 0:
+            parts.append(current)
+            current = ""
+        else:
+            current += character
+    if current.strip():
+        parts.append(current)
+    return parts
+
+
+def inject_signatures(source: str) -> list[tuple[list[str], int, int]]:
+    """Each @Inject handler as (target method names, its arity, source line).
+
+    Mixin accepts a handler that takes either none of the target's parameters or
+    all of them, plus the callback. A handler that takes some other number is
+    refused at class load, which crashes the game on the first screen that loads
+    the target -- not at build time, and not on a boot that never opens it.
+    """
+    results: list[tuple[list[str], int, int]] = []
+    for match in re.finditer(r"@Inject\s*\(", source):
+        depth = 0
+        end = match.end() - 1
+        for index in range(match.end() - 1, len(source)):
+            if source[index] == "(":
+                depth += 1
+            elif source[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    end = index
+                    break
+        annotation = source[match.end():end]
+        if "locals" in annotation:
+            # LOCALS capture legitimately appends further parameters.
+            continue
+        names = [literal.split("(", 1)[0] for literal in STRING_LITERAL.findall(annotation)]
+        names = [n for n in names if n and not n.startswith("L")]
+        if not names:
+            continue
+        head = source.find("(", end + 1)
+        if head < 0:
+            continue
+        depth = 0
+        tail = head
+        for index in range(head, len(source)):
+            if source[index] == "(":
+                depth += 1
+            elif source[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    tail = index
+                    break
+        params = source[head + 1:tail].strip()
+        arity = 0
+        for argument in (split_arguments(params) if params else []):
+            kind = argument.replace("final ", "").strip().split()[0]
+            if not kind.startswith("CallbackInfo"):
+                arity += 1
+        results.append((names, arity, source.count(chr(10), 0, match.start()) + 1))
+    return results
 
 
 def resolve_imports(source: str) -> dict[str, str]:
@@ -260,6 +372,7 @@ def verify(source_root: Path, jars: list[Path]) -> int:
 
     failures: list[str] = []
     checked_methods = 0
+    checked_signatures = 0
     checked_invocations = 0
     for path in sorted(mixin_dir.glob("*.java")):
         source = path.read_text(encoding="utf-8")
@@ -285,6 +398,21 @@ def verify(source_root: Path, jars: list[Path]) -> int:
             checked_methods += 1
             if method not in available:
                 failures.append(f"{path.name}: {targets} has no member '{method}'")
+
+        for names, arity, line in inject_signatures(source):
+            if arity == 0:
+                # Taking none of the target's parameters is always allowed.
+                continue
+            checked_signatures += 1
+            for target in targets:
+                arities = set()
+                for name in names:
+                    arities |= index.method_arities(target, name)
+                if arities and arity not in arities:
+                    failures.append(
+                        f"{path.name}:{line}: @Inject into {names} takes {arity} parameter(s) "
+                        f"but the target takes {sorted(arities)}"
+                    )
 
         for methods, invocations in injector_blocks(source):
             for owner_name, member, arguments in invocations:
@@ -316,7 +444,7 @@ def verify(source_root: Path, jars: list[Path]) -> int:
         print(f"  ok    {path.name} -> {', '.join(t.rsplit('.', 1)[-1] for t in targets)}")
 
     print()
-    print(f"checked {checked_methods} mixin member references and {checked_invocations} INVOKE points")
+    print(f"checked {checked_methods} mixin member references, {checked_signatures} injector signatures and {checked_invocations} INVOKE points")
     if failures:
         print()
         for failure in failures:
