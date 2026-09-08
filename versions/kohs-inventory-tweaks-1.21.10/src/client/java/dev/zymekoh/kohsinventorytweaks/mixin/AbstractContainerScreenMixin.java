@@ -162,8 +162,6 @@ public abstract class AbstractContainerScreenMixin {
 	private void kohsInventoryTweaks$drawItemHighlightBackground(
 		final GuiGraphics graphics,
 		final Slot slot,
-		final int mouseX,
-		final int mouseY,
 		final CallbackInfo callbackInfo
 	) {
 		InventoryAnimationController.beginInventoryItem();
@@ -179,8 +177,6 @@ public abstract class AbstractContainerScreenMixin {
 	private void kohsInventoryTweaks$drawItemHighlightBorder(
 		final GuiGraphics graphics,
 		final Slot slot,
-		final int mouseX,
-		final int mouseY,
 		final CallbackInfo callbackInfo
 	) {
 		ItemHighlighterController.drawContainerSlot(
