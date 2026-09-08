@@ -147,3 +147,45 @@ No verificado:
   pulsa la tecla de hotbar antes que la de cierre.
 - Cuatro o mas pulsaciones en un mismo sondeo siguen abriendo. Es fisicamente
   inalcanzable, pero la regla no es simetrica y conviene saberlo.
+
+---
+
+## Adenda 2026-09-08: el contrato cambio y el laboratorio media otra cosa
+
+La correccion original anulaba las dos pulsaciones. El 2026-09-08 paso a
+**fusionarlas en una sola apertura**: cancelar respondia a un rebote de hardware
+—que a ocho milisegundos es mucho mas probable que una intencion humana— con una
+tecla que visiblemente no hacia nada.
+
+Al ejecutar el laboratorio en mundo con el build actual salieron dos defectos,
+ninguno del mod:
+
+**El bloque de doble pulsacion afirmaba el contrato viejo.** Media
+`lateOpenings`, esperando cero. Con la fusion el inventario queda abierto a
+proposito, asi que ocho de ocho «fallaban» sin que nada estuviera roto. Peor: la
+fusion correcta y el defecto original que reemplazo dejan *ambos* una pantalla
+abierta, de modo que «esta abierto» no distingue uno de otro. Lo que los
+distingue es la razon registrada.
+
+**El macro pulsaba tambien la tecla de hotbar en el mismo lote**, de modo que
+nunca ejercitaba la fusion: ese lote es un conflicto y la apertura se cede
+entera. El bloque llevaba desde su creacion sin probar lo que decia probar.
+
+**Y mi propia instrumentacion leia la razon antes de que la decision existiera.**
+La decision se toma en el sondeo siguiente, no mientras `atPoll` encola las
+pulsaciones, asi que cada ciclo mostraba la del ciclo anterior. Con el desfase
+daba 3/4 y 3/4; movida la lectura detras de la espera, da 4/4 y 4/4.
+
+Resultado con el laboratorio corregido:
+
+```
+CLOSE_LAB_SUMMARY     passed=32/32; maxCloseCallback=8689us; orderedCases=24; reversedControls=8
+CLOSE_DOUBLE_CASE     cycle=0..3  batch=two-presses-only        open=true  reason=merged-double-press
+CLOSE_DOUBLE_CASE     cycle=4..7  batch=two-presses-plus-other  open=true  reason=physical-conflict:...
+CLOSE_DOUBLE_SUMMARY  clean=4/4 merged-and-open; mixed=4/4 yielded-and-open
+```
+
+Cero errores y cero excepciones en la ejecucion. La fusion queda confirmada por
+la razon, no por el efecto visible, que es lo unico que la separa del defecto
+que sustituyo.
+
