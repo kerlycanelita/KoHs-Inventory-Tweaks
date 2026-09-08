@@ -21,6 +21,7 @@
     "KeyboardHandlerMixin",
     "MinecraftScreenMixin",
     "MouseHandlerAccessor",
+    "RecipeBookComponentAccessor",
     "MouseHandlerMixin",
     "RawInputBufferMixin",
     "RecipeBookComponentMixin",

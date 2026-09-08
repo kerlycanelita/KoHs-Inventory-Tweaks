@@ -23,6 +23,7 @@
     "KeyboardHandlerMixin",
     "LivingEntityRendererMixin",
     "MouseHandlerAccessor",
+    "RecipeBookComponentAccessor",
     "MouseHandlerMixin",
     "MinecraftInputPollMixin",
     "RecipeBookComponentMixin",

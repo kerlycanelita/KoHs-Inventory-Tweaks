@@ -4,12 +4,16 @@ import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.mixin.KeyMappingAccessor;
+import dev.zymekoh.kohsinventorytweaks.mixin.MouseHandlerAccessor;
+import dev.zymekoh.kohsinventorytweaks.mixin.AbstractRecipeBookScreenAccessor;
+import dev.zymekoh.kohsinventorytweaks.mixin.RecipeBookComponentAccessor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -27,17 +31,49 @@ import org.lwjgl.glfw.GLFW;
  * untouched.</p>
  */
 public final class SuperFastInventoryController {
+	/** Trailing repeat marker appended by the queued-action report, as in `key.attackx2`. */
 	private static final Pattern REPEAT_COUNT = Pattern.compile("x\\d+$");
 	private static boolean physicalInputObserved;
 	private static boolean conflictingPhysicalInputObserved;
 	private static String conflictingPhysicalMappings = "none";
 	private static long firstPhysicalInputNanos;
 	private static long inventoryPhysicalInputNanos;
+	private static int inventoryPressesThisPoll;
 	private static String lastDecision = "idle";
 	private static String lastDecisionReason = "not-evaluated";
 	private static long lastDecisionNanos;
+	private static long decisionRevision;
 
 	private SuperFastInventoryController() {
+	}
+
+	/** No debounce timer: a fresh press always retains Vanilla's immediate path. */
+	public static boolean suppressInventoryKeyRepeat(
+		final Minecraft minecraft, final long windowHandle, final int action, final KeyEvent event
+	) {
+		if (action != GLFW.GLFW_REPEAT || minecraft == null
+			|| windowHandle != minecraft.getWindow().handle()
+			|| !ConfigStore.get().superFastInventory
+			|| !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)
+			|| !minecraft.options.keyInventory.matches(event)
+			|| minecraft.player == null || minecraft.gameMode == null
+			|| minecraft.gameMode.isServerControlledInventory()
+			|| minecraft.gui.overlay() != null
+			|| (minecraft.gui.screen() != null && !(minecraft.gui.screen() instanceof InventoryScreen))
+			|| event.isEscape() || minecraft.options.keyDebugModifier.isDown()) {
+			return false;
+		}
+		// Do not suppress the repeat of another action that shares this key.
+		for (KeyMapping mapping : minecraft.options.keyMappings) {
+			if (mapping != minecraft.options.keyInventory && mapping.matches(event)) return false;
+		}
+		if (minecraft.gui.screen() != null) {
+			if (minecraft.gui.screen().getFocused() instanceof EditBox edit && edit.canConsumeInput()) return false;
+			var book = ((AbstractRecipeBookScreenAccessor) minecraft.gui.screen()).kohsInventoryTweaks$getRecipeBookComponent();
+			EditBox search = ((RecipeBookComponentAccessor) book).kohsInventoryTweaks$getSearchBox();
+			if (book.isVisible() && search != null && search.canConsumeInput()) return false;
+		}
+		return true;
 	}
 
 	public static void onKeyboardEvent(
@@ -48,7 +84,8 @@ public final class SuperFastInventoryController {
 	) {
 		if (minecraft == null
 			|| action != GLFW.GLFW_PRESS
-			|| windowHandle != minecraft.getWindow().handle()) {
+			|| windowHandle != minecraft.getWindow().handle()
+			|| !canObserveFastOpen(minecraft)) {
 			return;
 		}
 
@@ -56,6 +93,7 @@ public final class SuperFastInventoryController {
 		observePhysicalInput(now);
 		if (minecraft.options.keyInventory.matches(event)) {
 			inventoryPhysicalInputNanos = now;
+			inventoryPressesThisPoll++;
 		}
 		appendPhysicalConflicts(matchingNonMovementMappings(
 			minecraft,
@@ -72,7 +110,8 @@ public final class SuperFastInventoryController {
 		if (minecraft == null
 			|| action != GLFW.GLFW_PRESS
 			|| windowHandle != minecraft.getWindow().handle()
-			|| buttonInfo == null) {
+			|| buttonInfo == null
+			|| !canObserveFastOpen(minecraft)) {
 			return;
 		}
 
@@ -81,6 +120,7 @@ public final class SuperFastInventoryController {
 		observePhysicalInput(now);
 		if (minecraft.options.keyInventory.matchesMouse(event)) {
 			inventoryPhysicalInputNanos = now;
+			inventoryPressesThisPoll++;
 		}
 		appendPhysicalConflicts(matchingNonMovementMappings(
 			minecraft,
@@ -95,6 +135,8 @@ public final class SuperFastInventoryController {
 		}
 
 		boolean physicalConflict = conflictingPhysicalInputObserved;
+		int inventoryPresses = inventoryPressesThisPoll;
+		inventoryPressesThisPoll = 0;
 		String physicalConflictMappings = conflictingPhysicalMappings;
 		physicalInputObserved = false;
 		conflictingPhysicalInputObserved = false;
@@ -106,8 +148,40 @@ public final class SuperFastInventoryController {
 			return;
 		}
 
+		if (inventoryPhysicalInputNanos == 0L) {
+			// The queued click was pressed in an earlier batch, and that batch already
+			// decided what to do with it. Frames run far faster than the 20 TPS tick
+			// that consumes the queue, so a press handed to Vanilla is still sitting
+			// there several batches later; re-deciding it here would take it back and
+			// strand whatever action it was handed over for until the screen closes.
+			// Only the batch that contains the press decides it.
+			return;
+		}
+
+		// Two presses inside a single GLFW batch are one physical intent, not an open
+		// followed by a close. A batch is one rendered frame: at 120 fps that is eight
+		// milliseconds, which no hand produces and a failing switch or a key repeat
+		// produces constantly. Cancelling both, as this did before, answered a real
+		// double-fire with a key that visibly does nothing -- the exact ghost players
+		// report. Drop the surplus click and open once instead; never reclaim an older
+		// queued click and never touch another action mapping.
+		boolean mergedDoublePress = false;
+		if (inventoryPresses == 2 && queuedClicks(minecraft.options.keyInventory) == 2
+			&& unavailableReason(minecraft) == null && !hasSharedInventoryBinding(minecraft)) {
+			minecraft.options.keyInventory.consumeClick();
+			mergedDoublePress = true;
+		}
+
 		if (physicalConflict) {
 			finishDecision("vanilla-fallback", "physical-conflict:" + physicalConflictMappings);
+			inventoryPhysicalInputNanos = 0L;
+			return;
+		}
+
+		if (queuedClicks(minecraft.options.keyInventory) != 1) {
+			// A second fresh press must not reclaim a still-queued press whose earlier
+			// batch already yielded to Vanilla (possibly for a mod-owned key action).
+			finishDecision("vanilla-fallback", "multiple-inventory-clicks");
 			inventoryPhysicalInputNanos = 0L;
 			return;
 		}
@@ -131,25 +205,31 @@ public final class SuperFastInventoryController {
 			inventoryPhysicalInputNanos = 0L;
 			return;
 		}
-		while (minecraft.options.keyInventory.consumeClick()) {
-			// Vanilla can only display one local InventoryScreen for this batch.
-		}
-
 		minecraft.getTutorial().onOpenInventory();
 		minecraft.gui.setScreen(new InventoryScreen(minecraft.player));
-		finishDecision("early-open", "sole-inventory-input");
+		discardPreOpenWorldMovement(minecraft);
+		finishDecision("early-open", mergedDoublePress ? "merged-double-press" : "sole-inventory-input");
 		inventoryPhysicalInputNanos = 0L;
 	}
 
+	/** Whether the last inventory press opened before the next client tick. */
 	public static boolean lastOpenWasImmediate() {
 		return "early-open".equals(lastDecision);
 	}
 
+	/** Whether the last press fell back because other input shared its batch. */
 	public static boolean lastOpenHadInputConflict() {
 		return lastDecisionReason.startsWith("physical-conflict:")
 			|| lastDecisionReason.startsWith("queued-conflict:");
 	}
 
+	/**
+	 * The mappings that shared the batch, as their own translation keys.
+	 *
+	 * <p>A player whose binds overlap takes the slow path on every open and has
+	 * nothing on screen to say so; naming the mappings turns that into something
+	 * they can act on.</p>
+	 */
 	public static List<String> lastConflictMappings() {
 		int separator = lastDecisionReason.indexOf(':');
 		if (!lastOpenHadInputConflict() || separator < 0) {
@@ -169,6 +249,7 @@ public final class SuperFastInventoryController {
 	public static String pendingInputSnapshot() {
 		long now = System.nanoTime();
 		return "observed=" + physicalInputObserved
+			+ "; inventoryPresses=" + inventoryPressesThisPoll
 			+ "; conflict=" + conflictingPhysicalInputObserved
 			+ "; conflictMappings=" + conflictingPhysicalMappings
 			+ "; firstInputAge=" + nanosToMicros(now - firstPhysicalInputNanos, firstPhysicalInputNanos) + "us"
@@ -179,6 +260,7 @@ public final class SuperFastInventoryController {
 	public static String lastDecisionSnapshot() {
 		long now = System.nanoTime();
 		return "decision=" + lastDecision
+			+ "; revision=" + decisionRevision
 			+ "; reason=" + lastDecisionReason
 			+ "; age=" + nanosToMicros(now - lastDecisionNanos, lastDecisionNanos) + "us";
 	}
@@ -215,18 +297,19 @@ public final class SuperFastInventoryController {
 		final Minecraft minecraft,
 		final Predicate<KeyMapping> matches
 	) {
-		StringBuilder result = new StringBuilder();
+		StringBuilder result = null;
 		for (KeyMapping mapping : minecraft.options.keyMappings) {
 			if (mapping != minecraft.options.keyInventory
 				&& mapping.getCategory() != KeyMapping.Category.MOVEMENT
 				&& matches.test(mapping)) {
+				if (result == null) result = new StringBuilder();
 				if (!result.isEmpty()) {
 					result.append(',');
 				}
 				result.append(mapping.getName());
 			}
 		}
-		return result.isEmpty() ? "none" : result.toString();
+		return result == null ? "none" : result.toString();
 	}
 
 	private static String queuedVanillaActions(final Minecraft minecraft) {
@@ -264,6 +347,19 @@ public final class SuperFastInventoryController {
 	}
 
 	private static String unavailableReason(final Minecraft minecraft) {
+		if (!minecraft.isWindowActive() || !minecraft.getWindow().isFocused() || minecraft.getWindow().isMinimized()) {
+			return "window-not-active";
+		}
+		// A button that is still down was pressed against the world, and its release is
+		// still to come. Opening here hands that release to a screen that did not exist
+		// when the press happened: Vanilla's onButton reads minecraft.gui.screen() again on the
+		// way out, so the release is delivered to the new inventory instead of ending the
+		// world action it belongs to. Vanilla opens at the next client tick, by which time
+		// a tap has normally completed, so yielding costs at most one tick and only for
+		// the player who is actually holding a button.
+		if (((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$getActiveButton() != null) {
+			return "mouse-button-held";
+		}
 		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)) {
 			return "inventory-tweaks-unavailable";
 		}
@@ -288,10 +384,45 @@ public final class SuperFastInventoryController {
 		return null;
 	}
 
+	private static boolean hasSharedInventoryBinding(final Minecraft minecraft) {
+		String inventoryKey = minecraft.options.keyInventory.saveString();
+		for (KeyMapping mapping : minecraft.options.keyMappings) {
+			if (mapping != minecraft.options.keyInventory && mapping.saveString().equals(inventoryKey)) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Avoids scanning every modded key mapping for clicks that cannot possibly
+	 * open the player inventory. In particular, slot/offhand input inside an open
+	 * GUI must stay entirely on Vanilla's hot path.
+	 */
+	private static boolean canObserveFastOpen(final Minecraft minecraft) {
+		return minecraft.gui.screen() == null
+			&& minecraft.gui.overlay() == null
+			&& ConfigStore.get().superFastInventory
+			&& CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
+	}
+
+	/**
+	 * A fast open happens before {@code handleAccumulatedMovement}. The deltas
+	 * already present at that boundary were sampled while the mouse controlled the
+	 * camera; forwarding them to the newly-created screen can synthesize a hover or
+	 * drag at the landing point. Clear only that inherited pair after the synchronous
+	 * open. Any movement sampled from the next GLFW poll remains untouched and is
+	 * delivered to the inventory immediately.
+	 */
+	private static void discardPreOpenWorldMovement(final Minecraft minecraft) {
+		MouseHandlerAccessor mouse = (MouseHandlerAccessor) minecraft.mouseHandler;
+		mouse.kohsInventoryTweaks$setAccumulatedDX(0.0);
+		mouse.kohsInventoryTweaks$setAccumulatedDY(0.0);
+	}
+
 	private static void finishDecision(final String decision, final String reason) {
 		lastDecision = decision;
 		lastDecisionReason = reason;
 		lastDecisionNanos = System.nanoTime();
+		decisionRevision++;
 	}
 
 	private static int queuedClicks(final KeyMapping mapping) {

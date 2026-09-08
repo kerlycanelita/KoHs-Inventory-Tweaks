@@ -17,6 +17,15 @@ public abstract class KeyboardHandlerMixin {
 	@Final
 	private Minecraft minecraft;
 
+	@Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
+	private void kohsInventoryTweaks$ignoreInventoryAutoRepeat(
+		final long windowHandle, final int action, final KeyEvent event, final CallbackInfo callbackInfo
+	) {
+		if (SuperFastInventoryController.suppressInventoryKeyRepeat(this.minecraft, windowHandle, action, event)) {
+			callbackInfo.cancel();
+		}
+	}
+
 	@Inject(method = "keyPress", at = @At("TAIL"))
 	private void kohsInventoryTweaks$openInventoryWithoutTickDelay(
 		final long handle,
