@@ -158,17 +158,18 @@ public final class SuperFastInventoryController {
 			return;
 		}
 
-		// Two distinct presses can arrive before the first opening is constructed.
-		// Vanilla queues them both as "open" and releaseAll during init erases the
-		// second, so the user's close intent is lost. Cancel only this poll's exact
-		// pair; never reclaim an older queued click or touch other action mappings.
+		// Two presses inside a single GLFW batch are one physical intent, not an open
+		// followed by a close. A batch is one rendered frame: at 120 fps that is eight
+		// milliseconds, which no hand produces and a failing switch or a key repeat
+		// produces constantly. Cancelling both, as this did before, answered a real
+		// double-fire with a key that visibly does nothing -- the exact ghost players
+		// report. Drop the surplus click and open once instead; never reclaim an older
+		// queued click and never touch another action mapping.
+		boolean mergedDoublePress = false;
 		if (inventoryPresses == 2 && queuedClicks(minecraft.options.keyInventory) == 2
 			&& unavailableReason(minecraft) == null && !hasSharedInventoryBinding(minecraft)) {
 			minecraft.options.keyInventory.consumeClick();
-			minecraft.options.keyInventory.consumeClick();
-			finishDecision("cancelled-before-open", "two-fresh-inventory-presses");
-			inventoryPhysicalInputNanos = 0L;
-			return;
+			mergedDoublePress = true;
 		}
 
 		if (physicalConflict) {
@@ -207,7 +208,7 @@ public final class SuperFastInventoryController {
 		minecraft.getTutorial().onOpenInventory();
 		minecraft.setScreen(new InventoryScreen(minecraft.player));
 		discardPreOpenWorldMovement(minecraft);
-		finishDecision("early-open", "sole-inventory-input");
+		finishDecision("early-open", mergedDoublePress ? "merged-double-press" : "sole-inventory-input");
 		inventoryPhysicalInputNanos = 0L;
 	}
 
@@ -348,6 +349,16 @@ public final class SuperFastInventoryController {
 	private static String unavailableReason(final Minecraft minecraft) {
 		if (!minecraft.isWindowActive() || !minecraft.getWindow().isFocused() || minecraft.getWindow().isMinimized()) {
 			return "window-not-active";
+		}
+		// A button that is still down was pressed against the world, and its release is
+		// still to come. Opening here hands that release to a screen that did not exist
+		// when the press happened: Vanilla's onButton reads minecraft.screen again on the
+		// way out, so the release is delivered to the new inventory instead of ending the
+		// world action it belongs to. Vanilla opens at the next client tick, by which time
+		// a tap has normally completed, so yielding costs at most one tick and only for
+		// the player who is actually holding a button.
+		if (((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$getActiveButton() != null) {
+			return "mouse-button-held";
 		}
 		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)) {
 			return "inventory-tweaks-unavailable";
