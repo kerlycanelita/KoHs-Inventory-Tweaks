@@ -47,4 +47,5 @@ premisa no verificada, asi que las dos cayeron juntas.
 | 2026-09-05 | [Pulsacion cedida que se recuperaba](partes/2026-09-05-pulsacion-cedida.md) | Corregido |
 | 2026-09-06 | [El inventario no cierra y la pearl acaba en una casilla](partes/2026-09-06-close-hotbar-order.md) | Corregido, con parte que es vanilla |
 | 2026-09-08 | [1.21.10 no arrancaba: mixin con firma incompatible](partes/2026-09-08-1.21.10-arranque.md) | Corregido, defecto previo |
+| 2026-09-08 | [Tiron en la primera apertura en 1.21.10](partes/2026-09-08-1.21.10-primera-apertura.md) | Corregido, 27,9 ms medidos |
 | 2026-09-06 | [Held inventory key and PvP input audit](partes/2026-09-06-held-inventory-audit.md) | Repeat-toggle reproduced and corregido; regression passed |

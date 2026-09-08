@@ -6,6 +6,7 @@ import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityNoticeController;
 import dev.zymekoh.kohsinventorytweaks.compat.BlockingCompatibilityController;
 import dev.zymekoh.kohsinventorytweaks.compat.MouseConflictNotificationController;
 import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
+import dev.zymekoh.kohsinventorytweaks.inventory.InventoryWarmup;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -38,6 +39,7 @@ public final class KoHsInventoryTweaksClient implements ClientModInitializer {
 			CompatibilityNoticeController.onClientTick(minecraft);
 			MouseConflictNotificationController.onClientTick(minecraft);
 			ConfigMenuKeyBinding.onClientTick(minecraft);
+			InventoryWarmup.onClientTick(minecraft);
 		});
 		ResourceLoader.get(PackType.CLIENT_RESOURCES).registerReloader(
 			ResourceLocation.fromNamespaceAndPath(MOD_ID, "inventory_texture"),
