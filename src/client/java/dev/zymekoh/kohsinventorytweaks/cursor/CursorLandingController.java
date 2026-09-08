@@ -50,7 +50,12 @@ public final class CursorLandingController {
 
 	public static @Nullable double[] overrideReleasePosition(final Minecraft minecraft) {
 		Screen screen = minecraft == null ? null : minecraft.screen;
-		CursorTarget target = screen == openingScreen ? openingTarget : classify(screen);
+		// A later release/refocus is not another inventory opening. Never re-arm
+		// custom landing merely because the same inventory is still on screen.
+		if (screen == null || screen != openingScreen || !canPositionCursor(minecraft)) {
+			return null;
+		}
+		CursorTarget target = openingTarget;
 		if (target == null || !shouldPlaceCursor(target)) {
 			return null;
 		}
@@ -68,9 +73,9 @@ public final class CursorLandingController {
 	 * completed the whole synchronous opening transaction.
 	 *
 	 * <p>This is still the same input event/frame: no tick, render or scheduled
-	 * task is crossed. It runs after mouse release, every other release hook and
-	 * the screen layout. The final read-back closes the race where an input mod or
-	 * a release hook overwrote the pointer during that transaction. Once this
+	 * task is crossed. It runs after Vanilla mouse release and the screen layout.
+	 * The final read-back corrects a mismatch observed at that boundary, without
+	 * attempting to fight another component that writes afterwards. Once this
 	 * method returns, real player movement owns the cursor again; there is no
 	 * render-loop correction and therefore no dragging effect.</p>
 	 */
@@ -80,7 +85,7 @@ public final class CursorLandingController {
 			clearAllState();
 			return;
 		}
-		if (!isScreenHandlingAvailable(screen)) {
+		if (!isScreenHandlingAvailable(screen) || !canPositionCursor(minecraft)) {
 			clearAllState();
 			return;
 		}
@@ -105,6 +110,11 @@ public final class CursorLandingController {
 	private static boolean matches(final double[] current, final double[] expected) {
 		return Math.abs(current[0] - expected[0]) <= CURSOR_POSITION_EPSILON
 			&& Math.abs(current[1] - expected[1]) <= CURSOR_POSITION_EPSILON;
+	}
+
+	private static boolean canPositionCursor(final Minecraft minecraft) {
+		return minecraft != null && minecraft.isWindowActive()
+			&& minecraft.getWindow().isFocused() && !minecraft.getWindow().isMinimized();
 	}
 
 	private static double @Nullable [] pointerPosition(final Minecraft minecraft) {
@@ -155,7 +165,8 @@ public final class CursorLandingController {
 		CursorPoint point = customPoint(target);
 		Slot itemSlot = landingSlot(minecraft, screen, target);
 		if (point == null && itemSlot == null) {
-			return new double[] {window.getScreenWidth() * 0.5, window.getScreenHeight() * 0.5};
+			// Match releaseMouse's integer center, including odd window dimensions.
+			return new double[] {window.getScreenWidth() / 2, window.getScreenHeight() / 2};
 		}
 
 		int guiWidth = window.getGuiScaledWidth();
@@ -201,7 +212,10 @@ public final class CursorLandingController {
 		logicalY = guiHeight * 0.5 + (logicalY - guiHeight * 0.5) * scale;
 		double x = logicalX * window.getScreenWidth() / Math.max(1.0, guiWidth);
 		double y = logicalY * window.getScreenHeight() / Math.max(1.0, guiHeight);
-		return new double[] {x, y};
+		// GLFW's desktop cursor has whole-pixel precision on Windows. Use the same
+		// pixel for Minecraft's hit testing and the visible pointer; fractions could
+		// otherwise trigger a redundant correction and disagree at slot edges.
+		return new double[] {Math.round(x), Math.round(y)};
 	}
 
 	private static boolean shouldPlaceCursor(final CursorTarget target) {
