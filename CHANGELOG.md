@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.8
+
 - Stopped opening the inventory early while a mouse button is still held. Vanilla reads `minecraft.screen` a second time on the way out of `onButton`, so a button pressed against the world and released after the fast open had its release delivered to a screen that did not exist when the press happened. The world action it belonged to was lost and an inventory that had just placed the cursor on a landing slot received the release instead. The check reads `activeButton`, the only field Vanilla assigns on both edges: the public pressed flags are written inside the `screen == null` branch, so a release that lands while any screen is open leaves them reporting pressed until the next full press-and-release in the world.
 - Opened once instead of not at all when two inventory presses share a single GLFW batch. A batch is one rendered frame -- eight milliseconds at 120 fps -- which no hand produces and a worn switch or a key repeat produces constantly. Cancelling both, which preserved a close intent nobody expressed at that speed, answered a hardware double-fire with a key that visibly did nothing.
 - Gave way completely on any confirmed compatibility overlap instead of only on the severe ones. Two mods writing the same thing stop being predictable from either one's code, and a feature that only usually wins is worse than one that steps aside. The issue is still published, so the Issues Tracker still names the mod that took over and why.
@@ -9,6 +11,8 @@
 
 - Kept a press handed to Vanilla from being taken back. Frames run far faster than the 20 TPS tick that drains Vanilla's click queue, so a yielded inventory click is still queued several batches later, and any later press let the early path reconsider it. For Vanilla actions the second check contained the damage, but a keybind belonging to another mod is consumed in that mod's own tick and never appears in the queue, so its action was stranded until the screen closed and then fired late. The batch that contains the press is now the only one that decides it.
 - Folded the container title key to lower case in cursor landing, the way the scale classifier already folded it. A modded container whose translation key carries upper case was classified as a barrel for the scale and as a single chest for the stored point, so the player configured one and got the other.
+- Fixed a start-up crash on Minecraft 1.21.10. `AbstractContainerScreen#renderSlot` takes `(GuiGraphics, Slot)` there, and both item-highlight injectors declared `mouseX` and `mouseY` as well. Mixin refuses that descriptor when it applies, and it applies on class load, so the game died the moment anything loaded a container screen. The defect was already published; compiling never showed it, because to the compiler those are ordinary private methods.
+- Moved the first inventory open off the critical path on Minecraft 1.21.10, which was the only target still missing the warm-up. Measured at 27.9 ms of class loading and surface composition displaced from the first press, against 15.8 ms on 26.1.2: more than a whole frame at 60 fps, which is what players were describing as a stutter.
 
 ## 1.0.7
 
