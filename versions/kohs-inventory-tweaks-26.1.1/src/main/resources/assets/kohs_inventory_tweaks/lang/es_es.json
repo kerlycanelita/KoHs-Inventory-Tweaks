@@ -175,7 +175,7 @@
   "screen.kohs_inventory_tweaks.center_mouse_fix": "Center Mouse Fix",
   "screen.kohs_inventory_tweaks.center_mouse_fix.description": "Coloca exactamente una vez la posición personalizada o centrada vanilla durante cada apertura del inventario del jugador. Nunca afecta contenedores, verifica frames posteriores, arrastra ni fuerza continuamente el cursor.",
   "screen.kohs_inventory_tweaks.super_fast_inventory": "Inventario superrápido",
-  "screen.kohs_inventory_tweaks.super_fast_inventory.description": "Construye el inventario local en el primer límite seguro del lote de entrada. Si coincide una acción de offhand, hotbar, ataque, uso, drop o selección, deja todo el lote intacto para Vanilla.",
+  "screen.kohs_inventory_tweaks.super_fast_inventory.description": "Abre al terminar el primer lote de entrada seguro. Mantener la tecla de inventario sin asignaciones compartidas no lo abre y cierra repetidamente; suéltala y pulsa otra vez para cerrar. El buscador del recetario funciona normalmente. Las acciones de juego simultáneas quedan a cargo de Vanilla.",
   "screen.kohs_inventory_tweaks.remove_animations": "Eliminar absolutamente todas las animaciones",
   "screen.kohs_inventory_tweaks.remove_animations.description": "Congela el movimiento visual propio del inventario y elimina copias fantasma transitorias sin retrasar el mouse ni el teclado.",
   "screen.kohs_inventory_tweaks.remove_animations.warning.title": "¿Eliminar las animaciones del inventario?",

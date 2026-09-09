@@ -2,6 +2,7 @@ package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
+import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryAnimationController;
 import net.minecraft.client.Minecraft;
@@ -123,6 +124,8 @@ public abstract class GuiGraphicsMixin {
 		argsOnly = true
 	)
 	private Identifier kohsInventoryTweaks$customizeContainerSurface(final Identifier original) {
+		// Every GUI blit reaches this hook, so the cheapest rejections come first:
+		// an unmodified configuration never inspects the screen or its slot layout.
 		if (!InventoryTextureManager.customizesContainerSurfaces(ConfigStore.get())
 			|| !(Minecraft.getInstance().screen instanceof AbstractContainerScreen<?> screen)) {
 			return original;
@@ -135,5 +138,18 @@ public abstract class GuiGraphicsMixin {
 			accessor.kohsInventoryTweaks$getImageWidth(),
 			accessor.kohsInventoryTweaks$getImageHeight()
 		);
+	}
+
+	// A scaled inventory keeps its hover maths in surface coordinates, but the
+	// deferred tooltip is drawn after the scaled pose is gone. Anchoring it back to
+	// screen coordinates keeps every tooltip attached to the real pointer.
+	@ModifyVariable(method = "setTooltipForNextFrameInternal", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	private int kohsInventoryTweaks$anchorTooltipX(final int xo) {
+		return InventoryGuiScaler.isScaledSurfaceActive() ? InventoryGuiScaler.toScreenX(xo) : xo;
+	}
+
+	@ModifyVariable(method = "setTooltipForNextFrameInternal", at = @At("HEAD"), argsOnly = true, ordinal = 1)
+	private int kohsInventoryTweaks$anchorTooltipY(final int yo) {
+		return InventoryGuiScaler.isScaledSurfaceActive() ? InventoryGuiScaler.toScreenY(yo) : yo;
 	}
 }

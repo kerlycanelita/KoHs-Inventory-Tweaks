@@ -3,6 +3,7 @@ package dev.zymekoh.kohsinventorytweaks.mixin;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
+import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
 import dev.zymekoh.kohsinventorytweaks.render.VisiblePlayerBackdropController;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -17,6 +18,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ScreenBackgroundMixin {
 	private static final int VANILLA_BOTTOM_ALPHA = 208;
 	private static final int VANILLA_TOP_ALPHA = 192;
+
+	// Guarantees that a foreign mod cancelling a scaled extraction pass cannot leak
+	// scale depth into the next frame's tooltip anchoring.
+	@Inject(method = "renderWithTooltipAndSubtitles", at = @At("HEAD"))
+	private void kohsInventoryTweaks$resetScaledSurfaceDepth(
+		final GuiGraphics graphics,
+		final int mouseX,
+		final int mouseY,
+		final float a,
+		final CallbackInfo callbackInfo
+	) {
+		InventoryGuiScaler.resetScaledSurface();
+	}
 
 	@Inject(method = "renderTransparentBackground", at = @At("HEAD"), cancellable = true)
 	private void kohsInventoryTweaks$customizeInventoryBackdrop(

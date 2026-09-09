@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 1.0.9
+
+- Aligned the maintained five-version set: 1.21.11, 26.1, 26.1.1, 26.1.2 and
+  26.2 now share the reviewed cursor, fast-input, scale-scope and persistence
+  behavior while retaining their version-specific GUI APIs.
+- Added the previously missing 26.1.1 artifact and corrected its recipe-book
+  and input ports.
+- Made disabled container scaling an identity transform and packaged the MIT
+  license text in every release JAR.
+- Verified each mixin target and injector signature against its exact Minecraft
+  client, and kept the stress debugger out of release artifacts.
+
 ## 1.0.8
 
 - Stopped opening the inventory early while a mouse button is still held. Vanilla reads `minecraft.screen` a second time on the way out of `onButton`, so a button pressed against the world and released after the fast open had its release delivered to a screen that did not exist when the press happened. The world action it belonged to was lost and an inventory that had just placed the cursor on a landing slot received the release instead. The check reads `activeButton`, the only field Vanilla assigns on both edges: the public pressed flags are written inside the `screen == null` branch, so a release that lands while any screen is open leaves them reporting pressed until the next full press-and-release in the world.

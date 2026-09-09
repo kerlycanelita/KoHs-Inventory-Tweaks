@@ -175,7 +175,7 @@
   "screen.kohs_inventory_tweaks.center_mouse_fix": "Center Mouse Fix",
   "screen.kohs_inventory_tweaks.center_mouse_fix.description": "Places the custom or vanilla centered position exactly once during each player-inventory opening. It never affects containers, verifies later frames, drags, or continuously forces the cursor.",
   "screen.kohs_inventory_tweaks.super_fast_inventory": "Super Fast Inventory",
-  "screen.kohs_inventory_tweaks.super_fast_inventory.description": "Builds the local inventory at the first safe input-batch boundary. Any overlapping offhand, hotbar, attack, use, drop or pick action leaves the complete batch untouched for Vanilla.",
+  "screen.kohs_inventory_tweaks.super_fast_inventory.description": "Opens at the first safe input-batch boundary. Holding an unshared inventory key will not toggle it repeatedly; release and press again to close. Recipe-search typing stays normal. Overlapping gameplay actions remain Vanilla-owned.",
   "screen.kohs_inventory_tweaks.remove_animations": "Remove Absolutely All Inventory Animations",
   "screen.kohs_inventory_tweaks.remove_animations.description": "Freezes inventory-owned visual motion and removes transient snapback ghost copies without delaying mouse or keyboard input.",
   "screen.kohs_inventory_tweaks.remove_animations.warning.title": "Remove inventory animations?",

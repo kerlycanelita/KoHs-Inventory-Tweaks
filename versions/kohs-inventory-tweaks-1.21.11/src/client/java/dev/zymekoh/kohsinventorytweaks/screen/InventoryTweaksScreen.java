@@ -391,10 +391,13 @@ public final class InventoryTweaksScreen extends Screen {
 		boolean persistCursorPosition = this.selectingPosition;
 		this.selectingPosition = false;
 		this.cropDragging = false;
-		if (persistCursorPosition) {
+		boolean handled = super.mouseReleased(event);
+		boolean persistCustomizationSlider = this.modal == Modal.CUSTOMIZATION
+			&& !this.working.sameValues(ConfigStore.get());
+		if (persistCursorPosition || persistCustomizationSlider) {
 			this.persistWorking();
 		}
-		return super.mouseReleased(event);
+		return persistCursorPosition || handled;
 	}
 
 	@Override
@@ -431,7 +434,13 @@ public final class InventoryTweaksScreen extends Screen {
 			return true;
 		}
 		if (!event.isEscape()) {
-			return super.keyPressed(event);
+			boolean handled = super.keyPressed(event);
+			if (handled
+				&& this.modal == Modal.CUSTOMIZATION
+				&& !this.working.sameValues(ConfigStore.get())) {
+				this.persistWorking();
+			}
+			return handled;
 		}
 		if (this.modal == Modal.NONE) {
 			this.onClose();
@@ -1202,7 +1211,11 @@ public final class InventoryTweaksScreen extends Screen {
 	) {
 		GlassSlider slider = new GlassSlider(x, y, width, translationKey, initialValue, value -> {
 			consumer.accept(value);
-			this.persistWorking();
+			// Keep the live preview immediate, but leave the synchronous JSON write
+			// to mouseReleased (or a keyboard adjustment). Dragging a 0..255 slider
+			// must never perform hundreds of atomic file replacements on the render
+			// and input thread.
+			InventoryTextureManager.invalidateConfiguration();
 		});
 		slider.setClipBounds(
 			this.customizationOptionsX,
@@ -1395,7 +1408,6 @@ public final class InventoryTweaksScreen extends Screen {
 			this.textureSelectorY - 11,
 			UiTheme.TEXT_MUTED
 		);
-		this.drawFastOpenStatus(graphics);
 	}
 
 	private void drawMainRail(
@@ -1541,6 +1553,7 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.remove_animations",
 			"screen.kohs_inventory_tweaks.remove_animations.description"
 		);
+		this.drawFastOpenStatus(graphics);
 	}
 
 	/** Explains whether the most recent inventory press used the immediate path. */

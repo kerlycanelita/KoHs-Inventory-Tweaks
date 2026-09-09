@@ -3,8 +3,8 @@ package dev.zymekoh.kohsinventorytweaks.inventory;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
-import dev.zymekoh.kohsinventorytweaks.mixin.AbstractRecipeBookScreenAccessor;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -67,6 +67,11 @@ public final class InventoryGuiScaler {
 
 	public static boolean isScaledSurfaceActive() {
 		return Math.abs(activeSurfaceScale() - 1.0) >= SCALE_EPSILON;
+	}
+
+	/** Whether a caller currently owns a GUI pose scope, even when its scale is 1. */
+	public static boolean hasActiveSurfaceScope() {
+		return surfaceDepth > 0;
 	}
 
 	public static int toScreenX(final int surfaceX) {
@@ -168,6 +173,12 @@ public final class InventoryGuiScaler {
 		final InventoryTweaksConfig config,
 		final ContainerScaleTarget target
 	) {
+		// Disabled means the identity GUI transform, not the fixed 2x reference.
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.GUI_SCALER)
+			|| config == null || !config.inventoryGuiScalerEnabled || target == null
+			|| config.containerProfilesEnabled && !config.isContainerScaleEnabled(target)) {
+			return 1.0;
+		}
 		return toSurfaceScale(configuredContainerPhysicalScale(screenWidth, screenHeight, config, target));
 	}
 
@@ -230,9 +241,7 @@ public final class InventoryGuiScaler {
 			|| config == null || !config.inventoryGuiScalerEnabled) {
 			return 1.0;
 		}
-		boolean recipeBookVisible = ((AbstractRecipeBookScreenAccessor) screen)
-			.kohsInventoryTweaks$getRecipeBookComponent()
-			.isVisible();
+		boolean recipeBookVisible = recipeBookOpen(screen);
 		double maximum = maximumScaleFor(screenWidth, screenHeight);
 		if (recipeBookVisible) {
 			double recipeBookFit = Math.max(1, screenWidth - SCREEN_MARGIN * 2)
@@ -243,6 +252,26 @@ public final class InventoryGuiScaler {
 			));
 		}
 		return toSurfaceScale(Math.min(clampConfiguredScale(config.inventoryGuiScale), maximum));
+	}
+
+	/**
+	 * Whether the recipe book will be shown for this inventory.
+	 *
+	 * <p>Read from the player's book rather than from the screen's own
+	 * {@code RecipeBookComponent}. Cursor landing resolves the scale while
+	 * Minecraft releases the mouse, and the component only learns it is visible
+	 * later in {@code Screen#init}; on a freshly constructed screen its field is
+	 * still false, which skipped the clamp below and landed the cursor scaled by
+	 * a factor the initialized screen never used.</p>
+	 *
+	 * <p>The book is the same source {@code RecipeBookComponent} initializes
+	 * itself from, and {@code setVisible} writes every toggle straight back to
+	 * it, so this agrees with the component once the screen is initialized.</p>
+	 */
+	private static boolean recipeBookOpen(final InventoryScreen screen) {
+		LocalPlayer player = Minecraft.getInstance().player;
+		return player != null
+			&& player.getRecipeBook().isOpen(screen.getMenu().getRecipeBookType());
 	}
 
 	public static double toInventoryCoordinate(final double coordinate, final int screenSize, final double scale) {

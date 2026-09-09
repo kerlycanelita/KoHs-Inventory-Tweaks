@@ -173,6 +173,12 @@ public final class InventoryGuiScaler {
 		final InventoryTweaksConfig config,
 		final ContainerScaleTarget target
 	) {
+		// Disabled means the identity GUI transform, not the fixed 2x reference.
+		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.GUI_SCALER)
+			|| config == null || !config.inventoryGuiScalerEnabled || target == null
+			|| config.containerProfilesEnabled && !config.isContainerScaleEnabled(target)) {
+			return 1.0;
+		}
 		return toSurfaceScale(configuredContainerPhysicalScale(screenWidth, screenHeight, config, target));
 	}
 

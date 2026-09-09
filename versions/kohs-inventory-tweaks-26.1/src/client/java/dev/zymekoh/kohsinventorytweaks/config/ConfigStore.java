@@ -266,6 +266,8 @@ public final class ConfigStore {
 				sanitized.itemHighlights.add(clean);
 			}
 		}
+		// An id that no longer resolves is dropped rather than kept: a landing that
+		// can never be found would silently disable the stored point behind it.
 		sanitized.inventoryLandingItem = sanitizeItemId(candidate.inventoryLandingItem);
 		for (CursorTarget target : CursorTarget.values()) {
 			sanitized.setPosition(target, candidate.getPosition(target));

@@ -22,22 +22,26 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(AbstractContainerScreen.class)
 public abstract class AbstractContainerScreenMixin {
+	@Unique
+	private boolean kohsInventoryTweaks$backgroundScalePushed;
+
 	@Inject(method = "render", at = @At("HEAD"))
 	private void kohsInventoryTweaks$beginContainerScale(
 		final GuiGraphics graphics,
 		final int mouseX,
 		final int mouseY,
-		final float partialTick,
+		final float a,
 		final CallbackInfo callbackInfo
 	) {
 		Screen screen = (Screen) (Object) this;
+		if (screen instanceof InventoryScreen) {
+			// InventoryScreen owns one scale around its recipe-book render path.
+			// Applying the generic container transform as its super methods run would
+			// square the scale and desynchronize rendered slots from pointer input.
+			return;
+		}
 		float scale = (float) InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get());
-		float centerX = screen.width * 0.5F;
-		float centerY = screen.height * 0.5F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(centerX, centerY);
-		graphics.pose().scale(scale, scale);
-		graphics.pose().translate(-centerX, -centerY);
+		InventoryGuiScaler.beginScaledSurface(graphics, screen.width * 0.5F, screen.height * 0.5F, scale);
 	}
 
 	@Inject(method = "render", at = @At("RETURN"))
@@ -45,15 +49,21 @@ public abstract class AbstractContainerScreenMixin {
 		final GuiGraphics graphics,
 		final int mouseX,
 		final int mouseY,
-		final float partialTick,
+		final float a,
 		final CallbackInfo callbackInfo
 	) {
-		graphics.pose().popMatrix();
+		if ((Object) this instanceof InventoryScreen) {
+			return;
+		}
+		InventoryGuiScaler.endScaledSurface(graphics);
 	}
 
 	@ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	private int kohsInventoryTweaks$transformContainerMouseX(final int mouseX) {
 		Screen screen = (Screen) (Object) this;
+		if (screen instanceof InventoryScreen) {
+			return mouseX;
+		}
 		double scale = InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get());
 		return (int) Math.round(InventoryGuiScaler.toInventoryCoordinate(mouseX, screen.width, scale));
 	}
@@ -61,6 +71,9 @@ public abstract class AbstractContainerScreenMixin {
 	@ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 1)
 	private int kohsInventoryTweaks$transformContainerMouseY(final int mouseY) {
 		Screen screen = (Screen) (Object) this;
+		if (screen instanceof InventoryScreen) {
+			return mouseY;
+		}
 		double scale = InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get());
 		return (int) Math.round(InventoryGuiScaler.toInventoryCoordinate(mouseY, screen.height, scale));
 	}
@@ -68,6 +81,12 @@ public abstract class AbstractContainerScreenMixin {
 	@ModifyVariable(method = {"mouseClicked", "mouseDragged", "mouseReleased"}, at = @At("HEAD"), argsOnly = true)
 	private MouseButtonEvent kohsInventoryTweaks$transformContainerMouseEvent(final MouseButtonEvent event) {
 		Screen screen = (Screen) (Object) this;
+		if (screen instanceof InventoryScreen) {
+			// AbstractRecipeBookScreenMixin transforms clicks/drags once and
+			// InventoryScreenMixin transforms releases once. The base method receives
+			// that already-normalized event through invokespecial.
+			return event;
+		}
 		double scale = InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get());
 		return InventoryGuiScaler.toInventoryEvent(event, screen.width, screen.height, scale);
 	}
@@ -117,16 +136,16 @@ public abstract class AbstractContainerScreenMixin {
 		final float partialTick,
 		final CallbackInfo callbackInfo
 	) {
+		this.kohsInventoryTweaks$backgroundScalePushed = false;
+		if (InventoryGuiScaler.hasActiveSurfaceScope()) {
+			return;
+		}
 		Screen screen = (Screen) (Object) this;
 		float scale = (float) ((Object) this instanceof InventoryScreen inventoryScreen
 			? InventoryGuiScaler.appliedScale(inventoryScreen, ConfigStore.get())
 			: InventoryGuiScaler.appliedContainerScale(screen, ConfigStore.get()));
-		float centerX = screen.width * 0.5F;
-		float centerY = screen.height * 0.5F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(centerX, centerY);
-		graphics.pose().scale(scale, scale);
-		graphics.pose().translate(-centerX, -centerY);
+		InventoryGuiScaler.beginScaledSurface(graphics, screen.width * 0.5F, screen.height * 0.5F, scale);
+		this.kohsInventoryTweaks$backgroundScalePushed = true;
 	}
 
 	@Inject(
@@ -144,7 +163,10 @@ public abstract class AbstractContainerScreenMixin {
 		final float partialTick,
 		final CallbackInfo callbackInfo
 	) {
-		graphics.pose().popMatrix();
+		if (this.kohsInventoryTweaks$backgroundScalePushed) {
+			InventoryGuiScaler.endScaledSurface(graphics);
+			this.kohsInventoryTweaks$backgroundScalePushed = false;
+		}
 	}
 
 	@Inject(method = "renderSnapbackItem", at = @At("HEAD"), cancellable = true)

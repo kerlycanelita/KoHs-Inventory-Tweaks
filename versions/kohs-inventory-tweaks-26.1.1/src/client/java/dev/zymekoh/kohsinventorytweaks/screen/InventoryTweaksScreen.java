@@ -391,10 +391,13 @@ public final class InventoryTweaksScreen extends Screen {
 		boolean persistCursorPosition = this.selectingPosition;
 		this.selectingPosition = false;
 		this.cropDragging = false;
-		if (persistCursorPosition) {
+		boolean handled = super.mouseReleased(event);
+		boolean persistCustomizationSlider = this.modal == Modal.CUSTOMIZATION
+			&& !this.working.sameValues(ConfigStore.get());
+		if (persistCursorPosition || persistCustomizationSlider) {
 			this.persistWorking();
 		}
-		return super.mouseReleased(event);
+		return persistCursorPosition || handled;
 	}
 
 	@Override
@@ -431,7 +434,13 @@ public final class InventoryTweaksScreen extends Screen {
 			return true;
 		}
 		if (!event.isEscape()) {
-			return super.keyPressed(event);
+			boolean handled = super.keyPressed(event);
+			if (handled
+				&& this.modal == Modal.CUSTOMIZATION
+				&& !this.working.sameValues(ConfigStore.get())) {
+				this.persistWorking();
+			}
+			return handled;
 		}
 		if (this.modal == Modal.NONE) {
 			this.onClose();
@@ -1203,7 +1212,11 @@ public final class InventoryTweaksScreen extends Screen {
 	) {
 		GlassSlider slider = new GlassSlider(x, y, width, translationKey, initialValue, value -> {
 			consumer.accept(value);
-			this.persistWorking();
+			// Keep the live preview immediate, but leave the synchronous JSON write
+			// to mouseReleased (or a keyboard adjustment). Dragging a 0..255 slider
+			// must never perform hundreds of atomic file replacements on the render
+			// and input thread.
+			InventoryTextureManager.invalidateConfiguration();
 		});
 		slider.setClipBounds(
 			this.customizationOptionsX,
@@ -1396,7 +1409,6 @@ public final class InventoryTweaksScreen extends Screen {
 			this.textureSelectorY - 11,
 			UiTheme.TEXT_MUTED
 		);
-		this.drawFastOpenStatus(graphics);
 	}
 
 	private void drawMainRail(
@@ -1542,13 +1554,16 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.remove_animations",
 			"screen.kohs_inventory_tweaks.remove_animations.description"
 		);
+		this.drawFastOpenStatus(graphics);
 	}
 
-	/** Explains whether the most recent inventory press used the immediate path. */
+	/** Names why the last inventory press did not open before the client tick. */
 	private void drawFastOpenStatus(final GuiGraphicsExtractor graphics) {
 		Component status;
 		int color;
-		if (!this.working.superFastInventory) return;
+		if (!this.working.superFastInventory) {
+			return;
+		}
 		if (SuperFastInventoryController.lastOpenWasImmediate()) {
 			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.immediate");
 			color = UiTheme.ACCENT_BRIGHT;
@@ -1556,14 +1571,20 @@ public final class InventoryTweaksScreen extends Screen {
 			List<String> mappings = SuperFastInventoryController.lastConflictMappings();
 			MutableComponent names = Component.empty();
 			for (int index = 0; index < mappings.size(); index++) {
-				if (index > 0) names.append(", ");
+				if (index > 0) {
+					names.append(", ");
+				}
 				names.append(Component.translatable(mappings.get(index)));
 			}
 			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.conflict", names);
 			color = UiTheme.WARNING;
-		} else return;
+		} else {
+			return;
+		}
 		List<FormattedCharSequence> lines = this.font.split(status, this.tweakOptionsWidth - 20);
-		if (!lines.isEmpty()) graphics.text(this.font, lines.getFirst(), this.tweakOptionsX + 10, this.tweakStatusY, color);
+		if (!lines.isEmpty()) {
+			graphics.text(this.font, lines.getFirst(), this.tweakOptionsX + 10, this.tweakStatusY, color);
+		}
 	}
 
 	private void drawTweakCard(
@@ -2501,12 +2522,15 @@ public final class InventoryTweaksScreen extends Screen {
 		this.tweakOptionsX = this.panelX + (this.panelWidth - this.tweakOptionsWidth) / 2;
 
 		this.tweakCardGap = this.compactModal ? 4 : 8;
+		// Reserved before the cards are sized, so the readout can never be pushed
+		// off the panel on a small window.
 		int statusHeight = 14;
 		int maximumCardHeight = Math.max(24, (contentHeight - statusHeight - this.tweakCardGap * 2) / 3);
 		int minimumCardHeight = Math.min(this.compactModal ? 42 : 48, maximumCardHeight);
 		this.tweakCardHeight = Mth.clamp(maximumCardHeight, minimumCardHeight, 68);
 		int cardsHeight = this.tweakCardHeight * 3 + this.tweakCardGap * 2;
-		this.tweakFirstCardY = this.contentTop + Math.max(0, (contentHeight - statusHeight - cardsHeight) / 2);
+		this.tweakFirstCardY = this.contentTop
+			+ Math.max(0, (contentHeight - statusHeight - cardsHeight) / 2);
 		this.tweakStatusY = this.tweakFirstCardY + cardsHeight + 4;
 	}
 
@@ -2791,6 +2815,13 @@ public final class InventoryTweaksScreen extends Screen {
 		return this.working.isCursorEnabled(this.selectedTarget);
 	}
 
+	/**
+	 * Follows the item instead of a fixed point on the screen.
+	 *
+	 * <p>The item is taken from the hand rather than from a catalogue: the player is
+	 * already holding what they want the cursor to find, and a fight is described by
+	 * the item, not by a position that the next pickup invalidates.</p>
+	 */
 	private void toggleLandingItem() {
 		if (this.working.inventoryLandingItem != null || this.minecraft.player == null) {
 			this.working.inventoryLandingItem = null;
@@ -2798,18 +2829,24 @@ public final class InventoryTweaksScreen extends Screen {
 			return;
 		}
 		ItemStack held = this.minecraft.player.getMainHandItem();
-		if (held.isEmpty()) return;
+		if (held.isEmpty()) {
+			return;
+		}
 		this.working.inventoryLandingItem = BuiltInRegistries.ITEM.getKey(held.getItem()).toString();
 		this.persistWorking();
 	}
 
 	private Component landingItemLabel() {
 		String itemId = this.working.inventoryLandingItem;
-		if (itemId == null) return Component.translatable("screen.kohs_inventory_tweaks.cursor.landing_item.off");
+		if (itemId == null) {
+			return Component.translatable("screen.kohs_inventory_tweaks.cursor.landing_item.off");
+		}
 		Identifier identifier = Identifier.tryParse(itemId);
 		Item item = identifier == null ? null : BuiltInRegistries.ITEM.getValue(identifier);
-		return Component.translatable("screen.kohs_inventory_tweaks.cursor.landing_item.on",
-			item == null ? Component.literal(itemId) : Component.translatable(item.getDescriptionId()));
+		return Component.translatable(
+			"screen.kohs_inventory_tweaks.cursor.landing_item.on",
+			item == null ? Component.literal(itemId) : Component.translatable(item.getDescriptionId())
+		);
 	}
 
 	private Component cursorToggleLabel() {

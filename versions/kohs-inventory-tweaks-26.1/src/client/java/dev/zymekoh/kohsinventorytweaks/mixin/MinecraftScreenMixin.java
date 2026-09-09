@@ -16,14 +16,6 @@ public abstract class MinecraftScreenMixin {
 		CursorLandingController.onScreenRequested(screen);
 	}
 
-	/**
-	 * Finalizes the placement once {@link Minecraft#setScreen(Screen)} has completed
-	 * the whole synchronous opening transaction, instead of from {@code Screen#init}.
-	 *
-	 * <p>{@code init} also runs on every window resize and could re-arm the landing
-	 * long after the opening; this point cannot, and it is still the same input
-	 * event, so no tick, render or scheduled task is crossed.</p>
-	 */
 	@Inject(method = "setScreen", at = @At("RETURN"))
 	private void kohsInventoryTweaks$finalizeCursor(final @Nullable Screen screen, final CallbackInfo callbackInfo) {
 		CursorLandingController.onScreenOpened((Minecraft) (Object) this, screen);

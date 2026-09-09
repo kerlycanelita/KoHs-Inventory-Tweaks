@@ -15,4 +15,9 @@ public abstract class MinecraftScreenMixin {
 	private void kohsInventoryTweaks$prepareCursor(final @Nullable Screen screen, final CallbackInfo callbackInfo) {
 		CursorLandingController.onScreenRequested(screen);
 	}
+
+	@Inject(method = "setScreen", at = @At("RETURN"))
+	private void kohsInventoryTweaks$finalizeCursor(final @Nullable Screen screen, final CallbackInfo callbackInfo) {
+		CursorLandingController.onScreenOpened((Minecraft) (Object) this, screen);
+	}
 }
