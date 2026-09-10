@@ -356,5 +356,11 @@
   "screen.kohs_inventory_tweaks.cursor.landing_item.on": "Landing item: %s",
   "screen.kohs_inventory_tweaks.cursor.landing_item.description": "Lands the cursor on the slot holding this item instead of on the stored point, and falls back to that point when the item is not in the inventory. The offhand slot is never chosen. Hold an item and press to set it; press again to clear.",
   "screen.kohs_inventory_tweaks.fast_open.immediate": "Last open: immediate",
-  "screen.kohs_inventory_tweaks.fast_open.conflict": "Last open: waited for the tick, shared with %s"
+  "screen.kohs_inventory_tweaks.fast_open.settled_pair": "Last presses: open and close settled at once",
+  "screen.kohs_inventory_tweaks.fast_open.conflict": "Last open: waited for the tick, shared with %s",
+  "screen.kohs_inventory_tweaks.fast_open.reason.mouse_button_held": "Last open: waited for the tick, a mouse button was still held",
+  "screen.kohs_inventory_tweaks.fast_open.reason.window_not_active": "Last open: waited for the tick, the window was not active",
+  "screen.kohs_inventory_tweaks.fast_open.reason.multiple_clicks": "Last open: waited for the tick, several inventory presses were queued",
+  "screen.kohs_inventory_tweaks.fast_open.reason.already_consumed": "Last open: waited for the tick, the press was already taken",
+  "screen.kohs_inventory_tweaks.fast_open.reason.other": "Last open: waited for the tick"
 }

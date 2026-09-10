@@ -29,10 +29,30 @@ import org.lwjgl.glfw.GLFW;
  * open on the next rendered frame instead of waiting for the next 20 TPS client
  * tick. Any overlapping non-movement mapping leaves the complete Vanilla queue
  * untouched.</p>
+ *
+ * <p>Presses are counted rather than queued. A run this controller watched arrive
+ * while no screen existed carries one meaning per press -- open, close, open --
+ * so an even run has already finished and settles without building anything,
+ * where Vanilla's open-only drain would have ended open. Any click it did not
+ * watch arrive makes the run uncountable and the whole queue goes back.</p>
  */
 public final class SuperFastInventoryController {
 	/** Trailing repeat marker appended by the queued-action report, as in `key.attackx2`. */
 	private static final Pattern REPEAT_COUNT = Pattern.compile("x\\d+$");
+	/**
+	 * Shortest interval in which a hand can deliver two deliberate presses.
+	 *
+	 * <p>Contact bounce and key repeat land one to ten milliseconds apart; the
+	 * quickest human double tap is around fifty, and forty for a practised one.
+	 * Twenty-five sits between the two with room on both sides, and erring high
+	 * only ever sends a press to Vanilla instead of merging it away.</p>
+	 */
+	private static final long HUMAN_DOUBLE_TAP_FLOOR_NANOS = 25_000_000L;
+	private static long previousPollNanos;
+	/** Inventory clicks this controller watched enter Vanilla's queue and left there. */
+	private static int deferredInventoryClicks;
+	/** What the player meant by those clicks, after collapsing hardware double-fire. */
+	private static int deferredInventoryIntents;
 	private static boolean physicalInputObserved;
 	private static boolean conflictingPhysicalInputObserved;
 	private static String conflictingPhysicalMappings = "none";
@@ -130,6 +150,15 @@ public final class SuperFastInventoryController {
 
 	/** Called once after GLFW has delivered every event in this rendered frame. */
 	public static void afterInputPoll(final Minecraft minecraft) {
+		// How much real time this batch covers has to be measured here, once per
+		// frame, including the frames that carry no input at all. A timestamp taken
+		// inside the key callback cannot stand in for it: GLFW hands the whole queued
+		// burst to those callbacks from within one pollEvents, so two presses forty
+		// milliseconds apart on a slow frame still arrive microseconds apart.
+		long now = System.nanoTime();
+		long batchSpanNanos = previousPollNanos == 0L ? Long.MAX_VALUE : now - previousPollNanos;
+		previousPollNanos = now;
+
 		if (!physicalInputObserved) {
 			return;
 		}
@@ -145,6 +174,8 @@ public final class SuperFastInventoryController {
 
 		if (minecraft == null || queuedClicks(minecraft.options.keyInventory) == 0) {
 			inventoryPhysicalInputNanos = 0L;
+			deferredInventoryClicks = 0;
+			deferredInventoryIntents = 0;
 			return;
 		}
 
@@ -158,63 +189,117 @@ public final class SuperFastInventoryController {
 			return;
 		}
 
-		// Two presses inside a single GLFW batch are one physical intent, not an open
-		// followed by a close. A batch is one rendered frame: at 120 fps that is eight
-		// milliseconds, which no hand produces and a failing switch or a key repeat
-		// produces constantly. Cancelling both, as this did before, answered a real
-		// double-fire with a key that visibly does nothing -- the exact ghost players
-		// report. Drop the surplus click and open once instead; never reclaim an older
-		// queued click and never touch another action mapping.
-		boolean mergedDoublePress = false;
-		if (inventoryPresses == 2 && queuedClicks(minecraft.options.keyInventory) == 2
-			&& unavailableReason(minecraft) == null && !hasSharedInventoryBinding(minecraft)) {
-			minecraft.options.keyInventory.consumeClick();
-			mergedDoublePress = true;
+		inventoryPhysicalInputNanos = 0L;
+		int queuedInventoryClicks = queuedClicks(minecraft.options.keyInventory);
+
+		// Two presses in one GLFW batch are a failing switch or a key repeat rather
+		// than an open followed by a close -- but only while the batch is shorter than
+		// a hand can tap twice. Sharing a frame was carrying that argument alone, and a
+		// frame is only eight milliseconds at 120 fps: at 30 fps it is thirty-three,
+		// inside human range, so a deliberate quick open-and-close was being answered
+		// with a single open. The batch has to be short enough that the two presses
+		// cannot have been two intentions.
+		boolean chatterCollapsed = inventoryPresses == 2
+			&& batchSpanNanos <= HUMAN_DOUBLE_TAP_FLOOR_NANOS;
+		int batchIntents = chatterCollapsed ? 1 : inventoryPresses;
+
+		// Nothing can still be owed when the queue holds no more than this batch put
+		// there, so a tally that survived a tick is stale and says nothing.
+		if (queuedInventoryClicks <= inventoryPresses) {
+			deferredInventoryClicks = 0;
+			deferredInventoryIntents = 0;
 		}
+		int ownedClicks = Math.min(deferredInventoryClicks + inventoryPresses, queuedInventoryClicks);
+		int intents = deferredInventoryIntents + batchIntents;
 
 		if (physicalConflict) {
+			deferredInventoryClicks = 0;
+			deferredInventoryIntents = 0;
 			finishDecision("vanilla-fallback", "physical-conflict:" + physicalConflictMappings);
-			inventoryPhysicalInputNanos = 0L;
 			return;
 		}
 
-		if (queuedClicks(minecraft.options.keyInventory) != 1) {
-			// A second fresh press must not reclaim a still-queued press whose earlier
-			// batch already yielded to Vanilla (possibly for a mod-owned key action).
-			finishDecision("vanilla-fallback", "multiple-inventory-clicks");
-			inventoryPhysicalInputNanos = 0L;
+		// A queued click this controller never watched arrive carries an intention it
+		// cannot count: a screen that declined the key queued one of its own, or the
+		// binding is shared and another mapping owns half the meaning. Neither is a
+		// queue to reclaim, so the whole thing goes back to Vanilla and the tally is
+		// abandoned rather than guessed at.
+		if (queuedInventoryClicks > ownedClicks || hasSharedInventoryBinding(minecraft)) {
+			deferredInventoryClicks = 0;
+			deferredInventoryIntents = 0;
+			finishDecision("vanilla-fallback", "unowned-inventory-clicks");
+			return;
+		}
+
+		boolean opensScreen = intents % 2 == 1;
+		String unavailableReason = unavailableReason(minecraft, opensScreen);
+		if (unavailableReason != null) {
+			deferredInventoryClicks = ownedClicks;
+			deferredInventoryIntents = intents;
+			finishDecision("vanilla-fallback", unavailableReason);
+			return;
+		}
+
+		// An even run is an open and a close the player has already finished. Vanilla
+		// cannot answer that: `handleKeybinds` drains the queue in a loop that only
+		// ever opens, and the closing half lives on a screen that was never built, so
+		// it ends open however many times the key was pressed. Settling it here takes
+		// the clicks, builds nothing, and leaves the world as the player left it --
+		// and settles it now rather than at a tick that would get it wrong. No screen
+		// appears, so no queued action of any other mapping can be stranded by it.
+		if (!opensScreen) {
+			drainInventoryClicks(minecraft, ownedClicks);
+			finishDecision("early-cancel", "open-and-close");
 			return;
 		}
 
 		String queuedConflict = queuedVanillaActions(minecraft);
 		if (!queuedConflict.equals("none")) {
+			deferredInventoryClicks = ownedClicks;
+			deferredInventoryIntents = intents;
 			finishDecision("vanilla-fallback", "queued-conflict:" + queuedConflict);
-			inventoryPhysicalInputNanos = 0L;
 			return;
 		}
 
-		String unavailableReason = unavailableReason(minecraft);
-		if (unavailableReason != null) {
-			finishDecision("vanilla-fallback", unavailableReason);
-			inventoryPhysicalInputNanos = 0L;
-			return;
-		}
-
-		if (!minecraft.options.keyInventory.consumeClick()) {
+		// Nothing above this line touches Vanilla's queue, so every fallback leaves it
+		// exactly as it was found. From here the opening is committed.
+		if (drainInventoryClicks(minecraft, ownedClicks) == 0) {
 			finishDecision("vanilla-fallback", "inventory-click-already-consumed");
-			inventoryPhysicalInputNanos = 0L;
 			return;
 		}
 		minecraft.getTutorial().onOpenInventory();
 		minecraft.setScreen(new InventoryScreen(minecraft.player));
 		discardPreOpenWorldMovement(minecraft);
-		finishDecision("early-open", mergedDoublePress ? "merged-double-press" : "sole-inventory-input");
-		inventoryPhysicalInputNanos = 0L;
+		String openReason = chatterCollapsed ? "merged-double-press"
+			: intents == 1 ? "sole-inventory-input" : "settled-press-run";
+		finishDecision("early-open", openReason);
+	}
+
+	/**
+	 * Takes exactly the clicks this controller owns and reports how many it got.
+	 *
+	 * <p>The tally is cleared either way: once the queue has been touched there is
+	 * nothing left to defer, and a short count means Vanilla drained it underneath
+	 * us, which is equally a reason to stop tracking it.</p>
+	 */
+	private static int drainInventoryClicks(final Minecraft minecraft, final int clicks) {
+		int taken = 0;
+		while (taken < clicks && minecraft.options.keyInventory.consumeClick()) {
+			taken++;
+		}
+		deferredInventoryClicks = 0;
+		deferredInventoryIntents = 0;
+		return taken;
 	}
 
 	/** Whether the last inventory press opened before the next client tick. */
 	public static boolean lastOpenWasImmediate() {
 		return "early-open".equals(lastDecision);
+	}
+
+	/** Whether the last run of presses was an open and a close settled without opening. */
+	public static boolean lastPressSettledAPair() {
+		return "early-cancel".equals(lastDecision);
 	}
 
 	/** Whether the last press fell back because other input shared its batch. */
@@ -243,6 +328,23 @@ public final class SuperFastInventoryController {
 			}
 		}
 		return List.copyOf(names);
+	}
+
+	/**
+	 * The category of the last fallback, empty while no press has been decided or
+	 * the last one opened early.
+	 *
+	 * <p>A player only ever sees the acceleration fail; the readout that explains
+	 * it covered the two conflict reasons and silently showed nothing for the
+	 * rest, including the held mouse button that is the common one in a fight.
+	 * This drops the detail suffix so the screen can name every reason.</p>
+	 */
+	public static String lastFallbackCode() {
+		if (!"vanilla-fallback".equals(lastDecision)) {
+			return "";
+		}
+		int separator = lastDecisionReason.indexOf(':');
+		return separator < 0 ? lastDecisionReason : lastDecisionReason.substring(0, separator);
 	}
 
 	/** Read-only instrumentation surface used by KoHs Inventory Debug. */
@@ -344,7 +446,7 @@ public final class SuperFastInventoryController {
 		result.append(mapping.getName()).append('x').append(clicks);
 	}
 
-	private static String unavailableReason(final Minecraft minecraft) {
+	private static String unavailableReason(final Minecraft minecraft, final boolean opensScreen) {
 		if (!minecraft.isWindowActive() || minecraft.getWindow().isMinimized()) {
 			return "window-not-active";
 		}
@@ -354,8 +456,10 @@ public final class SuperFastInventoryController {
 		// way out, so the release is delivered to the new inventory instead of ending the
 		// world action it belongs to. Vanilla opens at the next client tick, by which time
 		// a tap has normally completed, so yielding costs at most one tick and only for
-		// the player who is actually holding a button.
-		if (((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$getActiveButton() != null) {
+		// the player who is actually holding a button. Settling an already-finished pair
+		// creates no screen for that release to land on, so it is not held back by this.
+		if (opensScreen
+			&& ((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$getActiveButton() != null) {
 			return "mouse-button-held";
 		}
 		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)) {

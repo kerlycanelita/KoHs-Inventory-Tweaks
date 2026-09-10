@@ -356,5 +356,11 @@
   "screen.kohs_inventory_tweaks.cursor.landing_item.on": "Objeto de aterrizaje: %s",
   "screen.kohs_inventory_tweaks.cursor.landing_item.description": "Aterriza el cursor en la casilla que contiene este objeto en lugar del punto guardado, y vuelve a ese punto cuando el objeto no está en el inventario. Nunca elige la mano secundaria. Sostén un objeto y pulsa para fijarlo; pulsa otra vez para quitarlo.",
   "screen.kohs_inventory_tweaks.fast_open.immediate": "Última apertura: inmediata",
-  "screen.kohs_inventory_tweaks.fast_open.conflict": "Última apertura: esperó al tick, compartida con %s"
+  "screen.kohs_inventory_tweaks.fast_open.settled_pair": "Últimas pulsaciones: apertura y cierre resueltos de una vez",
+  "screen.kohs_inventory_tweaks.fast_open.conflict": "Última apertura: esperó al tick, compartida con %s",
+  "screen.kohs_inventory_tweaks.fast_open.reason.mouse_button_held": "Última apertura: esperó al tick, había un botón del mouse pulsado",
+  "screen.kohs_inventory_tweaks.fast_open.reason.window_not_active": "Última apertura: esperó al tick, la ventana no estaba activa",
+  "screen.kohs_inventory_tweaks.fast_open.reason.multiple_clicks": "Última apertura: esperó al tick, había varias pulsaciones de inventario en cola",
+  "screen.kohs_inventory_tweaks.fast_open.reason.already_consumed": "Última apertura: esperó al tick, la pulsación ya estaba consumida",
+  "screen.kohs_inventory_tweaks.fast_open.reason.other": "Última apertura: esperó al tick"
 }

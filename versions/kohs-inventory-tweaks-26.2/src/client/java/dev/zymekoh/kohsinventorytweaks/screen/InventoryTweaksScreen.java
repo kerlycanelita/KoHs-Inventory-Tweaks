@@ -1567,6 +1567,9 @@ public final class InventoryTweaksScreen extends Screen {
 		if (SuperFastInventoryController.lastOpenWasImmediate()) {
 			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.immediate");
 			color = UiTheme.ACCENT_BRIGHT;
+		} else if (SuperFastInventoryController.lastPressSettledAPair()) {
+			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.settled_pair");
+			color = UiTheme.ACCENT_BRIGHT;
 		} else if (SuperFastInventoryController.lastOpenHadInputConflict()) {
 			List<String> mappings = SuperFastInventoryController.lastConflictMappings();
 			MutableComponent names = Component.empty();
@@ -1579,12 +1582,34 @@ public final class InventoryTweaksScreen extends Screen {
 			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.conflict", names);
 			color = UiTheme.WARNING;
 		} else {
-			return;
+			String code = SuperFastInventoryController.lastFallbackCode();
+			if (code.isEmpty()) {
+				return;
+			}
+			status = Component.translatable(fastOpenReasonKey(code));
+			color = UiTheme.WARNING;
 		}
 		List<FormattedCharSequence> lines = this.font.split(status, this.tweakOptionsWidth - 20);
 		if (!lines.isEmpty()) {
 			graphics.text(this.font, lines.getFirst(), this.tweakOptionsX + 10, this.tweakStatusY, color);
 		}
+	}
+
+	/**
+	 * The message naming why the last press waited for the client tick.
+	 *
+	 * <p>Only the reasons a player can act on earn their own line. The rest share
+	 * one message, because this readout exists to explain a slow open rather than
+	 * to enumerate internal state.</p>
+	 */
+	private static String fastOpenReasonKey(final String code) {
+		return switch (code) {
+			case "mouse-button-held" -> "screen.kohs_inventory_tweaks.fast_open.reason.mouse_button_held";
+			case "window-not-active" -> "screen.kohs_inventory_tweaks.fast_open.reason.window_not_active";
+			case "multiple-inventory-clicks" -> "screen.kohs_inventory_tweaks.fast_open.reason.multiple_clicks";
+			case "inventory-click-already-consumed" -> "screen.kohs_inventory_tweaks.fast_open.reason.already_consumed";
+			default -> "screen.kohs_inventory_tweaks.fast_open.reason.other";
+		};
 	}
 
 	private void drawTweakCard(
