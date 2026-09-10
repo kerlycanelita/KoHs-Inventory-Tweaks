@@ -1,20 +1,15 @@
-<p align="center">
-  <img src="src/main/resources/assets/kohs_inventory_tweaks/icon.png" width="360" alt="KoHs Inventory Tweaks logo">
-</p>
+# KoHs Inventory Tweaks
 
-<h1 align="center">KoHs Inventory Tweaks</h1>
-
-<p align="center">
-  <strong>The successor to KoHs Inv Cursor, rebuilt for modern Minecraft inventory rendering.</strong>
-</p>
+[![GitHub](https://img.shields.io/badge/GitHub-KoHs--Inventory--Tweaks-6f2cff?style=for-the-badge&logo=github)](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks)
+[![Modrinth](https://img.shields.io/badge/Modrinth-Download-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/mod/kohs-inv-cursor)
+[![Issues](https://img.shields.io/badge/Report-Issues-a855f7?style=for-the-badge&logo=githubissues)](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues)
+[![Discord](https://img.shields.io/badge/Join-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/9t2VxEF7UU)
 
 <p align="center">
-  <a href="https://modrinth.com/mod/kohs-inv-cursor"><img alt="Modrinth" src="https://img.shields.io/badge/Modrinth-Download-1BD96A?style=for-the-badge&logo=modrinth&logoColor=white"></a>
-  <a href="https://github.com/kerlycanelita/KoHs-Inventory-Tweaks"><img alt="GitHub repository" src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github"></a>
-  <a href="https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues"><img alt="Report an issue" src="https://img.shields.io/badge/Issues-Report_an_issue-c93c7a?style=for-the-badge&logo=githubissues&logoColor=white"></a>
-  <a href="https://discord.gg/9t2VxEF7UU"><img alt="Discord" src="https://img.shields.io/badge/Discord-9t2VxEF7UU-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
-  <a href="WIKI.md"><img alt="English wiki" src="https://img.shields.io/badge/%F0%9F%93%96-Wiki-7c3aed?style=for-the-badge"></a>
+  <img src="src/main/resources/assets/kohs_inventory_tweaks/icon.png" alt="KoHs Inventory Tweaks icon" width="220">
 </p>
+
+**Deterministic cursor placement, inventory customization, and guarded rapid input.**
 
 KoHs Inventory Tweaks is a Fabric client-side mod that hooks into inventory-screen preparation and rendering without replacing server inventory logic. It provides deterministic cursor placement, guarded rapid input, configurable visuals, and a responsive interface while preserving vanilla interactions.
 
@@ -35,7 +30,7 @@ All builds require Fabric Loader 0.19.3 or newer. Mod Menu is optional and recom
 
 The mod does not need to be installed on the server.
 
-## Technical features
+## What it changes
 
 - **Cursor Landing:** stores independent normalized coordinates for the player inventory, single chest, double chest, Shulker Box, Ender Chest, and barrel. Individual container types can fall back to vanilla cursor behavior.
 - **Center Mouse Fix:** supplies the custom or vanilla centered release position exactly once per player-inventory opening, without initialization-time refinement, interpolation, dragging, or later pointer forcing.
@@ -46,7 +41,7 @@ The mod does not need to be installed on the server.
 - **Visible-player highlight:** can tint and locally brighten normally visible player models outside the open inventory panel. Its editor previews the current player's real skin and equipment in a walking 3D render. The real effect uses the ordinary depth-tested entity pass, never the through-wall outline pipeline, and remains entirely client-render-only.
 - **Safe persistence:** sanitizes every setting and writes it through atomic replacement to config/kohs_inventory_tweaks.json.
 
-## Installation
+## Install
 
 1. Install Fabric Loader for your supported Minecraft version.
 2. Install the matching Fabric API release.
@@ -54,14 +49,17 @@ The mod does not need to be installed on the server.
 4. Optionally install Mod Menu to access configuration through the mod list.
 5. Join a world or server before opening the configuration menu; previews require an active player and loaded resources.
 
-Read the [English wiki](WIKI.md) for complete instructions covering colors, backgrounds, cursor placement, GUI scaling, and Item Highlighter. A Spanish edition is available through the language button at the top of the wiki.
+Read the [English wiki](docs/wiki/WIKI.md) for complete instructions covering colors, backgrounds, cursor placement, GUI scaling, and Item Highlighter. A Spanish edition is available through the language button at the top of the wiki.
 
 ## Building
 
-    $env:JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
-    .\gradlew.bat clean build
+With JDK 25 available through `JAVA_HOME`:
 
-The 26.1.2 JAR is written to `build/libs/`. To build another supported target, run the same command from its `versions/kohs-inventory-tweaks-<minecraft-version>` directory; each JAR is written to that directory's `build/libs/`.
+```powershell
+.\gradlew.bat build --no-daemon
+```
+
+The 26.1.2 JAR is written to `build/libs/`. To build another supported target, use the JDK declared by that target and run the same command from its `versions/kohs-inventory-tweaks-<minecraft-version>` directory; each JAR is written to that directory's `build/libs/`.
 
 ## Verification
 
@@ -82,6 +80,23 @@ This reports any translation key the client asks for that is missing from a lang
 - Reproducible bugs: [GitHub Issues](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/issues)
 - Community and help: [Discord](https://discord.gg/9t2VxEF7UU)
 
+## Repository layout
+
+| Location | Contents |
+| --- | --- |
+| `src/` | The main Minecraft 26.1.2 implementation. |
+| `versions/` | Separate source targets; legacy local artifacts stay excluded. |
+| `debug/` | Optional diagnostic companions, separate from the playable mod. |
+| `docs/` | English/Spanish wiki, player reports, audits and release notes. |
+| `tools/` | Mixin, translation, artifact and cursor-contract checks. |
+
+Start with the [documentation index](docs/README.md). Build output and local
+Minecraft instances remain outside Git; keep installable JARs out of the source tree.
+
 ## License
 
 Distributed under the [MIT License](LICENSE). Copyright © 2026 zymekoh.
+
+## Credits
+
+Made by **zymekoh**.

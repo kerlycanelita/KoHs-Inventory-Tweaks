@@ -39,3 +39,12 @@ tmp/
 *.tmp
 *.bak
 __pycache__/
+
+# Machine-local settings and diagnostics
+.claude/settings.local.json
+.env
+.env.*
+!.env.example
+*.jfr
+*.hprof
+*.pyc
