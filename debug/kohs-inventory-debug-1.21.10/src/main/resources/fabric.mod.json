@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "kohs_inventory_debug",
+  "version": "${version}",
+  "name": "KoHs Inventory Debug",
+  "description": "Temporary diagnostic companion for KoHs Inventory Tweaks. Its recorder is observer-only; its optional QA input macros are hard-blocked outside integrated singleplayer worlds.",
+  "authors": ["zymekoh"],
+  "license": "MIT",
+  "icon": "assets/kohs_inventory_debug/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.zymekoh.kohsinventorydebug.KoHsInventoryDebugClient"
+    ],
+    "modmenu": [
+      "dev.zymekoh.kohsinventorydebug.gui.DebugModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "kohs-inventory-debug.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "${minecraft_version}",
+    "java": ">=21",
+    "kohs_inventory_tweaks": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}

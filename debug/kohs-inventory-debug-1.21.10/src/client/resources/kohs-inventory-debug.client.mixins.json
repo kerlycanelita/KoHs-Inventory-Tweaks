@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.zymekoh.kohsinventorydebug.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "AbstractContainerScreenTraceMixin",
+    "ClientCommonPacketListenerTraceMixin",
+    "ClientPacketListenerTraceMixin",
+    "ConfigStoreTraceMixin",
+    "KeyMappingDebugAccessor",
+    "KeyMappingTraceMixin",
+    "KeyboardHandlerDebugInvoker",
+    "KeyboardHandlerTraceMixin",
+    "KoHsCursorTraceMixin",
+    "KoHsFastInventoryTraceMixin",
+    "MinecraftTraceMixin",
+    "MouseHandlerDebugInvoker",
+    "MouseHandlerTraceMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

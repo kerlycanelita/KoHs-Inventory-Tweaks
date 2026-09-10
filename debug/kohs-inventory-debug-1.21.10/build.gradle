@@ -1,0 +1,105 @@
+plugins {
+	id 'fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		'kohs_inventory_debug' {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+repositories {
+	maven {
+		name = 'Terraformers'
+		url = 'https://maven.terraformersmc.com/releases/'
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") {
+		transitive = false
+	}
+	include implementation('net.java.dev.jna:jna:5.17.0')
+
+	// Development-runtime only: validates this companion against the exact local
+	// KoHs build. These dependencies are not nested into the debug JAR.
+	clientRuntimeOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	clientRuntimeOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	// Resolved by pattern, not by pinned name: a version bump used to leave this
+	// pointing at a jar that no longer exists, and the lab then measured Vanilla.
+	clientRuntimeOnly files(fileTree(
+		dir: '../../versions/kohs-inventory-tweaks-1.21.10/build/libs',
+		include: 'kohs-inventory-tweaks-*.jar',
+		exclude: '*-sources.jar'
+	).files)
+}
+
+processResources {
+	inputs.property 'version', project.version
+	inputs.property 'minecraft_version', project.minecraft_version
+
+	filesMatching('fabric.mod.json') {
+		expand(
+			version: project.version,
+			minecraft_version: project.minecraft_version
+		)
+	}
+
+	['es_ar', 'es_cl', 'es_ec', 'es_mx', 'es_uy', 'es_ve'].each { spanishLocale ->
+		from('src/main/resources/assets/kohs_inventory_debug/lang/es_es.json') {
+			into 'assets/kohs_inventory_debug/lang'
+			rename { "${spanishLocale}.json" }
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+	options.release = 21
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.named('runClient').configure {
+	if (project.hasProperty('debugMacro')) {
+		jvmArgs "-Dkohs.inventory.debug.autorun=${project.property('debugMacro')}"
+	}
+	if (project.hasProperty('debugWorld')) {
+		args '--quickPlaySingleplayer', project.property('debugWorld').toString()
+	}
+}
+
+jar {
+	from('../../LICENSE') {
+		rename { 'LICENSE_kohs_inventory_debug' }
+	}
+	manifest {
+		attributes(
+			'Implementation-Title': 'KoHs Inventory Debug',
+			'Implementation-Version': project.version,
+			'Implementation-Vendor': 'zymekoh'
+		)
+	}
+}
