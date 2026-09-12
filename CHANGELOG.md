@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.11 — Minecraft 26.1.2
+
+- Removed the time-based double-press merge from Super Fast Inventory. Fresh
+  physical presses now preserve their open/close meaning at every frame rate.
+- Added an optional PvP/performance path for inventory presses received while a
+  mouse button is held, while keeping Vanilla's queued-action and conflict
+  guards. The setting explains that earlier opening can interrupt a sustained
+  world action.
+- Refresh the hovered slot immediately before keyboard, mouse-bound shortcut,
+  and scroll actions so rapid inventory interactions use the current pointer,
+  not the previous rendered frame.
+- Added independent suppression for inventory-key `GLFW_REPEAT` events and
+  grouped the Inventory Tweaks page into Response, Cursor, and Visuals with a
+  clipped scroll area, stable controls, dependency state, warnings, and
+  keyboard narration.
+- Kept closing on Vanilla's `onClose`/`closeContainer` path; no custom close
+  packet, tick delay, animation gate, or server transaction was introduced.
+
 ## 1.0.10
 
 - Settled a quick open-and-close as an open and a close instead of leaving the inventory open. Presses that arrive while no screen exists are now counted rather than left to pile up: a run this controller watched arrive carries one meaning per press, so an even run has already finished and is settled without building anything. Vanilla could never answer that, because `handleKeybinds` drains the queue in a loop that only ever opens and the closing half lives on a screen that was never created -- so a double tap inside one client tick ended open however many times the key was pressed. It is settled in the frame the second press lands rather than at the tick that would get it wrong, and because no screen appears, no other mapping's queued action can be stranded by it. A queued click the controller did not watch arrive -- one a screen declined, or a shared binding where another mapping owns half the meaning -- makes the run uncountable, and the whole queue goes back to Vanilla untouched.

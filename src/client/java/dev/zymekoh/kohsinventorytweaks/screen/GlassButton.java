@@ -6,6 +6,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import org.jspecify.annotations.Nullable;
 
 public final class GlassButton extends Button {
@@ -26,6 +27,7 @@ public final class GlassButton extends Button {
 	private final long createdAtNanos = System.nanoTime();
 	private final WidgetClip clip = new WidgetClip();
 	private @Nullable Component subtitle;
+	private @Nullable Component narrationLabel;
 	private float hoverAmount;
 
 	public GlassButton(
@@ -58,6 +60,17 @@ public final class GlassButton extends Button {
 	public GlassButton setSubtitle(final Component subtitle) {
 		this.subtitle = subtitle;
 		return this;
+	}
+
+	public GlassButton setNarrationLabel(final Component label) {
+		this.narrationLabel = label;
+		return this;
+	}
+
+	@Override
+	protected MutableComponent createNarrationMessage() {
+		return this.narrationLabel == null ? super.createNarrationMessage()
+			: wrapDefaultNarrationMessage(this.narrationLabel.copy().append(": ").append(this.getMessage()));
 	}
 
 	public GlassButton setClipBounds(final int left, final int top, final int right, final int bottom) {

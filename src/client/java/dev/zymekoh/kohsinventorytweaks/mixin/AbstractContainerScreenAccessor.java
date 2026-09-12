@@ -5,6 +5,7 @@ import net.minecraft.world.inventory.Slot;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
+import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(AbstractContainerScreen.class)
 public interface AbstractContainerScreenAccessor {
@@ -22,4 +23,13 @@ public interface AbstractContainerScreenAccessor {
 
 	@Accessor("hoveredSlot")
 	@Nullable Slot kohsInventoryTweaks$getHoveredSlot();
+
+	@Accessor("hoveredSlot")
+	void kohsInventoryTweaks$setHoveredSlot(@Nullable Slot slot);
+
+	@Invoker("getHoveredSlot")
+	@Nullable Slot kohsInventoryTweaks$findHoveredSlot(double x, double y);
+
+	@Invoker("onStopHovering")
+	void kohsInventoryTweaks$stopHovering(Slot slot);
 }

@@ -29,6 +29,9 @@ public final class InventoryTweaksConfig {
 
 	public boolean centerMouseFix = true;
 	public boolean superFastInventory = true;
+	public boolean fastInventoryWhileMouseHeld;
+	public boolean suppressInventoryKeyRepeats = true;
+	public boolean immediateSlotTargeting = true;
 	public boolean removeAllInventoryAnimations;
 	public ProfilePreset activeProfile = ProfilePreset.CUSTOM;
 	public boolean autoProfileSwitch;
@@ -99,6 +102,9 @@ public final class InventoryTweaksConfig {
 		InventoryTweaksConfig copy = new InventoryTweaksConfig();
 		copy.centerMouseFix = this.centerMouseFix;
 		copy.superFastInventory = this.superFastInventory;
+		copy.fastInventoryWhileMouseHeld = this.fastInventoryWhileMouseHeld;
+		copy.suppressInventoryKeyRepeats = this.suppressInventoryKeyRepeats;
+		copy.immediateSlotTargeting = this.immediateSlotTargeting;
 		copy.removeAllInventoryAnimations = this.removeAllInventoryAnimations;
 		copy.activeProfile = this.activeProfile;
 		copy.autoProfileSwitch = this.autoProfileSwitch;
@@ -275,6 +281,9 @@ public final class InventoryTweaksConfig {
 			case VANILLA -> {
 				this.centerMouseFix = true;
 				this.superFastInventory = false;
+				this.fastInventoryWhileMouseHeld = false;
+				this.suppressInventoryKeyRepeats = false;
+				this.immediateSlotTargeting = false;
 				this.removeAllInventoryAnimations = false;
 				this.inventoryGuiScalerEnabled = false;
 				this.smartHighlighterEnabled = false;
@@ -284,6 +293,9 @@ public final class InventoryTweaksConfig {
 				this.animatedBackgroundFps = 60;
 			}
 			case PVP -> {
+				this.fastInventoryWhileMouseHeld = true;
+				this.suppressInventoryKeyRepeats = true;
+				this.immediateSlotTargeting = true;
 				this.centerMouseFix = true;
 				this.superFastInventory = true;
 				this.removeAllInventoryAnimations = true;
@@ -295,6 +307,9 @@ public final class InventoryTweaksConfig {
 				this.animatedBackgroundFps = 20;
 			}
 			case BUILDING -> {
+				this.fastInventoryWhileMouseHeld = false;
+				this.suppressInventoryKeyRepeats = true;
+				this.immediateSlotTargeting = true;
 				this.centerMouseFix = true;
 				this.superFastInventory = true;
 				this.removeAllInventoryAnimations = false;
@@ -305,6 +320,9 @@ public final class InventoryTweaksConfig {
 				this.animatedBackgroundFps = 30;
 			}
 			case PERFORMANCE -> {
+				this.fastInventoryWhileMouseHeld = true;
+				this.suppressInventoryKeyRepeats = true;
+				this.immediateSlotTargeting = true;
 				this.centerMouseFix = true;
 				this.superFastInventory = true;
 				this.removeAllInventoryAnimations = true;
@@ -349,6 +367,9 @@ public final class InventoryTweaksConfig {
 		return other != null
 			&& this.centerMouseFix == other.centerMouseFix
 			&& this.superFastInventory == other.superFastInventory
+			&& this.fastInventoryWhileMouseHeld == other.fastInventoryWhileMouseHeld
+			&& this.suppressInventoryKeyRepeats == other.suppressInventoryKeyRepeats
+			&& this.immediateSlotTargeting == other.immediateSlotTargeting
 			&& this.removeAllInventoryAnimations == other.removeAllInventoryAnimations
 			&& this.activeProfile == other.activeProfile
 			&& this.autoProfileSwitch == other.autoProfileSwitch

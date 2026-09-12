@@ -47,5 +47,7 @@
   "kohs_inventory_debug.lab.hold.desc": "Checks that OS key repeats cannot toggle the inventory; fresh presses must still work immediately.",
   "kohs_inventory_debug.lab.full.desc": "Original balanced regression sequence.",
   "kohs_inventory_debug.lab.aggressive": "RUN AGGRESSIVE SUITE",
-  "kohs_inventory_debug.lab.aggressive.desc": "Runs every shortened aggressive battery and produces one summary."
+  "kohs_inventory_debug.lab.aggressive.desc": "Runs every shortened aggressive battery and produces one summary.",
+  "kohs_inventory_debug.lab.pvp_input": "PvP input regression",
+  "kohs_inventory_debug.lab.pvp_input.desc": "Tests fresh presses, pointer targeting and menu layout in the local world."
 }

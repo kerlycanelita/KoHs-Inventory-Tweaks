@@ -42,6 +42,14 @@ def referenced_keys(source_root: Path) -> tuple[dict[str, list[str]], dict[str, 
         for key, concatenated in KEY_LITERAL.findall(text):
             target = prefixes if concatenated else keys
             target.setdefault(key, []).append(path.name)
+        # The tweaks metadata builds these suffixes when drawing each card.
+        if path.name == "InventoryTweakOption.java":
+            for option, key in re.findall(r'^\s*(\w+)\("(screen\.[a-z0-9_.]+)", Category\.', text, re.M):
+                for suffix in (".summary", ".description"):
+                    keys.setdefault(key + suffix, []).append(path.name)
+                if option in {"HELD_MOUSE", "ANIMATIONS"}:
+                    for suffix in (".warning.title", ".warning.description"):
+                        keys.setdefault(key + suffix, []).append(path.name)
     return keys, prefixes
 
 

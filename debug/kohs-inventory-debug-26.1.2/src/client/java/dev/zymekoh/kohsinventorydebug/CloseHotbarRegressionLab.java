@@ -170,16 +170,9 @@ public final class CloseHotbarRegressionLab {
 			DebugCollector.info("CLOSE_LAB_SUMMARY", "passed=" + passes[0] + "/32; maxCloseCallback=" + maxCloseMicros[0]
 				+ "us; orderedCases=24; reversedControls=8");
 			if (passes[0] != 32) throw new IllegalStateException("Close/hotbar regression");
-			// Two inventory presses inside one batch are one physical intent. The
-			// contract changed on 2026-09-08: they used to cancel each other, and now
-			// they merge into a single opening. Both outcomes leave a screen behind,
-			// so "is it open" cannot tell the merge apart from the double-open defect
-			// it replaced. The decision reason is what distinguishes them.
-			//
-			// The mixed cycles below add another mapping to the same batch on purpose:
-			// that is a conflict, the whole opening is yielded, and Vanilla opens it at
-			// the tick. Also a screen, also for a different reason.
-			int mergedCases = 0;
+			// Fresh presses preserve parity regardless of poll duration. The clean pair
+			// settles closed; mixed actions retain Vanilla ownership of the whole queue.
+			int settledCases = 0;
 			int yieldedCases = 0;
 			for (int cycle = 0; cycle < 8; cycle++) {
 				boolean clean = cycle < 4;
@@ -198,18 +191,18 @@ public final class CloseHotbarRegressionLab {
 				String reason = decisionReason();
 				AtomicReference<Boolean> open = new AtomicReference<>(false);
 				mc.executeBlocking(() -> open.set(mc.screen instanceof InventoryScreen));
-				boolean merged = reason.contains("merged-double-press");
+				boolean settled = reason.contains("open-and-close");
 				boolean yielded = reason.contains("physical-conflict");
-				if (clean && merged && open.get()) mergedCases++;
+				if (clean && settled && !open.get()) settledCases++;
 				if (!clean && yielded && open.get()) yieldedCases++;
 				DebugCollector.info("CLOSE_DOUBLE_CASE", "cycle=" + cycle + "; batch=" + (clean ? "two-presses-only" : "two-presses-plus-other")
 					+ "; open=" + open.get() + "; reason=" + reason);
 				if (open.get()) atPoll(mc, () -> tap(mc, inventoryKey, 0));
 				await(mc, () -> mc.screen == null, "double-press recovery");
 			}
-			DebugCollector.info("CLOSE_DOUBLE_SUMMARY", "clean=" + mergedCases + "/4 merged-and-open; mixed="
+			DebugCollector.info("CLOSE_DOUBLE_SUMMARY", "clean=" + settledCases + "/4 settled-and-closed; mixed="
 				+ yieldedCases + "/4 yielded-and-open");
-			if (mergedCases != 4 || yieldedCases != 4) throw new IllegalStateException("Double-press contract");
+			if (settledCases != 4 || yieldedCases != 4) throw new IllegalStateException("Double-press contract");
 		} catch (Exception error) { throw new RuntimeException(error); }
 		finally {
 			server.submit(() -> {

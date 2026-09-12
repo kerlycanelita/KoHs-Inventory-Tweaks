@@ -47,6 +47,7 @@ public final class MacroTestController {
 		OFFHAND_THEN_INVENTORY("offhand-then-inventory", "kohs_inventory_debug.screen.macro_off_inv", "kohs_inventory_debug.lab.off_inv.desc", true, false),
 		CENTERED_CURSOR("centered-cursor", "kohs_inventory_debug.screen.macro_center", "kohs_inventory_debug.lab.center.desc", false, false),
 		CURSOR_CONTRACT("cursor-contract", "kohs_inventory_debug.lab.cursor_contract", "kohs_inventory_debug.lab.cursor_contract.desc", false, true),
+		PVP_INPUT("pvp-input", "kohs_inventory_debug.lab.pvp_input", "kohs_inventory_debug.lab.pvp_input.desc", false, true),
 		LATENCY_SWEEP("latency-sweep", "kohs_inventory_debug.lab.latency", "kohs_inventory_debug.lab.latency.desc", false, true),
 		EXTREME_OPEN_CLOSE("extreme-open-close", "kohs_inventory_debug.lab.extreme", "kohs_inventory_debug.lab.extreme.desc", false, true),
 		FRAME_JITTER("frame-jitter", "kohs_inventory_debug.lab.jitter", "kohs_inventory_debug.lab.jitter.desc", false, true),
@@ -171,7 +172,7 @@ public final class MacroTestController {
 						minecraft.getWindow().getY() + (int) Math.round(originalPointer[1])
 					);
 				}
-				if (kind != MacroKind.CURSOR_CONTRACT) {
+				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.PVP_INPUT) {
 					DebugCollector.info("MACRO_SUMMARY", metrics.summary());
 				}
 				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id + "; screen=" + screenName(screenSnapshot(minecraft))
@@ -237,6 +238,7 @@ public final class MacroTestController {
 			case HELD_INVENTORY -> heldInventory(input, minecraft, inventory, 8, metrics);
 			case CLOSE_HOTBAR -> CloseHotbarRegressionLab.run(minecraft);
 			case CURSOR_CONTRACT -> CursorContractLab.run(minecraft);
+			case PVP_INPUT -> PvpInputRegressionLab.run(minecraft);
 			case FULL_STRESS -> {
 				fastOpenClose(input, minecraft, inventory, 12, metrics);
 				inventoryOffhand(input, minecraft, inventory, offhand, false, 10, metrics);

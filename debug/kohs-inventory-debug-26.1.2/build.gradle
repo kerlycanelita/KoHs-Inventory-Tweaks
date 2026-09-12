@@ -39,11 +39,15 @@ dependencies {
 	// KoHs build. These dependencies are not nested into the debug JAR.
 	clientRuntimeOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 	clientRuntimeOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
-	clientRuntimeOnly files('../../build/libs/kohs-inventory-tweaks-1.0.9+mc26.1.2.jar')
-	clientCompileOnly files('../../build/libs/kohs-inventory-tweaks-1.0.9+mc26.1.2.jar')
+	def inventoryTweaksProperties = new Properties()
+	file('../../gradle.properties').withInputStream { inventoryTweaksProperties.load(it) }
+	def inventoryTweaksJar = file("../../build/libs/kohs-inventory-tweaks-${inventoryTweaksProperties.mod_version}.jar")
+	clientRuntimeOnly files(inventoryTweaksJar)
+	clientCompileOnly files(inventoryTweaksJar)
 }
 
 sourceSets.client.java.srcDir('../../tools/qa/cursor-contract')
+sourceSets.client.java.srcDir('../../tools/qa/pvp-input')
 
 processResources {
 	inputs.property 'version', project.version
@@ -81,7 +85,7 @@ java {
 tasks.named('runClient').configure {
 	if (project.hasProperty('debugMacro')) {
 		jvmArgs "-Dkohs.inventory.debug.autorun=${project.property('debugMacro')}"
-		if (project.property('debugMacro') == 'cursor-contract') {
+		if (project.property('debugMacro') in ['cursor-contract', 'pvp-input']) {
 			args '--width', '1440', '--height', '1000'
 		}
 	}

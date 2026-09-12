@@ -39,19 +39,9 @@ import org.lwjgl.glfw.GLFW;
 public final class SuperFastInventoryController {
 	/** Trailing repeat marker appended by the queued-action report, as in `key.attackx2`. */
 	private static final Pattern REPEAT_COUNT = Pattern.compile("x\\d+$");
-	/**
-	 * Shortest interval in which a hand can deliver two deliberate presses.
-	 *
-	 * <p>Contact bounce and key repeat land one to ten milliseconds apart; the
-	 * quickest human double tap is around fifty, and forty for a practised one.
-	 * Twenty-five sits between the two with room on both sides, and erring high
-	 * only ever sends a press to Vanilla instead of merging it away.</p>
-	 */
-	private static final long HUMAN_DOUBLE_TAP_FLOOR_NANOS = 25_000_000L;
-	private static long previousPollNanos;
 	/** Inventory clicks this controller watched enter Vanilla's queue and left there. */
 	private static int deferredInventoryClicks;
-	/** What the player meant by those clicks, after collapsing hardware double-fire. */
+	/** Fresh physical presses retained alongside the deferred Vanilla clicks. */
 	private static int deferredInventoryIntents;
 	private static boolean physicalInputObserved;
 	private static boolean conflictingPhysicalInputObserved;
@@ -73,7 +63,7 @@ public final class SuperFastInventoryController {
 	) {
 		if (action != GLFW.GLFW_REPEAT || minecraft == null
 			|| windowHandle != minecraft.getWindow().handle()
-			|| !ConfigStore.get().superFastInventory
+			|| !ConfigStore.get().suppressInventoryKeyRepeats
 			|| !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)
 			|| !minecraft.options.keyInventory.matches(event)
 			|| minecraft.player == null || minecraft.gameMode == null
@@ -150,15 +140,6 @@ public final class SuperFastInventoryController {
 
 	/** Called once after GLFW has delivered every event in this rendered frame. */
 	public static void afterInputPoll(final Minecraft minecraft) {
-		// How much real time this batch covers has to be measured here, once per
-		// frame, including the frames that carry no input at all. A timestamp taken
-		// inside the key callback cannot stand in for it: GLFW hands the whole queued
-		// burst to those callbacks from within one pollEvents, so two presses forty
-		// milliseconds apart on a slow frame still arrive microseconds apart.
-		long now = System.nanoTime();
-		long batchSpanNanos = previousPollNanos == 0L ? Long.MAX_VALUE : now - previousPollNanos;
-		previousPollNanos = now;
-
 		if (!physicalInputObserved) {
 			return;
 		}
@@ -192,16 +173,9 @@ public final class SuperFastInventoryController {
 		inventoryPhysicalInputNanos = 0L;
 		int queuedInventoryClicks = queuedClicks(minecraft.options.keyInventory);
 
-		// Two presses in one GLFW batch are a failing switch or a key repeat rather
-		// than an open followed by a close -- but only while the batch is shorter than
-		// a hand can tap twice. Sharing a frame was carrying that argument alone, and a
-		// frame is only eight milliseconds at 120 fps: at 30 fps it is thirty-three,
-		// inside human range, so a deliberate quick open-and-close was being answered
-		// with a single open. The batch has to be short enough that the two presses
-		// cannot have been two intentions.
-		boolean chatterCollapsed = inventoryPresses == 2
-			&& batchSpanNanos <= HUMAN_DOUBLE_TAP_FLOOR_NANOS;
-		int batchIntents = chatterCollapsed ? 1 : inventoryPresses;
+		// GLFW_REPEAT is handled separately. A batch duration cannot identify switch
+		// bounce: each fresh PRESS must count, even when two presses share a fast frame.
+		int batchIntents = inventoryPresses;
 
 		// Nothing can still be owed when the queue holds no more than this batch put
 		// there, so a tally that survived a tick is stale and says nothing.
@@ -270,8 +244,7 @@ public final class SuperFastInventoryController {
 		minecraft.getTutorial().onOpenInventory();
 		minecraft.setScreen(new InventoryScreen(minecraft.player));
 		discardPreOpenWorldMovement(minecraft);
-		String openReason = chatterCollapsed ? "merged-double-press"
-			: intents == 1 ? "sole-inventory-input" : "settled-press-run";
+		String openReason = intents == 1 ? "sole-inventory-input" : "settled-press-run";
 		finishDecision("early-open", openReason);
 	}
 
@@ -452,15 +425,11 @@ public final class SuperFastInventoryController {
 		if (!minecraft.isWindowActive() || !minecraft.getWindow().isFocused() || minecraft.getWindow().isMinimized()) {
 			return "window-not-active";
 		}
-		// A button that is still down was pressed against the world, and its release is
-		// still to come. Opening here hands that release to a screen that did not exist
-		// when the press happened: Vanilla's onButton reads minecraft.screen again on the
-		// way out, so the release is delivered to the new inventory instead of ending the
-		// world action it belongs to. Vanilla opens at the next client tick, by which time
-		// a tap has normally completed, so yielding costs at most one tick and only for
-		// the player who is actually holding a button. Settling an already-finished pair
-		// creates no screen for that release to land on, so it is not held back by this.
+		// The optional held-button path still rejects queued attacks/use actions below.
+		// A fresh InventoryScreen starts with skipNextRelease=true and no clickedSlot,
+		// so the inherited release cannot become a new inventory click or drag.
 		if (opensScreen
+			&& !ConfigStore.get().fastInventoryWhileMouseHeld
 			&& ((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$getActiveButton() != null) {
 			return "mouse-button-held";
 		}

@@ -17,6 +17,7 @@
     "GuiMixin",
     "GuiGraphicsExtractorMixin",
     "InventoryScreenMixin",
+    "InventorySlotInputMixin",
     "ItemStackMixin",
     "KeyMappingAccessor",
     "KeyboardHandlerMixin",

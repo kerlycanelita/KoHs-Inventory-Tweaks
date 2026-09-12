@@ -47,5 +47,7 @@
   "kohs_inventory_debug.lab.hold.desc": "Verifica que las repeticiones del teclado no abran y cierren solas; las pulsaciones nuevas deben responder al instante.",
   "kohs_inventory_debug.lab.full.desc": "Secuencia equilibrada de regresión original.",
   "kohs_inventory_debug.lab.aggressive": "EJECUTAR BATERÍA AGRESIVA",
-  "kohs_inventory_debug.lab.aggressive.desc": "Ejecuta toda la batería agresiva reducida y genera un resumen."
+  "kohs_inventory_debug.lab.aggressive.desc": "Ejecuta toda la batería agresiva reducida y genera un resumen.",
+  "kohs_inventory_debug.lab.pvp_input": "Regresión de entrada PvP",
+  "kohs_inventory_debug.lab.pvp_input.desc": "Prueba pulsaciones, casillas bajo el cursor y el menú en el mundo local."
 }
