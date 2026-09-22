@@ -49,5 +49,15 @@
   "kohs_inventory_debug.lab.aggressive": "RUN AGGRESSIVE SUITE",
   "kohs_inventory_debug.lab.aggressive.desc": "Runs every shortened aggressive battery and produces one summary.",
   "kohs_inventory_debug.lab.pvp_input": "PvP input regression",
-  "kohs_inventory_debug.lab.pvp_input.desc": "Tests fresh presses, pointer targeting and menu layout in the local world."
+  "kohs_inventory_debug.lab.pvp_input.desc": "Tests fresh presses, pointer targeting and menu layout in the local world.",
+  "kohs_inventory_debug.lab.immediate": "Immediate openings",
+  "kohs_inventory_debug.lab.immediate.desc": "Requires every ordinary press to open before the client tick, reading the decision KoHs made rather than only whether a screen appeared.",
+  "kohs_inventory_debug.lab.bounce": "Contact bounce",
+  "kohs_inventory_debug.lab.bounce.desc": "Sends one physical press twice within a few milliseconds, the way a worn switch does, and requires the inventory to open once.",
+  "kohs_inventory_debug.lab.slow_tap": "Deliberate double tap",
+  "kohs_inventory_debug.lab.slow_tap.desc": "Taps twice far enough apart to be two intentions and requires the run to end closed, not open.",
+  "kohs_inventory_debug.lab.held_mouse": "Open with a button held",
+  "kohs_inventory_debug.lab.held_mouse.desc": "Holds attack across an opening and requires both the early open and no swing still running once the screen closes.",
+  "kohs_inventory_debug.lab.offhand_place": "Offhand placement",
+  "kohs_inventory_debug.lab.offhand_place.desc": "Grants a known kit and races the offhand swap against an opening, checking the slot the item ended in and that nothing fires late."
 }

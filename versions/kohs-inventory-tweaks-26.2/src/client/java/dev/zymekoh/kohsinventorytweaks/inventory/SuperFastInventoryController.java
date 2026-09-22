@@ -220,11 +220,10 @@ public final class SuperFastInventoryController {
 		}
 
 		// A queued click this controller never watched arrive carries an intention it
-		// cannot count: a screen that declined the key queued one of its own, or the
-		// binding is shared and another mapping owns half the meaning. Neither is a
-		// queue to reclaim, so the whole thing goes back to Vanilla and the tally is
-		// abandoned rather than guessed at.
-		if (queuedInventoryClicks > ownedClicks || hasSharedInventoryBinding(minecraft)) {
+		// cannot count -- a screen declined the key and queued one of its own -- so the
+		// whole queue goes back to Vanilla and the tally is abandoned rather than
+		// guessed at.
+		if (queuedInventoryClicks > ownedClicks) {
 			deferredInventoryClicks = 0;
 			deferredInventoryIntents = 0;
 			finishDecision("vanilla-fallback", "unowned-inventory-clicks");
@@ -248,6 +247,17 @@ public final class SuperFastInventoryController {
 		// and settles it now rather than at a tick that would get it wrong. No screen
 		// appears, so no queued action of any other mapping can be stranded by it.
 		if (!opensScreen) {
+			// Only this branch needs the binding to itself. Cancelling assumes every
+			// meaning in the run belongs to the inventory; a second mapping on the same
+			// key owns half of it, and taking the clicks would answer its half too.
+			// Opening has no such claim -- it consumes exactly what Vanilla would --
+			// so a shared binding no longer holds the ordinary press back.
+			if (hasSharedInventoryBinding(minecraft)) {
+				deferredInventoryClicks = 0;
+				deferredInventoryIntents = 0;
+				finishDecision("vanilla-fallback", "shared-inventory-binding");
+				return;
+			}
 			drainInventoryClicks(minecraft, ownedClicks);
 			finishDecision("early-cancel", "open-and-close");
 			return;

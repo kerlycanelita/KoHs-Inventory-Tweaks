@@ -10,6 +10,8 @@ import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
 import dev.zymekoh.kohsinventorytweaks.mixin.AbstractContainerScreenAccessor;
 import dev.zymekoh.kohsinventorytweaks.screen.InventoryTweaksScreen;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import net.minecraft.client.KeyMapping;
@@ -79,6 +81,10 @@ public final class PvpInputRegressionLab {
 	public static void run(final Minecraft mc) {
 		if (!MacroTestController.isSafeLocalWorld(mc)) throw new IllegalStateException("Singleplayer only");
 		var saved = ConfigStore.get().copy();
+		Path configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("kohs_inventory_tweaks.json");
+		byte[] savedJson;
+		try { savedJson = Files.exists(configPath) ? Files.readAllBytes(configPath) : null; }
+		catch (java.io.IOException error) { throw new IllegalStateException(error); }
 		int savedGui = mc.options.guiScale().get();
 		boolean savedBook = mc.player.getRecipeBook().isOpen(RecipeBookType.CRAFTING);
 		var savedOffhandKey = ((KeyMappingDebugAccessor) mc.options.keySwapOffhand).kohsInventoryDebug$getKey();
@@ -155,12 +161,8 @@ public final class PvpInputRegressionLab {
 							mc.setScreen(screen);
 							var access = (AbstractContainerScreenAccessor) screen;
 							for (int target : new int[]{9, 17, 35}) {
-								config.immediateSlotTargeting = false;
 								access.kohsInventoryTweaks$setHoveredSlot(screen.getMenu().getSlot(10));
 								moveTo(mc, screen, target);
-								tap(mc, GLFW.GLFW_KEY_F24);
-								check(access.kohsInventoryTweaks$getHoveredSlot() == screen.getMenu().getSlot(10), "disabled retains render cache");
-								config.immediateSlotTargeting = true;
 								tap(mc, GLFW.GLFW_KEY_F24);
 								// Vanilla refuses slots behind the narrow recipe-book overlay.
 								boolean covered = book && screen.width < 379;
@@ -185,12 +187,14 @@ public final class PvpInputRegressionLab {
 				check(access.kohsInventoryTweaks$getHoveredSlot() == screen.getMenu().getSlot(9), "side-button target uses one scale transform");
 				mouse(mc, 7, GLFW.GLFW_RELEASE);
 				moveTo(mc, screen, 17);
-				screen.mouseScrolled(mc.mouseHandler.getScaledXPos(mc.getWindow()), mc.mouseHandler.getScaledYPos(mc.getWindow()), 0, 0);
+				((MouseHandlerDebugInvoker) mc.mouseHandler).kohsInventoryDebug$invokeScroll(mc.getWindow().handle(), 0, -1);
 				check(access.kohsInventoryTweaks$getHoveredSlot() == screen.getMenu().getSlot(17), "scroll target current");
 				close(mc);
 			});
 			checkConfigCopy();
+			checkPersistence(mc);
 			checkOffhandThenClose(mc, inventory);
+			ContainerScaleRegressionLab.run(mc);
 			checkMenu(mc);
 			DebugCollector.info("PVP_INPUT_SUMMARY", "checks=" + checks + "; failures=" + failures);
 			if (failures != 0) throw new IllegalStateException("PvP input regression failures=" + failures);
@@ -207,7 +211,9 @@ public final class PvpInputRegressionLab {
 					Field config = ConfigStore.class.getDeclaredField("config");
 					config.setAccessible(true);
 					config.set(null, saved);
-				} catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
+					if (savedJson == null) Files.deleteIfExists(configPath);
+					else Files.write(configPath, savedJson);
+				} catch (ReflectiveOperationException | java.io.IOException error) { throw new IllegalStateException(error); }
 				mc.options.guiScale().set(savedGui);
 				mc.resizeGui();
 				mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, savedBook);
@@ -240,7 +246,6 @@ public final class PvpInputRegressionLab {
 			}
 			if (!synced[0]) throw new IllegalStateException("Fixture sync timed out");
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
-				ConfigStore.get().immediateSlotTargeting = true;
 				mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, false);
 				var screen = new InventoryScreen(mc.player);
 				mc.setScreen(screen);
@@ -271,12 +276,67 @@ public final class PvpInputRegressionLab {
 		}
 	}
 
+	private static void checkPersistence(final Minecraft mc) throws Exception {
+		CloseHotbarRegressionLab.atPoll(mc, () -> {
+			var saved = ConfigStore.get().copy();
+			for (boolean value : new boolean[]{false, true}) {
+				var baseline = saved.copy();
+				baseline.automaticBackups = false;
+				baseline.centerMouseFix = !value;
+				baseline.superFastInventory = !value;
+				baseline.fastInventoryWhileMouseHeld = !value;
+				baseline.suppressInventoryKeyRepeats = !value;
+				baseline.reduceInventoryMotion = !value;
+				ConfigStore.replaceAndSave(baseline);
+				var changed = ConfigStore.get().copy();
+				changed.centerMouseFix = value;
+				changed.superFastInventory = value;
+				changed.fastInventoryWhileMouseHeld = value;
+				changed.suppressInventoryKeyRepeats = value;
+				changed.reduceInventoryMotion = value;
+				ConfigStore.replaceAndSave(changed);
+				checkRuntimeOptions(value, "replaceAndSave");
+				ConfigStore.load();
+				checkRuntimeOptions(value, "reload");
+				check(ConfigStore.undo(), "undo recorded options");
+				checkRuntimeOptions(!value, "undo");
+				check(ConfigStore.redo(), "redo recorded options");
+				checkRuntimeOptions(value, "redo");
+			}
+			try {
+				Path snapshot = Files.createTempFile(mc.gameDirectory.toPath(), "pvp-legacy-config-", ".json");
+				try {
+					Files.writeString(snapshot, "{\"centerMouseFix\":false,\"immediateSlotTargeting\":false,"
+						+ "\"removeAllInventoryAnimations\":true,\"fastInventoryWhileMouseHeld\":true,"
+						+ "\"suppressInventoryKeyRepeats\":false,\"automaticBackups\":false}");
+					ConfigStore.importSnapshot(snapshot);
+					check(!ConfigStore.get().centerMouseFix, "import retains disabled center fix");
+					check(ConfigStore.get().reduceInventoryMotion, "legacy motion flag migrated");
+					check(ConfigStore.get().fastInventoryWhileMouseHeld, "import retains held option");
+					check(!ConfigStore.get().suppressInventoryKeyRepeats, "import retains false repeat option");
+					ConfigStore.load();
+					check(ConfigStore.get().reduceInventoryMotion, "migrated option reloads");
+				} finally { Files.deleteIfExists(snapshot); }
+			} catch (java.io.IOException error) { throw new IllegalStateException(error); }
+			ConfigStore.replaceAndSave(saved);
+		});
+	}
+
+	private static void checkRuntimeOptions(final boolean value, final String stage) {
+		var actual = ConfigStore.get();
+		check(actual.centerMouseFix == value, stage + " center=" + value);
+		check(actual.superFastInventory == value, stage + " fast=" + value);
+		check(actual.fastInventoryWhileMouseHeld == value, stage + " held=" + value);
+		check(actual.suppressInventoryKeyRepeats == value, stage + " repeat=" + value);
+		check(actual.reduceInventoryMotion == value, stage + " motion=" + value);
+	}
+
 	private static void checkConfigCopy() {
 		var defaults = new InventoryTweaksConfig();
 		var copy = defaults.copy();
 		check(defaults.sameValues(copy), "config copy equal");
-		copy.immediateSlotTargeting = !copy.immediateSlotTargeting;
-		check(!defaults.sameValues(copy), "targeting participates in config equality");
+		copy.centerMouseFix = !copy.centerMouseFix;
+		check(!defaults.sameValues(copy), "center fix participates in config equality");
 		copy = defaults.copy();
 		copy.fastInventoryWhileMouseHeld = !copy.fastInventoryWhileMouseHeld;
 		check(!defaults.sameValues(copy), "held policy participates in config equality");
@@ -345,14 +405,16 @@ public final class PvpInputRegressionLab {
 			int scale = gui;
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				ConfigStore.get().superFastInventory = true;
+				ConfigStore.get().centerMouseFix = false;
 				ConfigStore.get().fastInventoryWhileMouseHeld = false;
-				ConfigStore.get().removeAllInventoryAnimations = false;
+				ConfigStore.get().reduceInventoryMotion = false;
 				mc.options.guiScale().set(scale);
 				mc.resizeGui();
 				var screen = new InventoryTweaksScreen(null);
 				mc.setScreen(screen);
-				openTweaks(screen);
 			});
+			screenshot(mc, "pvp-main-icons-gui" + scale);
+			CloseHotbarRegressionLab.atPoll(mc, () -> openTweaks((InventoryTweaksScreen) mc.screen));
 			screenshot(mc, "pvp-tweaks-response-gui" + scale);
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				int x = (int) field(mc.screen, "tweakOptionsX") + 10;
@@ -373,11 +435,31 @@ public final class PvpInputRegressionLab {
 				mc.screen.keyPressed(new KeyEvent(GLFW.GLFW_KEY_ESCAPE, 0, 0));
 				check(field(mc.screen, "modal").toString().equals("TWEAKS"), "Escape cancels warning");
 				check(!ConfigStore.get().fastInventoryWhileMouseHeld, "cancel retains setting");
+				clickTweak(mc.screen, 1);
+				clickLabel(mc.screen, "screen.kohs_inventory_tweaks.remove_animations.warning.enable");
+				check(ConfigStore.get().fastInventoryWhileMouseHeld, "accepted held option reaches runtime store");
+				ConfigStore.load();
+				check(ConfigStore.get().fastInventoryWhileMouseHeld, "held option survives menu save and reload");
+				mc.screen.mouseScrolled((int) field(mc.screen, "tweakOptionsX") + 10,
+					(int) field(mc.screen, "tweakViewportTop") + 10, 0, 20);
+				clickTweak(mc.screen, 0);
+				var buttonsAfter = (java.util.List<?>) field(mc.screen, "tweakScrollingWidgets");
+				check(!((AbstractWidget) buttonsAfter.get(1)).active, "held option inactive when fast opening disabled");
+				check(ConfigStore.get().fastInventoryWhileMouseHeld, "inactive dependency retains preference");
 			});
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				clickLabel(mc.screen, "screen.kohs_inventory_tweaks.tweaks.cursor");
 			});
 			screenshot(mc, "pvp-tweaks-cursor-gui" + scale);
+			CloseHotbarRegressionLab.atPoll(mc, () -> {
+				clickTweak(mc.screen, 0);
+				check(field(mc.screen, "modal").toString().equals("TWEAK_WARNING"), "center warning describes remembered-position conflict");
+				check(!ConfigStore.get().centerMouseFix, "center fix unchanged before warning accepted");
+				clickLabel(mc.screen, "screen.kohs_inventory_tweaks.remove_animations.warning.enable");
+				check(ConfigStore.get().centerMouseFix, "center fix enabled from cursor tab");
+				ConfigStore.load();
+				check(ConfigStore.get().centerMouseFix, "center fix survives reload");
+			});
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				clickLabel(mc.screen, "screen.kohs_inventory_tweaks.tweaks.visuals");
 			});
@@ -388,7 +470,10 @@ public final class PvpInputRegressionLab {
 			});
 			screenshot(mc, "pvp-tweaks-visual-warning-gui" + scale);
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
-				mc.screen.keyPressed(new KeyEvent(GLFW.GLFW_KEY_ESCAPE, 0, 0));
+				clickLabel(mc.screen, "screen.kohs_inventory_tweaks.remove_animations.warning.enable");
+				check(ConfigStore.get().reduceInventoryMotion, "accepted motion option persists");
+				ConfigStore.load();
+				check(ConfigStore.get().reduceInventoryMotion, "motion option survives reload");
 				check(mc.screen.keyPressed(new KeyEvent(GLFW.GLFW_KEY_ESCAPE, 0, 0)), "Escape leaves tweaks modal");
 				check(field(mc.screen, "modal").toString().equals("NONE"), "Escape actually returns to main page");
 				mc.setScreen(null);

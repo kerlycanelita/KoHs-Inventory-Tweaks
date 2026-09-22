@@ -39,6 +39,15 @@ import org.lwjgl.glfw.GLFW;
 public final class SuperFastInventoryController {
 	/** Trailing repeat marker appended by the queued-action report, as in `key.attackx2`. */
 	private static final Pattern REPEAT_COUNT = Pattern.compile("x\\d+$");
+	/**
+	 * Shortest interval in which a hand can deliver two deliberate presses.
+	 *
+	 * <p>Contact bounce lands one to ten milliseconds apart; the quickest human
+	 * double tap is around fifty, and forty for a practised one. Twenty-five sits
+	 * between the two, and erring high only ever sends a press to Vanilla.</p>
+	 */
+	private static final long HUMAN_DOUBLE_TAP_FLOOR_NANOS = 25_000_000L;
+	private static long previousPollNanos;
 	/** Inventory clicks this controller watched enter Vanilla's queue and left there. */
 	private static int deferredInventoryClicks;
 	/** Fresh physical presses retained alongside the deferred Vanilla clicks. */
@@ -140,6 +149,14 @@ public final class SuperFastInventoryController {
 
 	/** Called once after GLFW has delivered every event in this rendered frame. */
 	public static void afterInputPoll(final Minecraft minecraft) {
+		// Measured once per frame, including the frames carrying no input, because it
+		// is the only available bound on how far apart two presses inside one batch
+		// can physically be: GLFW hands the whole queued burst to the callbacks from
+		// within a single pollEvents, so their own timestamps are all but identical.
+		long now = System.nanoTime();
+		long batchSpanNanos = previousPollNanos == 0L ? Long.MAX_VALUE : now - previousPollNanos;
+		previousPollNanos = now;
+
 		if (!physicalInputObserved) {
 			return;
 		}
@@ -173,9 +190,14 @@ public final class SuperFastInventoryController {
 		inventoryPhysicalInputNanos = 0L;
 		int queuedInventoryClicks = queuedClicks(minecraft.options.keyInventory);
 
-		// GLFW_REPEAT is handled separately. A batch duration cannot identify switch
-		// bounce: each fresh PRESS must count, even when two presses share a fast frame.
-		int batchIntents = inventoryPresses;
+		// Contact bounce reaches GLFW as repeated PRESS, never as GLFW_REPEAT, so the
+		// repeat suppression above cannot see it. Counting those as separate meanings
+		// made an even run out of one physical press and settled it into nothing: the
+		// key did visibly nothing on every bouncing switch. A batch shorter than a
+		// hand can tap twice cannot hold two intentions, so it carries exactly one.
+		boolean chatterCollapsed = inventoryPresses > 1
+			&& batchSpanNanos <= HUMAN_DOUBLE_TAP_FLOOR_NANOS;
+		int batchIntents = chatterCollapsed ? 1 : inventoryPresses;
 
 		// Nothing can still be owed when the queue holds no more than this batch put
 		// there, so a tally that survived a tick is stale and says nothing.
@@ -194,11 +216,10 @@ public final class SuperFastInventoryController {
 		}
 
 		// A queued click this controller never watched arrive carries an intention it
-		// cannot count: a screen that declined the key queued one of its own, or the
-		// binding is shared and another mapping owns half the meaning. Neither is a
-		// queue to reclaim, so the whole thing goes back to Vanilla and the tally is
-		// abandoned rather than guessed at.
-		if (queuedInventoryClicks > ownedClicks || hasSharedInventoryBinding(minecraft)) {
+		// cannot count -- a screen declined the key and queued one of its own -- so the
+		// whole queue goes back to Vanilla and the tally is abandoned rather than
+		// guessed at.
+		if (queuedInventoryClicks > ownedClicks) {
 			deferredInventoryClicks = 0;
 			deferredInventoryIntents = 0;
 			finishDecision("vanilla-fallback", "unowned-inventory-clicks");
@@ -222,6 +243,17 @@ public final class SuperFastInventoryController {
 		// and settles it now rather than at a tick that would get it wrong. No screen
 		// appears, so no queued action of any other mapping can be stranded by it.
 		if (!opensScreen) {
+			// Only this branch needs the binding to itself. Cancelling assumes every
+			// meaning in the run belongs to the inventory; a second mapping on the same
+			// key owns half of it, and taking the clicks would answer its half too.
+			// Opening has no such claim -- it consumes exactly what Vanilla would --
+			// so a shared binding no longer holds the ordinary press back.
+			if (hasSharedInventoryBinding(minecraft)) {
+				deferredInventoryClicks = 0;
+				deferredInventoryIntents = 0;
+				finishDecision("vanilla-fallback", "shared-inventory-binding");
+				return;
+			}
 			drainInventoryClicks(minecraft, ownedClicks);
 			finishDecision("early-cancel", "open-and-close");
 			return;
@@ -244,7 +276,8 @@ public final class SuperFastInventoryController {
 		minecraft.getTutorial().onOpenInventory();
 		minecraft.setScreen(new InventoryScreen(minecraft.player));
 		discardPreOpenWorldMovement(minecraft);
-		String openReason = intents == 1 ? "sole-inventory-input" : "settled-press-run";
+		String openReason = chatterCollapsed ? "collapsed-contact-bounce"
+			: intents == 1 ? "sole-inventory-input" : "settled-press-run";
 		finishDecision("early-open", openReason);
 	}
 

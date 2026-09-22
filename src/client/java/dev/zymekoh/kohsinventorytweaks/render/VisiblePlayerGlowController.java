@@ -33,7 +33,7 @@ public final class VisiblePlayerGlowController {
 		}
 
 		double strength = config.visiblePlayerGlowIntensity / 255.0;
-		if (config.visiblePlayerGlowPulse && !InventoryAnimationController.suppressAllInventoryAnimations()) {
+		if (config.visiblePlayerGlowPulse && !InventoryAnimationController.reduceMotionEnabled()) {
 			strength *= 0.78 + 0.22 * Math.sin(System.nanoTime() / 210_000_000.0 + state.id);
 		}
 		return multiply(vanillaTint, blendWhite(config.visiblePlayerGlowColor, strength));
@@ -46,7 +46,7 @@ public final class VisiblePlayerGlowController {
 			return vanillaLight;
 		}
 		double amount = config.visiblePlayerGlowBrightness / 255.0;
-		if (config.visiblePlayerGlowPulse && !InventoryAnimationController.suppressAllInventoryAnimations()) {
+		if (config.visiblePlayerGlowPulse && !InventoryAnimationController.reduceMotionEnabled()) {
 			amount *= 0.84 + 0.16 * Math.sin(System.nanoTime() / 210_000_000.0 + state.id);
 		}
 		int block = vanillaLight & 0xFFFF;

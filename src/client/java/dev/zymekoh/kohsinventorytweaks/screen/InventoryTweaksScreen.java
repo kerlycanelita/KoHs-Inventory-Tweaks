@@ -168,6 +168,7 @@ public final class InventoryTweaksScreen extends Screen {
 	private InventoryTweakOption.Category tweakCategory = InventoryTweakOption.Category.RESPONSE;
 	private InventoryTweakOption tweakWarning = InventoryTweakOption.ANIMATIONS;
 	private final List<GlassButton> tweakScrollingWidgets = new ArrayList<>();
+	private GlassButton tweakCursorButton;
 	private List<InventoryTweakOption> visibleTweaks = List.of();
 	private int customizationPreviewX;
 	private int customizationPreviewY;
@@ -477,7 +478,8 @@ public final class InventoryTweaksScreen extends Screen {
 		} else if (this.modal == Modal.TWEAK_WARNING) {
 			this.modal = Modal.TWEAKS;
 			this.rebuildWidgets();
-		} else if (this.modal == Modal.TWEAKS) {
+		} else if (this.modal == Modal.TWEAKS || this.modal == Modal.CURSOR
+			|| this.modal == Modal.CUSTOMIZATION || this.modal == Modal.GUI_SCALER) {
 			this.attemptCloseModal();
 		}
 		return true;
@@ -524,7 +526,8 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.cursor_landing",
 			"screen.kohs_inventory_tweaks.cursor_landing.description",
 			button -> this.openModal(Modal.CURSOR),
-			GlassButton.Variant.NORMAL
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.CURSOR
 		);
 		this.addMainFeatureButton(
 			this.tweakCardX,
@@ -534,7 +537,8 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.inventory_tweaks",
 			"screen.kohs_inventory_tweaks.inventory_tweaks.description",
 			button -> this.openModal(Modal.TWEAKS),
-			GlassButton.Variant.NORMAL
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.TWEAKS
 		);
 		this.addMainFeatureButton(
 			this.issuesCardX,
@@ -544,7 +548,8 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.issues_tracker",
 			"screen.kohs_inventory_tweaks.issues_tracker.description",
 			button -> this.minecraft.setScreen(new IssuesTrackerScreen(this)),
-			GlassButton.Variant.NORMAL
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.ISSUES
 		);
 		this.addMainFeatureButton(
 			this.customizationCardX,
@@ -554,7 +559,8 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.customization",
 			"screen.kohs_inventory_tweaks.customization.description",
 			button -> this.openCustomizationWarning(),
-			GlassButton.Variant.NORMAL
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.CUSTOMIZATION
 		);
 		this.addMainFeatureButton(
 			this.itemHighlighterCardX,
@@ -569,9 +575,10 @@ public final class InventoryTweaksScreen extends Screen {
 				updated -> {
 					this.working = updated.copy();
 					ConfigStore.replaceAndSave(updated);
-				}
+					}
 			)),
-			GlassButton.Variant.NORMAL
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.HIGHLIGHTER
 		);
 		this.addMainFeatureButton(
 			this.guiScalerCardX,
@@ -581,7 +588,8 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.gui_scaler",
 			"screen.kohs_inventory_tweaks.gui_scaler.description",
 			button -> this.openGuiScaler(),
-			GlassButton.Variant.NORMAL
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.SCALER
 		);
 		int textureGap = 4;
 		int textureButtonWidth = Math.max(1, (this.textureSelectorWidth - textureGap) / 2);
@@ -624,7 +632,8 @@ public final class InventoryTweaksScreen extends Screen {
 		final String titleKey,
 		final String descriptionKey,
 		final Button.OnPress onPress,
-		final GlassButton.Variant variant
+		final GlassButton.Variant variant,
+		final KohsTabIcon icon
 	) {
 		int railY = leftRail ? this.mainLeftRailY : this.mainRightRailY;
 		int railHeight = leftRail ? this.mainLeftRailHeight : this.mainRightRailHeight;
@@ -645,6 +654,7 @@ public final class InventoryTweaksScreen extends Screen {
 			onPress,
 			variant
 		).setSubtitle(description)
+			.setIcon(icon)
 			.setClipBounds(railX + 2, visibleTop, railX + railWidth - 2, visibleBottom);
 		button.active = available;
 		button.setTooltip(Tooltip.create(description));
@@ -676,7 +686,13 @@ public final class InventoryTweaksScreen extends Screen {
 				button -> this.selectTarget(target),
 				GlassButton.Variant.TAB,
 				() -> target == CursorTarget.CHEST_SINGLE ? this.isChestTarget() : this.selectedTarget == target
-			));
+			).setIcon(switch (target) {
+				case INVENTORY -> KohsTabIcon.INVENTORY;
+				case CHEST_SINGLE, CHEST_DOUBLE -> KohsTabIcon.CHEST;
+				case SHULKER -> KohsTabIcon.SHULKER;
+				case ENDER_CHEST -> KohsTabIcon.ENDER_CHEST;
+				case BARREL -> KohsTabIcon.BARREL;
+			}));
 		}
 
 		if (this.isChestTarget()) {
@@ -746,6 +762,7 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void addTweaksModalButtons() {
+		this.tweakCursorButton = null;
 		var categories = InventoryTweakOption.Category.values();
 		int tabWidth = (this.tweakOptionsWidth - 8) / categories.length;
 		for (int index = 0; index < categories.length; index++) {
@@ -755,9 +772,19 @@ public final class InventoryTweaksScreen extends Screen {
 					this.tweakCategory = category;
 					this.tweakScroll = 0;
 					this.rebuildWidgets();
-				}, GlassButton.Variant.TAB, () -> this.tweakCategory == category));
+				}, GlassButton.Variant.TAB, () -> this.tweakCategory == category)
+				.setIcon(category == InventoryTweakOption.Category.RESPONSE ? KohsTabIcon.TWEAKS
+					: category == InventoryTweakOption.Category.CURSOR ? KohsTabIcon.CURSOR : KohsTabIcon.CUSTOMIZATION));
 		}
 		int toggleWidth = this.tweakToggleWidth();
+		if (this.tweakCategory == InventoryTweakOption.Category.CURSOR) {
+			this.tweakCursorButton = this.addRenderableWidget(new GlassButton(this.tweakOptionsX + this.tweakOptionsWidth - toggleWidth - 10,
+				0, toggleWidth, 24,
+				Component.translatable("screen.kohs_inventory_tweaks.cursor_landing"),
+				button -> this.openModal(Modal.CURSOR), GlassButton.Variant.TAB)
+				.setClipBounds(this.tweakOptionsX, this.tweakViewportTop,
+					this.tweakOptionsX + this.tweakOptionsWidth, this.tweakViewportBottom));
+		}
 		for (var option : this.visibleTweaks) {
 			boolean available = CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)
 				&& (option != InventoryTweakOption.HELD_MOUSE || this.working.superFastInventory);
@@ -790,6 +817,9 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private Component tweakStateLabel(final InventoryTweakOption option) {
+		if (option == InventoryTweakOption.HELD_MOUSE && !this.working.superFastInventory) {
+			return Component.translatable("screen.kohs_inventory_tweaks.tweaks.inactive");
+		}
 		return Component.translatable(option.enabled(this.working)
 			? "screen.kohs_inventory_tweaks.enabled" : "screen.kohs_inventory_tweaks.disabled");
 	}
@@ -810,6 +840,11 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void updateTweakWidgetPositions() {
+		if (this.tweakCursorButton != null && this.modal == Modal.TWEAKS) {
+			int y = this.tweakFirstCardY + this.visibleTweaks.size() * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
+			this.tweakCursorButton.setY(y + (this.tweakCardHeight - 24) / 2);
+			this.tweakCursorButton.visible = y + this.tweakCardHeight > this.tweakViewportTop && y < this.tweakViewportBottom;
+		}
 		for (int index = 0; index < this.tweakScrollingWidgets.size(); index++) {
 			var button = this.tweakScrollingWidgets.get(index);
 			int y = this.tweakFirstCardY + index * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
@@ -1302,13 +1337,11 @@ public final class InventoryTweaksScreen extends Screen {
 				switch (modalType) {
 					case CURSOR -> this.working.resetCursorPositions();
 					case TWEAKS -> {
-						this.working.centerMouseFix = true;
 						this.working.superFastInventory = true;
 						this.working.fastInventoryWhileMouseHeld = false;
 						this.working.suppressInventoryKeyRepeats = true;
-						this.working.immediateSlotTargeting = true;
 						this.working.activeProfile = InventoryTweaksConfig.ProfilePreset.CUSTOM;
-						this.working.removeAllInventoryAnimations = false;
+						this.working.reduceInventoryMotion = false;
 					}
 					case CUSTOMIZATION -> {
 						this.working.resetCustomization();
@@ -1546,6 +1579,13 @@ public final class InventoryTweaksScreen extends Screen {
 		int textWidth = Math.max(36, this.tweakOptionsWidth - this.tweakToggleWidth() - 32);
 		graphics.enableScissor(this.tweakOptionsX, this.tweakViewportTop,
 			this.tweakOptionsX + this.tweakOptionsWidth, this.tweakViewportBottom);
+		if (this.tweakCategory == InventoryTweakOption.Category.CURSOR) {
+			int y = this.tweakFirstCardY + this.visibleTweaks.size() * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
+			this.drawTweakCard(graphics, this.tweakOptionsX, y,
+				this.tweakOptionsWidth, this.tweakCardHeight, textWidth,
+				"screen.kohs_inventory_tweaks.tweaks.cursor.automatic",
+				"screen.kohs_inventory_tweaks.tweaks.cursor.automatic.description");
+		}
 		for (int index = 0; index < this.visibleTweaks.size(); index++) {
 			var option = this.visibleTweaks.get(index);
 			int y = this.tweakFirstCardY + index * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
@@ -2553,7 +2593,8 @@ public final class InventoryTweaksScreen extends Screen {
 		this.tweakCardGap = 8;
 		this.tweakCardHeight = this.compactModal ? 54 : 64;
 		this.tweakFirstCardY = this.tweakViewportTop;
-		int cardsHeight = this.visibleTweaks.size() * (this.tweakCardHeight + this.tweakCardGap) - this.tweakCardGap;
+		int cardCount = this.visibleTweaks.size() + (this.tweakCategory == InventoryTweakOption.Category.CURSOR ? 1 : 0);
+		int cardsHeight = cardCount * (this.tweakCardHeight + this.tweakCardGap) - this.tweakCardGap;
 		this.tweakMaxScroll = Math.max(0, cardsHeight - (this.tweakViewportBottom - this.tweakViewportTop));
 		this.tweakScroll = Mth.clamp(this.tweakScroll, 0, this.tweakMaxScroll);
 		this.tweakStatusY = this.tweakViewportBottom + 5;

@@ -13,4 +13,7 @@ public interface MouseHandlerDebugInvoker {
 
 	@Invoker("onButton")
 	void kohsInventoryDebug$invokeButton(long windowHandle, MouseButtonInfo info, int action);
+
+	@Invoker("onScroll")
+	void kohsInventoryDebug$invokeScroll(long windowHandle, double xOffset, double yOffset);
 }

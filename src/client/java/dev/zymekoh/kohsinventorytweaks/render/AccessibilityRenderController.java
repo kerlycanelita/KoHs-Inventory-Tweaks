@@ -23,7 +23,7 @@ public final class AccessibilityRenderController {
 			return;
 		}
 		int alpha = config.accessibilitySlotFocusOpacity;
-		if (config.accessibilitySlotFocusPulse && !InventoryAnimationController.suppressAllInventoryAnimations()) {
+		if (config.accessibilitySlotFocusPulse && !InventoryAnimationController.reduceMotionEnabled()) {
 			double wave = 0.78 + 0.22 * Math.sin(System.nanoTime() / 180_000_000.0);
 			alpha = (int) Math.round(alpha * wave);
 		}
@@ -42,7 +42,7 @@ public final class AccessibilityRenderController {
 			return;
 		}
 		int alpha = config.accessibilitySlotFocusOpacity;
-		if (config.accessibilitySlotFocusPulse && !InventoryAnimationController.suppressAllInventoryAnimations()) {
+		if (config.accessibilitySlotFocusPulse && !InventoryAnimationController.reduceMotionEnabled()) {
 			alpha = (int) Math.round(alpha * (0.78 + 0.22 * Math.sin(System.nanoTime() / 180_000_000.0)));
 		}
 		graphics.outline(x - 2, y - 2, 20, 20, UiRender.withAlpha(config.accessibilitySlotFocusColor, alpha));

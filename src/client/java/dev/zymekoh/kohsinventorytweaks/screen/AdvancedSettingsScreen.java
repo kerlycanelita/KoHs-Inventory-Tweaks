@@ -55,6 +55,16 @@ public final class AdvancedSettingsScreen extends Screen {
 		private String titleKey() {
 			return "screen.kohs_inventory_tweaks.advanced.tab." + this.id;
 		}
+
+		private KohsTabIcon icon() {
+			return switch (this) {
+				case PERFORMANCE -> KohsTabIcon.PERFORMANCE;
+				case SAFETY -> KohsTabIcon.SAFETY;
+				case PLAYER_GLOW, ACCESSIBILITY -> KohsTabIcon.ACCESSIBILITY;
+				case CONTAINERS -> KohsTabIcon.SCALER;
+				case KEYBINDS -> KohsTabIcon.TWEAKS;
+			};
+		}
 	}
 	private static final Tab[] TOOL_TABS = {
 		Tab.ACCESSIBILITY,
@@ -383,6 +393,7 @@ public final class AdvancedSettingsScreen extends Screen {
 			button.setTooltip(Tooltip.create(Component.translatable(
 				"screen.kohs_inventory_tweaks.advanced.tab." + next.id + ".summary"
 			)));
+			button.setIcon(next.icon());
 			button.setTooltipDelay(Duration.ofMillis(220));
 			this.addRenderableWidget(button);
 		}

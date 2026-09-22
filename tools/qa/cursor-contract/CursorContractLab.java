@@ -24,6 +24,7 @@ public final class CursorContractLab {
     private static boolean observing;
     private static int checks, failures, openings, warps, mode;
     private static String label;
+    private static double vanillaX, vanillaY;
     private CursorContractLab() {}
     public static void onWarp() { if (observing) warps++; }
 
@@ -31,8 +32,8 @@ public final class CursorContractLab {
     public static void onOpened(Minecraft mc, Screen requested) {
         if (!observing || !(mc.screen instanceof InventoryScreen screen) || mc.screen != requested) return;
         openings++;
-        double x = mc.getWindow().getScreenWidth() / 2;
-        double y = mc.getWindow().getScreenHeight() / 2;
+        double x = mode == 3 ? vanillaX : mc.getWindow().getScreenWidth() / 2;
+        double y = mode == 3 ? vanillaY : mc.getWindow().getScreenHeight() / 2;
         if (mode == 1 || mode == 2) {
             var bounds = (AbstractContainerScreenAccessor) screen;
             var point = ConfigStore.get().inventory;
@@ -45,7 +46,7 @@ public final class CursorContractLab {
                 * mc.getWindow().getScreenHeight() / screen.height;
         }
         checkPosition(mc, x, y, "synchronous landing");
-        check(warps == (mode == 3 ? 0 : 1), "one finalizer; warps=" + warps);
+        check(warps == (mode != 3 ? 1 : 0), "one finalizer; warps=" + warps);
         if (mode != 3) check(delta(mc, "accumulatedDX") == 0 && delta(mc, "accumulatedDY") == 0, "old camera deltas cleared");
     }
 
@@ -102,7 +103,7 @@ public final class CursorContractLab {
                 CloseHotbarRegressionLab.atPoll(mc, () -> {
                     var config = ConfigStore.get();
                     mode = index % 4;
-                    config.centerMouseFix = mode < 2;
+                    config.centerMouseFix = mode == 0 || mode == 1;
                     config.inventoryLandingItem = null;
                     config.inventory = mode == 1 || mode == 2
                         ? new InventoryTweaksConfig.CursorPoint(index % 2 == 0 ? 1.0 : 0.23, 0.78) : null;
@@ -117,6 +118,8 @@ public final class CursorContractLab {
                         + "; gui=" + guiScale + "; actualGui=" + mc.getWindow().getGuiScale()
                         + "; book=" + (index >= 24) + "; scale=" + config.inventoryGuiScale;
                     warps = 0;
+                    vanillaX = mc.getWindow().getScreenWidth() / 2;
+                    vanillaY = mc.getWindow().getScreenHeight() / 2;
                     observing = true;
                     ((MouseHandlerAccessor) mc.mouseHandler).kohsInventoryTweaks$setAccumulatedDX(1200);
                     ((MouseHandlerAccessor) mc.mouseHandler).kohsInventoryTweaks$setAccumulatedDY(-800);
@@ -143,7 +146,7 @@ public final class CursorContractLab {
                     CloseHotbarRegressionLab.atPoll(mc, () -> {
                         checkPosition(mc, mc.getWindow().getScreenWidth() * (n % 2 == 0 ? 0.12 : 0.85),
                             mc.getWindow().getScreenHeight() * (n % 2 == 0 ? 0.84 : 0.17), "later-poll free motion " + n);
-                        check(warps == (mode == 3 ? 0 : 1), "no extra finalization");
+                        check(warps == (mode != 3 ? 1 : 0), "no extra finalization");
                     });
                 }
                 CloseHotbarRegressionLab.atPoll(mc, () -> {
@@ -152,8 +155,42 @@ public final class CursorContractLab {
                     DebugCollector.info("CURSOR_CONTRACT_CASE", label + "; cumulativeFailures=" + failures);
                 });
             }
-            DebugCollector.info("CURSOR_CONTRACT_SUMMARY", "openings=" + openings + "/48; checks=" + checks + "; failures=" + failures);
-            if (openings != 48 || failures != 0) throw new IllegalStateException("Cursor contract failed: " + failures);
+            // Vanilla releaseMouse is a no-op when returning from another GUI.
+            // A layout-time writer simulates another component moving the cursor
+            // between releaseMouse and the synchronous opening finalizer.
+            for (int cycle = 0; cycle < 8; cycle++) {
+                int index = cycle;
+                CloseHotbarRegressionLab.atPoll(mc, () -> {
+                    observing = false;
+                    mc.setScreen(new Screen(net.minecraft.network.chat.Component.literal("Cursor QA transition")) {});
+                    move(mc, 97, 113);
+                    check(!mc.mouseHandler.isMouseGrabbed(), "transition starts with released mouse");
+                    var config = ConfigStore.get();
+                    mode = index % 4;
+                    config.centerMouseFix = mode == 0 || mode == 1;
+                    config.inventory = mode == 1 || mode == 2 ? new InventoryTweaksConfig.CursorPoint(0.23, 0.78) : null;
+                    vanillaX = index < 4 ? 97 : 131;
+                    vanillaY = index < 4 ? 113 : 157;
+                    label = "released transition; mode=" + mode + "; layoutWriter=" + (index >= 4);
+                    warps = 0;
+                    observing = true;
+                    var screen = new InventoryScreen(mc.player) {
+                        @Override protected void init() {
+                            super.init();
+                            if (index >= 4) move(mc, 131, 157);
+                        }
+                    };
+                    mc.setScreen(screen);
+                    move(mc, 239, 271);
+                    checkPosition(mc, 239, 271, "free movement immediately after transition");
+                    check(CursorLandingController.overrideReleasePosition(mc) == null, "transition does not re-arm centering");
+                    check(warps == (mode != 3 ? 1 : 0), "transition has no extra finalizer");
+                    observing = false;
+                    mc.screen.onClose();
+                });
+            }
+            DebugCollector.info("CURSOR_CONTRACT_SUMMARY", "openings=" + openings + "/56; checks=" + checks + "; failures=" + failures);
+            if (openings != 56 || failures != 0) throw new IllegalStateException("Cursor contract failed: " + failures);
         } catch (Exception error) { throw new IllegalStateException(error); }
         finally {
             mc.executeBlocking(() -> {

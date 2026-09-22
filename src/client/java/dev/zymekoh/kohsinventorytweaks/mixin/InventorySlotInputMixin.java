@@ -39,7 +39,7 @@ public abstract class InventorySlotInputMixin {
 	@Inject(method = "mouseScrolled", at = @At("HEAD"))
 	private void kohsInventoryTweaks$refreshScrollTarget(final double x, final double y,
 		final double horizontal, final double vertical, final CallbackInfoReturnable<Boolean> cir) {
-		this.kohsInventoryTweaks$refreshTarget(x, y, true);
+		this.kohsInventoryTweaks$refreshTarget(x, y, false);
 	}
 
 	@Unique
@@ -49,7 +49,6 @@ public abstract class InventorySlotInputMixin {
 		var config = ConfigStore.get();
 		if (screen.getClass() != InventoryScreen.class || minecraft.screen != screen
 			|| minecraft.getOverlay() != null || !minecraft.isWindowActive()
-			|| !config.immediateSlotTargeting
 			|| !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)) return;
 
 		double scale = screenCoordinates ? InventoryGuiScaler.appliedSurfaceScale(screen, config) : 1.0;

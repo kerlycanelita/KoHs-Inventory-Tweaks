@@ -8,7 +8,6 @@ enum InventoryTweakOption {
 	HELD_MOUSE("screen.kohs_inventory_tweaks.fast_held_mouse", Category.RESPONSE),
 	KEY_REPEAT("screen.kohs_inventory_tweaks.inventory_key_repeat", Category.RESPONSE),
 	CENTER("screen.kohs_inventory_tweaks.center_mouse_fix", Category.CURSOR),
-	SLOT_TARGET("screen.kohs_inventory_tweaks.immediate_slot_targeting", Category.CURSOR),
 	ANIMATIONS("screen.kohs_inventory_tweaks.remove_animations", Category.VISUALS);
 
 	enum Category {
@@ -31,27 +30,25 @@ enum InventoryTweakOption {
 	boolean enabled(final InventoryTweaksConfig config) {
 		return switch (this) {
 			case FAST -> config.superFastInventory;
+			case CENTER -> config.centerMouseFix;
 			case HELD_MOUSE -> config.fastInventoryWhileMouseHeld;
 			case KEY_REPEAT -> config.suppressInventoryKeyRepeats;
-			case CENTER -> config.centerMouseFix;
-			case SLOT_TARGET -> config.immediateSlotTargeting;
-			case ANIMATIONS -> config.removeAllInventoryAnimations;
+			case ANIMATIONS -> config.reduceInventoryMotion;
 		};
 	}
 
 	void set(final InventoryTweaksConfig config, final boolean enabled) {
 		switch (this) {
 			case FAST -> config.superFastInventory = enabled;
+			case CENTER -> config.centerMouseFix = enabled;
 			case HELD_MOUSE -> config.fastInventoryWhileMouseHeld = enabled;
 			case KEY_REPEAT -> config.suppressInventoryKeyRepeats = enabled;
-			case CENTER -> config.centerMouseFix = enabled;
-			case SLOT_TARGET -> config.immediateSlotTargeting = enabled;
-			case ANIMATIONS -> config.removeAllInventoryAnimations = enabled;
+			case ANIMATIONS -> config.reduceInventoryMotion = enabled;
 		}
 		config.activeProfile = InventoryTweaksConfig.ProfilePreset.CUSTOM;
 	}
 
 	boolean warnsOnEnable() {
-		return this == HELD_MOUSE || this == ANIMATIONS;
+		return this == HELD_MOUSE || this == CENTER || this == ANIMATIONS;
 	}
 }

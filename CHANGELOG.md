@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.0.12 — Minecraft 26.1.2
+
+- Restored the collapse of contact bounce, which 1.0.11 removed on the grounds
+  that `GLFW_REPEAT` was already handled separately. Bounce never reaches GLFW
+  as `GLFW_REPEAT`: the contact physically opens and closes, so the platform
+  reports repeated PRESS. Counting those as separate meanings turned one
+  physical press into an even run and settled it into nothing, so the inventory
+  key did visibly nothing on every bouncing switch. A batch shorter than the
+  quickest human double tap cannot hold two intentions and now carries one.
+- Stopped a second mapping on the inventory key from disabling fast opening
+  altogether. That test belongs to the settle branch, which assumes every
+  meaning in the run is the inventory's; opening consumes exactly what Vanilla
+  would, and has no such claim. In a pack where anything shares the key, every
+  press was waiting for the client tick.
+- Made fast opening while a mouse button is held the default. The world action a
+  held button was driving is already ended correctly by Vanilla on close:
+  `setScreen(null)` reaches `MouseHandler.grabMouse`, whose `KeyMapping.setAll`
+  re-reads the physical state of every binding, so a button released while the
+  screen was open stops and one still held resumes. Measured across 24 held
+  openings with the attack bound to the left mouse button: nothing stayed down.
+- Stamped the config file with a schema so a default corrected after release can
+  reach the players who already hold the old value. Gson keeps what is on disk
+  over a field initialiser, so anyone who ran 1.0.11 would have carried its
+  disabled held-button path forever. The stamp raises that one value once, never
+  lowers anything, and cannot run a second time.
+
 ## 1.0.11 — Minecraft 26.1.2
 
 - Removed the time-based double-press merge from Super Fast Inventory. Fresh

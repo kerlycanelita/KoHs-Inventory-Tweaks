@@ -333,6 +333,7 @@ public final class DebugCollector {
 		if (tickMicros > 50_000L) {
 			warn("TICK_STALL", "client tick=" + tickNumber + " took " + tickMicros + "us while screen=" + screen(minecraft.screen));
 		}
+		LabWorld.onClientTick(minecraft);
 		MacroTestController.onClientTick(minecraft);
 	}
 
@@ -948,7 +949,7 @@ public final class DebugCollector {
 	}
 
 	private static String cursorConfigSnapshot() {
-		return "centerMouseFix=" + configBoolean("centerMouseFix")
+		return "superFastInventory=" + configBoolean("superFastInventory")
 			+ "; cursorLandingAvailable=" + compatibilityFeature("CURSOR_LANDING")
 			+ "; inventoryTweaksAvailable=" + compatibilityFeature("INVENTORY_TWEAKS")
 			+ "; inventoryPoint=" + configField("inventory")

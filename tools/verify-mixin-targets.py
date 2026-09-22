@@ -28,7 +28,7 @@ MIXIN_ANNOTATION = re.compile(r"@Mixin\s*\((?P<body>.*?)\)\s*(?:public|abstract|
 CLASS_LITERAL = re.compile(r"([A-Za-z_][\w.]*)\.class")
 TARGETS_LITERAL = re.compile(r"targets\s*=\s*\"([^\"]+)\"")
 METHOD_REFERENCE = re.compile(r"method\s*=\s*(\{[^}]*\}|\"[^\"]*\")", re.S)
-INJECTOR = re.compile(r"@(Inject|Redirect|ModifyArg|ModifyArgs|ModifyVariable|ModifyConstant|WrapOperation|WrapWithCondition)\s*\(")
+INJECTOR = re.compile(r"@(Inject|Redirect|ModifyArg|ModifyArgs|ModifyVariable|ModifyConstant|WrapOperation|WrapWithCondition|WrapMethod)\s*\(")
 INVOKE_ANNOTATION = re.compile(r'target\s*=\s*"L([^;]+);([^("]+)(\([^"]*)"')
 STRING_LITERAL = re.compile(r"\"([^\"]*)\"")
 ACCESSOR = re.compile(r"@Accessor\s*\(\s*\"([^\"]+)\"\s*\)")
@@ -125,7 +125,8 @@ class JarIndex:
             if declaration and declaration.endswith(";"):
                 if "(" in declaration:
                     signature = declaration.split("(", 1)[0]
-                    current = signature.split()[-1].rsplit(".", 1)[-1]
+                    member = signature.split()[-1]
+                    current = "<init>" if member == binary_name else member.rsplit(".", 1)[-1]
                     bodies.setdefault(current, [])
                 else:
                     current = None
@@ -181,7 +182,7 @@ class JarIndex:
             if "(" in line:
                 signature = line.split("(", 1)[0]
                 member = signature.split()[-1]
-                names.add(member.rsplit(".", 1)[-1])
+                names.add("<init>" if member == binary_name else member.rsplit(".", 1)[-1])
             else:
                 parts = line.split()
                 if parts:
@@ -425,8 +426,10 @@ def verify(source_root: Path, jars: list[Path]) -> int:
                     continue
                 # The call has to exist inside the very method being injected into,
                 # otherwise Mixin refuses to apply the injector at load time.
-                qualified = f"{owner_name.rsplit('.', 1)[-1]}.{member}:{arguments}"
-                plain = f"Method {member}:{arguments}"
+                # javap quotes JVM special method names such as "<init>".
+                disassembled_member = f'"{member}"' if member.startswith("<") else member
+                qualified = f"{owner_name.rsplit('.', 1)[-1]}.{disassembled_member}:{arguments}"
+                plain = f"Method {disassembled_member}:{arguments}"
                 found = False
                 for target in targets:
                     for host in methods:

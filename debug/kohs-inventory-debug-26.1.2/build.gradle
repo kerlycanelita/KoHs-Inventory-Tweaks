@@ -82,12 +82,22 @@ java {
 	targetCompatibility = JavaVersion.VERSION_25
 }
 
+// Both QA source roots carry a README of their own, and the sources jar copies
+// every source root into one tree, so the second one lands on the first.
+tasks.named('sourcesJar').configure {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+
 tasks.named('runClient').configure {
 	if (project.hasProperty('debugMacro')) {
 		jvmArgs "-Dkohs.inventory.debug.autorun=${project.property('debugMacro')}"
 		if (project.property('debugMacro') in ['cursor-contract', 'pvp-input']) {
 			args '--width', '1440', '--height', '1000'
 		}
+	}
+	if (project.hasProperty('debugCreateWorld')) {
+		jvmArgs '-Dkohs.inventory.debug.createLabWorld=true'
 	}
 	if (project.hasProperty('debugWorld')) {
 		args '--quickPlaySingleplayer', project.property('debugWorld').toString()
