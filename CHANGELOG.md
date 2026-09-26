@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.13 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11 (unreleased)
+## 1.0.13 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
 
 - Center Mouse Fix no longer pulls the pointer back after the inventory opens.
   Its check ran after `Screen#init`, so movement made while the screen was being
