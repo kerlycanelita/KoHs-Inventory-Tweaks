@@ -14,6 +14,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Gui.class)
 public abstract class GuiMixin {
+	@Inject(method = "render", at = @At("RETURN"))
+	private void kohsInventoryTweaks$drawMouseConflictNotification(
+		final GuiGraphics graphics,
+		final DeltaTracker deltaTracker,
+		final CallbackInfo callbackInfo
+	) {
+		MouseConflictNotificationController.draw(graphics);
+	}
+
 	@Inject(method = "renderItemHotbar", at = @At("HEAD"))
 	private void kohsInventoryTweaks$beginHotbarPass(
 		final GuiGraphics graphics,
@@ -21,15 +30,6 @@ public abstract class GuiMixin {
 		final CallbackInfo callbackInfo
 	) {
 		ItemHighlighterController.beginHotbar();
-	}
-
-	@Inject(method = "render", at = @At("RETURN"))
-	private void kohsInventoryTweaks$drawCompatibilityNotification(
-		final GuiGraphics graphics,
-		final DeltaTracker deltaTracker,
-		final CallbackInfo callbackInfo
-	) {
-		MouseConflictNotificationController.draw(graphics);
 	}
 
 	@Inject(method = "renderSlot", at = @At("HEAD"))

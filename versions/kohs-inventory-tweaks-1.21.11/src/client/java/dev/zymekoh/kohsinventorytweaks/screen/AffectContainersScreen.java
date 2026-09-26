@@ -208,8 +208,8 @@ public final class AffectContainersScreen extends Screen {
 		final float scale,
 		final ContainerScaleTarget target
 	) {
-		if (target == ContainerScaleTarget.SHULKER) {
-			CustomizationPreview surface = CustomizationPreview.SHULKER_BOX;
+		if (target.preview().kind() != CustomizationPreview.Kind.GENERIC) {
+			CustomizationPreview surface = target.preview();
 			Identifier texture = InventoryTextureManager.previewTextureFor(
 				this.working,
 				surface.texture(),

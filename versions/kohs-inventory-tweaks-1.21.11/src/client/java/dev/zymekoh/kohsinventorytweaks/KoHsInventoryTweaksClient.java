@@ -5,13 +5,17 @@ import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityNoticeController;
 import dev.zymekoh.kohsinventorytweaks.compat.BlockingCompatibilityController;
 import dev.zymekoh.kohsinventorytweaks.compat.MouseConflictNotificationController;
+import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
 import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryWarmup;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
+import dev.zymekoh.kohsinventorytweaks.render.PlayerGlowLayer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
+import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
@@ -41,9 +45,17 @@ public final class KoHsInventoryTweaksClient implements ClientModInitializer {
 			ConfigMenuKeyBinding.onClientTick(minecraft);
 			InventoryWarmup.onClientTick(minecraft);
 		});
+		LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, renderer, layers, context) -> {
+			if (renderer instanceof AvatarRenderer<?> avatar) {
+				layers.register(new PlayerGlowLayer(avatar));
+			}
+		});
 		ResourceLoader.get(PackType.CLIENT_RESOURCES).registerReloader(
 			Identifier.fromNamespaceAndPath(MOD_ID, "inventory_texture"),
-			(ResourceManagerReloadListener) resourceManager -> InventoryTextureManager.onResourcesReloaded()
+			(ResourceManagerReloadListener) resourceManager -> {
+				InventoryTextureManager.onResourcesReloaded();
+				dev.zymekoh.kohsinventorytweaks.screen.FeaturePreviewReload.run();
+			}
 		);
 		LOGGER.info("KoHs Inventory Tweaks initialized for Minecraft {}", runtimeMinecraftVersion());
 	}

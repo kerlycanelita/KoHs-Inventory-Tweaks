@@ -38,9 +38,11 @@ public final class ConfigMenuKeyBinding {
 			// Never steal input from chat, inventories, or another configuration screen.
 			if (minecraft.screen == null && minecraft.player != null && minecraft.gameMode != null) {
 				InventoryTweaksScreen menu = new InventoryTweaksScreen(null);
-				minecraft.setScreen(MouseConflictNotificationController.consumeIssuesTrackerRoute()
-					? new IssuesTrackerScreen(menu)
-					: menu);
+				if (MouseConflictNotificationController.consumeIssuesTrackerRoute()) {
+					minecraft.setScreen(new IssuesTrackerScreen(menu));
+				} else {
+					minecraft.setScreen(menu);
+				}
 			}
 		}
 	}

@@ -29,5 +29,3 @@ public final class VisualPerformanceController {
 		return Math.max(0L, elapsedMillis) / frameMillis * frameMillis;
 	}
 }
-
-

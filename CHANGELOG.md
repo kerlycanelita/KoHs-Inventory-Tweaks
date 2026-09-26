@@ -27,8 +27,22 @@
   before the inventory. On 26.2 so do the chat, command, advancement, social and
   HUD-toggle keys, which that version handles before the inventory.
 - The readout under Super Fast Inventory names the two new reasons.
-- 26.2, 26.1.1, 26.1 and 1.21.11 also carry the 1.0.12 fix that stops a second
-  mapping on the inventory key from disabling fast opening.
+- The visible-player glow is now a silhouette: a slightly inflated, inside-out
+  copy of the player model drawn with an emissive render type, so it rims the
+  body instead of brightening it. It is depth-tested like the model it follows
+  and still never shows through blocks, unlike Vanilla's glowing outline.
+- The Player Visibility page shows a live world view beside the inventory
+  preview, drops its duplicated header, and fits at GUI scale 2, 3 and 4.
+- Option cards show only their title; the description moved to a hover panel.
+  For Super Fast Inventory, Center Mouse Fix and Reduce inventory motion that
+  panel plays a recorded Vanilla-versus-KoHs clip made with the same input on
+  both sides.
+- 26.2, 26.1.1, 26.1 and 1.21.11 now carry the whole 26.1.2 feature set: the
+  1.0.11 PvP options and page layout, the 1.0.12 bounce collapse, config schema,
+  whole-surface container scaling and tab icons, and everything above. On those
+  versions Remove all inventory animations becomes Reduce inventory motion, as
+  it did on 26.1.2 in 1.0.12: glint, progress bars and recipe cycling stay
+  Vanilla's. The saved setting carries over.
 
 ## Support change — 26 September 2026
 

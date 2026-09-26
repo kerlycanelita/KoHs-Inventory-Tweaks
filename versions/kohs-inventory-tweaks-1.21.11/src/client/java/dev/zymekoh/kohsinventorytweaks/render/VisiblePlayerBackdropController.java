@@ -42,7 +42,7 @@ public final class VisiblePlayerBackdropController {
 		}
 
 		double intensity = depthIntensity / 255.0;
-		if (config.visiblePlayerGlowPulse && !InventoryAnimationController.suppressAllInventoryAnimations()) {
+		if (config.visiblePlayerGlowPulse && !InventoryAnimationController.reduceMotionEnabled()) {
 			intensity *= 0.92 + 0.08 * Math.sin(System.nanoTime() / 240_000_000.0);
 		}
 
@@ -195,4 +195,3 @@ public final class VisiblePlayerBackdropController {
 		}
 	}
 }
-

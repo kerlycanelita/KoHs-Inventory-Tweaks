@@ -357,6 +357,7 @@ public final class InventoryTextureManager {
 		}
 		return signature.toString();
 	}
+
 	public static void onResourcesReloaded() {
 		resourceGeneration++;
 		forgetBackgroundProbe();
@@ -388,7 +389,7 @@ public final class InventoryTextureManager {
 
 	private static boolean isUnmodifiedAppliedTexture(final InventoryTweaksConfig config) {
 		return config.inventoryTextureSource == TextureSource.APPLIED
-			&& !InventoryAnimationController.suppressAllInventoryAnimations()
+			&& !InventoryAnimationController.reduceMotionEnabled()
 			&& config.frameColor == 0xFFFFFF
 			&& config.frameOpacity == 255
 			&& config.slotColor == 0xFFFFFF
@@ -434,7 +435,7 @@ public final class InventoryTextureManager {
 	) {
 		return baseKey + ":" + backgroundKey + ":" + config.frameColor + ":" + config.frameOpacity
 			+ ":" + config.slotColor + ":" + config.slotOpacity + ":" + config.backgroundOpacity
-			+ ":static=" + InventoryAnimationController.suppressAllInventoryAnimations();
+			+ ":static=" + InventoryAnimationController.reduceMotionEnabled();
 	}
 
 	private static @Nullable AnimationFrame backgroundFrame(final InventoryTweaksConfig config) {
@@ -442,7 +443,7 @@ public final class InventoryTextureManager {
 			return null;
 		}
 		return background.frameAt(
-			InventoryAnimationController.suppressAllInventoryAnimations()
+			InventoryAnimationController.reduceMotionEnabled()
 				? 0L
 				: VisualPerformanceController.animatedBackgroundTime(System.currentTimeMillis() - animationStartedAt)
 		);

@@ -212,6 +212,8 @@ public final class GuiScalerScreen extends Screen {
 		);
 
 		if (this.minecraft.player != null) {
+			// Entity picture-in-picture states do not inherit the current GUI pose,
+			// so transform their bounds exactly once into screen coordinates.
 			float inventoryLeft = this.width * 0.5F - INVENTORY_WIDTH * 0.5F * scale;
 			float inventoryTop = this.height * 0.5F - INVENTORY_HEIGHT * 0.5F * scale;
 			InventoryScreen.renderEntityInInventoryFollowsMouse(

@@ -60,5 +60,3 @@ final class AdvancedSlider extends ThemedSlider {
 		return Math.max(0.0, Math.min(1.0, (value - minimum) / (maximum - minimum)));
 	}
 }
-
-

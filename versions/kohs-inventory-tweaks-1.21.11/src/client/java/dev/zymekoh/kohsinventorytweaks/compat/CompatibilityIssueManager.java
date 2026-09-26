@@ -151,6 +151,9 @@ public final class CompatibilityIssueManager {
 			for (ModContainer container : FabricLoader.getInstance().getAllMods()) {
 				String modId = container.getMetadata().getId();
 				if (modId.equals(MOD_ID)
+					// Official observer companion: its injections only read and report
+					// KoHs state. Treating those hooks as a foreign mutation disables
+					// the very features the diagnostic session must measure.
 					|| INVENTORY_DEBUG_ID.equals(modId)
 					|| modId.startsWith("fabric-") || modId.equals("minecraft")
 					|| HERZIUM_ID.equals(modId)
@@ -458,7 +461,7 @@ public final class CompatibilityIssueManager {
 				CompatibilityIssue.Severity.BLOCKING,
 				CompatibilityIssue.Reason.CONTAINER_SCALE_PIPELINE,
 				List.of(
-					"net.minecraft.client.gui.Gui#extractRenderState",
+					"net.minecraft.client.gui.Gui#render",
 					"net.minecraft.client.MouseHandler#getScaledXPos",
 					"net.minecraft.client.MouseHandler#getScaledYPos",
 					"net.minecraft.client.renderer.GameRenderer#render"
@@ -484,7 +487,7 @@ public final class CompatibilityIssueManager {
 			creatorsOf(container),
 			CompatibilityIssue.Severity.ADAPTABLE,
 			CompatibilityIssue.Reason.SUPPRESSED_REDIRECT,
-			List.of("net.minecraft.client.gui.screens.inventory.InventoryScreen#renderBackground -> " + INVENTORY_ENTITY_INVOCATION),
+			List.of("net.minecraft.client.gui.screens.inventory.InventoryScreen#renderBg -> " + INVENTORY_ENTITY_INVOCATION),
 			Set.of(CompatibilityFeature.GUI_SCALER)
 		);
 	}

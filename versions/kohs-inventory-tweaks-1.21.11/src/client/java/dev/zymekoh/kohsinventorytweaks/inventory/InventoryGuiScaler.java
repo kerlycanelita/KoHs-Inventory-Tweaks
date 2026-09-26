@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 
@@ -86,7 +87,7 @@ public final class InventoryGuiScaler {
 		return (int) Math.round(center + (surfaceValue - center) * activeSurfaceScale());
 	}
 
-	private static double activeSurfaceScale() {
+	public static double activeSurfaceScale() {
 		if (surfaceDepth <= 0) {
 			return 1.0;
 		}
@@ -204,7 +205,13 @@ public final class InventoryGuiScaler {
 			|| !config.affectAllContainers && !config.containerProfilesEnabled) {
 			return 1.0;
 		}
-		return configuredContainerScale(screenWidth, screenHeight, config, target);
+		double scale = configuredContainerScale(screenWidth, screenHeight, config, target);
+		if (config.inventoryGuiScalerEnabled && screen instanceof AbstractRecipeBookScreen<?> recipeScreen
+			&& recipeBookOpen(recipeScreen) && (!config.containerProfilesEnabled || config.isContainerScaleEnabled(target))) {
+			scale = Math.min(scale, toSurfaceScale(maximumScaleFor(screenWidth, screenHeight,
+				INVENTORY_WITH_RECIPE_BOOK_WIDTH, target.previewHeight())));
+		}
+		return scale;
 	}
 
 	public static double appliedScale(
@@ -268,7 +275,7 @@ public final class InventoryGuiScaler {
 	 * itself from, and {@code setVisible} writes every toggle straight back to
 	 * it, so this agrees with the component once the screen is initialized.</p>
 	 */
-	private static boolean recipeBookOpen(final InventoryScreen screen) {
+	private static boolean recipeBookOpen(final AbstractRecipeBookScreen<?> screen) {
 		LocalPlayer player = Minecraft.getInstance().player;
 		return player != null
 			&& player.getRecipeBook().isOpen(screen.getMenu().getRecipeBookType());
