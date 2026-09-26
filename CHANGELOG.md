@@ -1,5 +1,13 @@
 # Changelog
 
+## Support change — 26 September 2026
+
+- KoHs Inventory Tweaks now supports Minecraft 1.21.11 and later. Minecraft
+  1.21.10 is no longer maintained; its releases stay downloadable on Modrinth as
+  archived versions and will not receive fixes.
+- Moved the 1.21.10 target, its diagnostic companion and the unreleased
+  1.21–1.21.9 source work to `archive/` unchanged.
+
 ## 1.0.12 — Minecraft 26.1.2
 
 - Restored the collapse of contact bounce, which 1.0.11 removed on the grounds

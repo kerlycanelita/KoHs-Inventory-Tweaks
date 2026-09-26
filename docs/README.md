@@ -12,13 +12,14 @@
 - [Audits](audits/)
 - [Release records](releases/)
 - [Diagnostic companions](../debug/README.md)
+- [Archived targets (Minecraft 1.21.10 and earlier)](../archive/README.md)
 
 ## Root build
 
 | Setting | Value |
 | --- | --- |
 | Minecraft | `26.1.2` |
-| Mod version | `1.0.9+mc26.1.2` |
+| Mod version | `1.0.12+mc26.1.2` |
 | Loader | Fabric `0.19.3` |
 | Loom | `1.17-SNAPSHOT` |
 | JDK | 25 |

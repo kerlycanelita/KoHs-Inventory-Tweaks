@@ -13,7 +13,11 @@
 
 KoHs Inventory Tweaks is a Fabric client-side mod that hooks into inventory-screen preparation and rendering without replacing server inventory logic. It provides deterministic cursor placement, guarded rapid input, configurable visuals, and a responsive interface while preserving vanilla interactions.
 
-This repository contains released implementations for **Minecraft 26.2, 26.1.2, 26.1.1, 26.1, 1.21.11, and 1.21.10**. The Minecraft 26.1.2 implementation is the repository root; every additional target lives in its own directory under `versions/`. Source work for earlier 1.21.x targets may also be present there, but a directory is not considered release support until its exact-version artifact and metadata have been published. Previous KoHs Inv Cursor versions are kept for reference only under `versions/legacy-kohs-inv-cursor/`.
+This repository contains released implementations for **Minecraft 26.2, 26.1.2, 26.1.1, 26.1, and 1.21.11**. The Minecraft 26.1.2 implementation is the repository root; every additional target lives in its own directory under `versions/`.
+
+## Supported versions
+
+Since 26 September 2026, KoHs Inventory Tweaks supports **Minecraft 1.21.11 and later**. Minecraft 1.21.10 is no longer maintained: its builds (the last one is `1.0.8+mc1.21.10`) stay downloadable on Modrinth as archived versions, but they will not receive fixes or new features. The 1.21.10 source tree and the unreleased 1.21–1.21.9 work moved to [`archive/`](archive/README.md).
 
 ## Compatibility
 
@@ -24,7 +28,6 @@ This repository contains released implementations for **Minecraft 26.2, 26.1.2, 
 | **26.1.1** | **0.145.4+26.1.1** | **25+** | `versions/kohs-inventory-tweaks-26.1.1` |
 | **26.1** | **0.145.1+26.1** | **25+** | `versions/kohs-inventory-tweaks-26.1` |
 | **1.21.11** | **0.141.6+1.21.11** | **21+** | `versions/kohs-inventory-tweaks-1.21.11` |
-| **1.21.10** | **0.138.4+1.21.10** | **21+** | `versions/kohs-inventory-tweaks-1.21.10` |
 
 All builds require Fabric Loader 0.19.3 or newer. Mod Menu is optional and recommended.
 
@@ -86,6 +89,7 @@ This reports any translation key the client asks for that is missing from a lang
 | --- | --- |
 | `src/` | The main Minecraft 26.1.2 implementation. |
 | `versions/` | Separate source targets; legacy local artifacts stay excluded. |
+| `archive/` | Retired targets (Minecraft 1.21.10 and earlier), kept unchanged. |
 | `debug/` | Optional diagnostic companions, separate from the playable mod. |
 | `docs/` | English/Spanish wiki, player reports, audits and release notes. |
 | `tools/` | Mixin, translation, artifact and cursor-contract checks. |

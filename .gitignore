@@ -9,20 +9,21 @@ run/
 logs/
 crash-reports/
 
-# Legacy KoHs Inv Cursor projects and artifacts
+# Maintained version targets only; anything else under versions/ stays local
 versions/*
-!versions/kohs-inventory-tweaks-1.21.10/
 !versions/kohs-inventory-tweaks-1.21.11/
-!versions/kohs-inventory-tweaks-1.21-1.21.1/
-!versions/kohs-inventory-tweaks-1.21.2-1.21.5/
-!versions/kohs-inventory-tweaks-1.21.6-1.21.8/
-!versions/kohs-inventory-tweaks-1.21.9/
 !versions/kohs-inventory-tweaks-26.1/
 !versions/kohs-inventory-tweaks-26.1.1/
 !versions/kohs-inventory-tweaks-26.2/
 builds/
 modrinth/
 scripts/
+
+# Archived targets are tracked; their local artifacts and the legacy
+# KoHs Inv Cursor projects are not
+archive/legacy-kohs-inv-cursor/
+archive/builds/
+archive/scripts/
 
 # IDE and operating-system files
 .idea/

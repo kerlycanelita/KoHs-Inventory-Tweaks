@@ -8,7 +8,6 @@ in the main mod JAR.
 
 | Minecraft | Project | JDK |
 | --- | --- | --- |
-| 1.21.10 | [1.21.10 companion](kohs-inventory-debug-1.21.10/README.md) | 21 |
 | 1.21.11 | [1.21.11 companion](kohs-inventory-debug-1.21.11/README.md) | 21 |
 | 26.1 | [26.1 companion](kohs-inventory-debug-26.1/README.md) | 25 |
 | 26.1.1 | [26.1.1 companion](kohs-inventory-debug-26.1.1/README.md) | 25 |
