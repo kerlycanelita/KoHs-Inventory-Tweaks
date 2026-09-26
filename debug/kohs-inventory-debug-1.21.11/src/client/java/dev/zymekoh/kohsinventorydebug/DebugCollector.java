@@ -38,6 +38,8 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket;
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
+import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
+import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
@@ -110,6 +112,10 @@ public final class DebugCollector {
 	private static volatile long fastBatchStartedNanos;
 	private static volatile long fastInputToPollMicros = -1L;
 	private static volatile String lastFastDecision = "idle";
+	private static Screen pendingCloseScreen;
+	private static long pendingCloseNanos;
+	private static long closedInputNanos;
+	private static long firstClosedFramePending;
 
 	private DebugCollector() {
 	}
@@ -270,6 +276,11 @@ public final class DebugCollector {
 		frameNanosInSample += elapsed;
 		maximumFrameNanos = Math.max(maximumFrameNanos, elapsed);
 		samplePerformance(minecraft);
+		if (firstClosedFramePending != 0L) {
+			info("CLOSE_FRAME", "sinceCloseInput=" + micros(System.nanoTime() - firstClosedFramePending)
+				+ "us; screen=" + screen(minecraft.screen) + "; frame=" + frameNumber);
+			firstClosedFramePending = 0L;
+		}
 	}
 
 	public static void onTickStart() {
@@ -322,6 +333,7 @@ public final class DebugCollector {
 		if (tickMicros > 50_000L) {
 			warn("TICK_STALL", "client tick=" + tickNumber + " took " + tickMicros + "us while screen=" + screen(minecraft.screen));
 		}
+		LabWorld.onClientTick(minecraft);
 		MacroTestController.onClientTick(minecraft);
 	}
 
@@ -443,10 +455,23 @@ public final class DebugCollector {
 
 	public static void onPhysicalKey(final Minecraft minecraft, final int action, final KeyEvent event) {
 		String matched = matchingRelevantMappings(minecraft, event);
+		if (event.isEscape() && InventoryScreenClassifier.isPlayerInventory(minecraft.screen)) matched = "escape-close";
 		if (matched.isEmpty()) {
 			return;
 		}
 		long now = System.nanoTime();
+		if (action == GLFW.GLFW_PRESS && InventoryScreenClassifier.isPlayerInventory(minecraft.screen)
+			&& (minecraft.options.keyInventory.matches(event) || event.isEscape())) {
+			pendingCloseScreen = minecraft.screen;
+			pendingCloseNanos = now;
+			info("CLOSE_INPUT", "mappings=" + matched + "; mods=" + event.modifiers()
+				+ "; focused=" + (minecraft.screen.getFocused() == null ? "none" : minecraft.screen.getFocused().getClass().getName()));
+		}
+		if (action == GLFW.GLFW_PRESS && matched.contains("hotbar")) {
+			info("HOTBAR_CONTEXT", "mappings=" + matched + "; screen=" + screen(minecraft.screen)
+				+ "; sinceCompletedClose=" + (closedInputNanos == 0L ? -1 : micros(now - closedInputNanos))
+				+ "us; pendingClose=" + (pendingCloseScreen != null));
+		}
 		boolean qaMacro = MacroTestController.isRunning();
 		String source = qaMacro ? "qa-macro" : "physical";
 		info(qaMacro ? "MACRO_KEY" : "PHYSICAL_KEY", "source=" + source + "; action=" + glfwAction(action) + "; mappings=" + matched
@@ -473,6 +498,21 @@ public final class DebugCollector {
 			+ "; action=" + glfwAction(action) + "; button=" + (info == null ? -1 : info.button())
 			+ "; mods=" + (info == null ? -1 : info.modifiers()) + "; mappings=" + (matched.isEmpty() ? "screen-input" : matched)
 			+ "; screen=" + screen(minecraft.screen) + "; cursor=" + point(cursor(minecraft)));
+	}
+
+	public static void onKeyboardReturn(final Minecraft minecraft, final int action, final KeyEvent event) {
+		if (action != GLFW.GLFW_PRESS || pendingCloseScreen == null
+			|| !(minecraft.options.keyInventory.matches(event) || event.isEscape())) return;
+		long elapsed = micros(System.nanoTime() - pendingCloseNanos);
+		boolean closed = minecraft.screen == null;
+		info(closed ? "CLOSE_APPLIED" : "CLOSE_NOT_APPLIED", "callback=" + elapsed + "us; screen=" + screen(minecraft.screen)
+			+ "; sameScreen=" + (minecraft.screen == pendingCloseScreen)
+			+ "; note=callback-result-not-mod-attribution");
+		if (closed) {
+			closedInputNanos = pendingCloseNanos;
+			firstClosedFramePending = pendingCloseNanos;
+		}
+		pendingCloseScreen = null;
 	}
 
 	public static void onMouseMove(final Minecraft minecraft, final double x, final double y) {
@@ -536,7 +576,10 @@ public final class DebugCollector {
 	public static void onFastBatch(final Minecraft minecraft, final boolean after) {
 		if (!after) {
 			fastBatchStartedNanos = System.nanoTime();
-			fastBatchActive = queued(minecraft.options.keyInventory) > 0;
+			// Old/repeat-generated queue entries are not new fast-open decisions.
+			// Checking the last decision against them produces false mismatches.
+			fastBatchActive = queued(minecraft.options.keyInventory) > 0
+				&& !snapshotValue(fastControllerSnapshot("pendingInputSnapshot"), "inventoryInputAge", "-1us").equals("-1us");
 			if (fastBatchActive) {
 				lastFastDecision = "evaluating";
 				fastInputToPollMicros = lastInventoryPhysicalNanos == 0L
@@ -599,8 +642,8 @@ public final class DebugCollector {
 			+ minecraft.getWindow().getScreenWidth() + 'x' + minecraft.getWindow().getScreenHeight());
 	}
 
-	public static void onCursorContainerInit(final Minecraft minecraft, final Screen screen, final boolean after) {
-		trace("CURSOR_INIT_HOOK", (after ? "return" : "head") + "; screen=" + screen(screen)
+	public static void onCursorScreenOpened(final Minecraft minecraft, final Screen screen, final boolean after) {
+		trace("CURSOR_FINALIZE_HOOK", (after ? "return" : "head") + "; screen=" + screen(screen)
 			+ "; actual=" + point(cursor(minecraft)) + "; expected=" + point(expectedCursorX, expectedCursorY));
 	}
 
@@ -659,6 +702,13 @@ public final class DebugCollector {
 	}
 
 	public static void onPacketSent(final Packet<?> packet) {
+		if (packet instanceof ServerboundContainerClosePacket) {
+			info("PACKET_OUT_CLOSE", "screen=" + screen(Minecraft.getInstance().screen)
+				+ "; sinceCloseInput=" + (pendingCloseScreen == null ? -1 : micros(System.nanoTime() - pendingCloseNanos)) + "us");
+		}
+		if (packet instanceof ServerboundSetCarriedItemPacket) {
+			info("PACKET_OUT_SELECTED", "screen=" + screen(Minecraft.getInstance().screen));
+		}
 		if (packet instanceof ServerboundPlayerActionPacket action
 			&& action.getAction() == ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND) {
 			long sinceOffhand = lastOffhandPhysicalNanos == 0L ? -1L : micros(System.nanoTime() - lastOffhandPhysicalNanos);
@@ -899,7 +949,7 @@ public final class DebugCollector {
 	}
 
 	private static String cursorConfigSnapshot() {
-		return "centerMouseFix=" + configBoolean("centerMouseFix")
+		return "superFastInventory=" + configBoolean("superFastInventory")
 			+ "; cursorLandingAvailable=" + compatibilityFeature("CURSOR_LANDING")
 			+ "; inventoryTweaksAvailable=" + compatibilityFeature("INVENTORY_TWEAKS")
 			+ "; inventoryPoint=" + configField("inventory")

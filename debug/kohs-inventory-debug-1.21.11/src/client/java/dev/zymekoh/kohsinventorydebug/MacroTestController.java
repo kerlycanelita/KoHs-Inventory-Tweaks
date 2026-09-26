@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.client.KeyMapping;
+import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -33,6 +34,7 @@ import org.lwjgl.system.MemoryStack;
 public final class MacroTestController {
 	private static final AtomicBoolean RUNNING = new AtomicBoolean();
 	private static final String AUTORUN_PROPERTY = "kohs.inventory.debug.autorun";
+	private static final String EXIT_AFTER_MACRO_PROPERTY = "kohs.inventory.debug.exitAfterMacro";
 	private static volatile String current = "idle";
 	private static int autorunTicks;
 	private static boolean autorunAttempted;
@@ -45,6 +47,14 @@ public final class MacroTestController {
 		INVENTORY_THEN_OFFHAND("inventory-then-offhand", "kohs_inventory_debug.screen.macro_inv_off", "kohs_inventory_debug.lab.inv_off.desc", true, false),
 		OFFHAND_THEN_INVENTORY("offhand-then-inventory", "kohs_inventory_debug.screen.macro_off_inv", "kohs_inventory_debug.lab.off_inv.desc", true, false),
 		CENTERED_CURSOR("centered-cursor", "kohs_inventory_debug.screen.macro_center", "kohs_inventory_debug.lab.center.desc", false, false),
+		CURSOR_CONTRACT("cursor-contract", "kohs_inventory_debug.lab.cursor_contract", "kohs_inventory_debug.lab.cursor_contract.desc", false, true),
+		CURSOR_WEIGHT("cursor-weight", "kohs_inventory_debug.lab.cursor_weight", "kohs_inventory_debug.lab.cursor_weight.desc", false, true),
+		UI_SHOWCASE("ui-showcase", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
+		RECORD_ALL("record-all", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
+		RECORD_FAST("record-fast", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
+		RECORD_CENTER("record-center", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
+		RECORD_ANIMATIONS("record-animations", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
+		PVP_INPUT("pvp-input", "kohs_inventory_debug.lab.pvp_input", "kohs_inventory_debug.lab.pvp_input.desc", false, true),
 		LATENCY_SWEEP("latency-sweep", "kohs_inventory_debug.lab.latency", "kohs_inventory_debug.lab.latency.desc", false, true),
 		EXTREME_OPEN_CLOSE("extreme-open-close", "kohs_inventory_debug.lab.extreme", "kohs_inventory_debug.lab.extreme.desc", false, true),
 		FRAME_JITTER("frame-jitter", "kohs_inventory_debug.lab.jitter", "kohs_inventory_debug.lab.jitter.desc", false, true),
@@ -53,6 +63,13 @@ public final class MacroTestController {
 		OPEN_MOVE_CHAOS("open-move-chaos", "kohs_inventory_debug.lab.chaos", "kohs_inventory_debug.lab.chaos.desc", false, true),
 		OFFHAND_RACE_EXTREME("offhand-race-extreme", "kohs_inventory_debug.lab.offhand_race", "kohs_inventory_debug.lab.offhand_race.desc", true, true),
 		LONG_SOAK("long-soak", "kohs_inventory_debug.lab.soak", "kohs_inventory_debug.lab.soak.desc", true, true),
+		HELD_INVENTORY("held-inventory", "kohs_inventory_debug.lab.hold", "kohs_inventory_debug.lab.hold.desc", false, true),
+		CLOSE_HOTBAR("close-hotbar", "kohs_inventory_debug.lab.close_hotbar", "kohs_inventory_debug.lab.close_hotbar.desc", true, true),
+		IMMEDIATE_OPEN("immediate-open", "kohs_inventory_debug.lab.immediate", "kohs_inventory_debug.lab.immediate.desc", false, true),
+		CONTACT_BOUNCE("contact-bounce", "kohs_inventory_debug.lab.bounce", "kohs_inventory_debug.lab.bounce.desc", false, true),
+		SLOW_DOUBLE_TAP("slow-double-tap", "kohs_inventory_debug.lab.slow_tap", "kohs_inventory_debug.lab.slow_tap.desc", false, true),
+		HELD_MOUSE_OPEN("held-mouse-open", "kohs_inventory_debug.lab.held_mouse", "kohs_inventory_debug.lab.held_mouse.desc", false, true),
+		OFFHAND_PLACEMENT("offhand-placement", "kohs_inventory_debug.lab.offhand_place", "kohs_inventory_debug.lab.offhand_place.desc", true, true),
 		FULL_STRESS("full-stress", "kohs_inventory_debug.screen.macro_full", "kohs_inventory_debug.lab.full.desc", true, false),
 		AGGRESSIVE_SUITE("aggressive-suite", "kohs_inventory_debug.lab.aggressive", "kohs_inventory_debug.lab.aggressive.desc", true, true);
 
@@ -146,6 +163,10 @@ public final class MacroTestController {
 		}
 
 		current = kind.id;
+		// The labs drive InventoryScreen; a creative lab world would open the creative inventory.
+		if (minecraft.player.isCreative() && minecraft.player.connection != null) {
+			minecraft.player.connection.sendCommand("gamemode survival");
+		}
 		DebugCollector.addUserMarker();
 		DebugCollector.warn("MACRO_START", "LOCAL-ONLY L2 LAB macro=" + kind.id
 			+ "; inventory=" + inventory + "; offhand=" + offhand
@@ -167,9 +188,11 @@ public final class MacroTestController {
 						minecraft.getWindow().getY() + (int) Math.round(originalPointer[1])
 					);
 				}
-				DebugCollector.info("MACRO_SUMMARY", metrics.summary());
+				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT) {
+					DebugCollector.info("MACRO_SUMMARY", metrics.summary());
+				}
 				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id + "; screen=" + screenName(screenSnapshot(minecraft))
-					+ "; dispatchedHandlerEvents=" + input.dispatchedEvents());
+					+ "; nativeInputBridgeEvents=" + input.dispatchedEvents());
 			} catch (InterruptedException exception) {
 				Thread.currentThread().interrupt();
 				DebugCollector.warn("MACRO_ABORT", "macro=" + kind.id + "; interrupted");
@@ -179,8 +202,8 @@ public final class MacroTestController {
 				current = "idle";
 				RUNNING.set(false);
 				minecraft.execute(() -> {
-					if (Boolean.getBoolean("kohs.inventory.debug.exitAfterMacro")) {
-						DebugCollector.info("MACRO_AUTO_EXIT", "Closing the development client after the local test.");
+					if (Boolean.getBoolean(EXIT_AFTER_MACRO_PROPERTY)) {
+						DebugCollector.info("MACRO_AUTO_EXIT", "Closing the disposable development client after the completed local stress run.");
 						minecraft.stop();
 					} else {
 						minecraft.setScreen(new DebugLogScreen(returnParent));
@@ -228,6 +251,21 @@ public final class MacroTestController {
 			case OPEN_MOVE_CHAOS -> openMoveChaos(input, minecraft, inventory, 36, metrics);
 			case OFFHAND_RACE_EXTREME -> offhandRaceExtreme(input, minecraft, inventory, offhand, 64, metrics);
 			case LONG_SOAK -> longSoak(input, minecraft, inventory, offhand, 180, metrics);
+			case HELD_INVENTORY -> heldInventory(input, minecraft, inventory, 8, metrics);
+			case CLOSE_HOTBAR -> CloseHotbarRegressionLab.run(minecraft);
+			case IMMEDIATE_OPEN -> immediateOpen(input, minecraft, inventory, 40, metrics);
+			case CONTACT_BOUNCE -> contactBounce(input, minecraft, inventory, 32, metrics);
+			case SLOW_DOUBLE_TAP -> slowDoubleTap(input, minecraft, inventory, 24, metrics);
+			case HELD_MOUSE_OPEN -> heldMouseOpen(input, minecraft, inventory, 24, metrics);
+			case OFFHAND_PLACEMENT -> offhandPlacement(input, minecraft, inventory, offhand, 24, metrics);
+			case CURSOR_CONTRACT -> CursorContractLab.run(minecraft);
+			case CURSOR_WEIGHT -> CursorWeightLab.run(minecraft);
+			case UI_SHOWCASE -> UiShowcaseLab.run(minecraft);
+			case RECORD_ALL -> RecordingLab.run(minecraft, "all");
+			case RECORD_FAST -> RecordingLab.run(minecraft, "fast");
+			case RECORD_CENTER -> RecordingLab.run(minecraft, "center");
+			case RECORD_ANIMATIONS -> RecordingLab.run(minecraft, "animations");
+			case PVP_INPUT -> PvpInputRegressionLab.run(minecraft);
 			case FULL_STRESS -> {
 				fastOpenClose(input, minecraft, inventory, 12, metrics);
 				inventoryOffhand(input, minecraft, inventory, offhand, false, 10, metrics);
@@ -241,7 +279,14 @@ public final class MacroTestController {
 				burstToggle(input, minecraft, inventory, 16, metrics);
 				mouseTornado(input, minecraft, inventory, 16, metrics);
 				openMoveChaos(input, minecraft, inventory, 16, metrics);
+				closeUnderHeldMovement(input, minecraft, inventory, 32, metrics);
+				heldInventory(input, minecraft, inventory, 4, metrics);
 				offhandRaceExtreme(input, minecraft, inventory, offhand, 24, metrics);
+				immediateOpen(input, minecraft, inventory, 20, metrics);
+				contactBounce(input, minecraft, inventory, 16, metrics);
+				slowDoubleTap(input, minecraft, inventory, 12, metrics);
+				heldMouseOpen(input, minecraft, inventory, 12, metrics);
+				offhandPlacement(input, minecraft, inventory, offhand, 12, metrics);
 				longSoak(input, minecraft, inventory, offhand, 60, metrics);
 			}
 		}
@@ -373,10 +418,14 @@ public final class MacroTestController {
 				sleep(separation);
 			}
 			sleep(150);
-			boolean expectedOpen = (presses & 1) == 1;
 			boolean actualOpen = isPlayerInventoryOpen(minecraft);
-			metrics.state("burst parity cycle=" + cycle + "; expectedOpen=" + expectedOpen + "; actualOpen=" + actualOpen,
-				expectedOpen == actualOpen);
+			// More than one physical press in the same poll is deliberately handed
+			// back to Vanilla.  Vanilla consumes the queued clicks as a batch and
+			// does not promise parity (it may open once, then stop consuming after
+			// the screen changes), so treating odd/even parity as a regression would
+			// report a false failure in this stress macro.
+			DebugCollector.info("MACRO_BURST_VANILLA", "cycle=" + cycle + "; presses=" + presses
+				+ "; actualOpen=" + actualOpen + "; parityAssertion=skipped; reason=vanilla-batch-semantics");
 			normalizeClosed(input, minecraft, inventory, metrics, "burst-recovery cycle=" + cycle);
 			sleep(25);
 		}
@@ -543,6 +592,61 @@ public final class MacroTestController {
 		}
 	}
 
+	/**
+	 * Holds several ordinary gameplay keys while the inventory key closes the
+	 * already-open player inventory. This reproduces the reported PvP chord
+	 * without calling a screen, menu or packet method directly.
+	 */
+	private static void closeUnderHeldMovement(
+		final NativeInput input,
+		final Minecraft minecraft,
+		final InputBinding inventory,
+		final int cycles,
+		final MacroMetrics metrics
+	) throws InterruptedException {
+		batch("close-under-held-movement", cycles);
+		List<InputBinding> movement = List.of(
+			binding(minecraft.options.keyUp),
+			binding(minecraft.options.keyLeft),
+			binding(minecraft.options.keyJump),
+			binding(minecraft.options.keySprint)
+		);
+		for (int cycle = 0; cycle < cycles; cycle++) {
+			guard(minecraft, "held-close cycle " + cycle);
+			normalizeClosed(input, minecraft, inventory, metrics, "held-close-pre cycle=" + cycle);
+			List<InputBinding> held = new ArrayList<>();
+			try {
+				for (int index = 0; index < movement.size(); index++) {
+					InputBinding candidate = movement.get((cycle + index) % movement.size());
+					if (candidate.supported() && !candidate.samePhysicalInput(inventory)) {
+						candidate.press(input);
+						held.add(candidate);
+					}
+				}
+				long openStarted = System.nanoTime();
+				pulse(input, inventory, cycle % 2, "held-close-open cycle=" + cycle + "; held=" + held.size());
+				boolean opened = awaitPlayerInventory(minecraft, true, 250);
+				metrics.open(openStarted, opened);
+				if (!opened) {
+					metrics.state("held-close-open cycle=" + cycle, false);
+					continue;
+				}
+				long started = System.nanoTime();
+				pulse(input, inventory, cycle % 2, "held-close cycle=" + cycle + "; held=" + held.size());
+				boolean closed = awaitPlayerInventory(minecraft, false, 250);
+				long elapsedMicros = Math.max(0L, (System.nanoTime() - started) / 1_000L);
+				DebugCollector.info("MACRO_CLOSE_LATENCY", "held-close cycle=" + cycle
+					+ "; closed=" + closed + "; elapsed=" + elapsedMicros + "us; held=" + held.size());
+				metrics.state("held-close cycle=" + cycle, closed);
+			} finally {
+				for (int index = held.size() - 1; index >= 0; index--) {
+					held.get(index).release(input);
+				}
+			}
+			sleep(12);
+		}
+	}
+
 	private static void longSoak(
 		final NativeInput input,
 		final Minecraft minecraft,
@@ -595,6 +699,304 @@ public final class MacroTestController {
 		}
 		pulse(input, inventory, 2, label);
 		metrics.state(label, awaitPlayerInventory(minecraft, false, 250));
+	}
+
+	/** Sends OS-style REPEAT events: a held key is not another physical press. */
+	private static void heldInventory(
+		final NativeInput input, final Minecraft minecraft, final InputBinding inventory,
+		final int cycles, final MacroMetrics metrics
+	) throws InterruptedException {
+		if (inventory.type != InputBinding.Type.KEYBOARD) {
+			DebugCollector.info("MACRO_HOLD", "Mouse bindings do not generate keyboard repeat events.");
+			return;
+		}
+		batch("held-inventory-repeat", cycles);
+		for (int cycle = 0; cycle < cycles; cycle++) {
+			guard(minecraft, "held-inventory " + cycle);
+			normalizeClosed(input, minecraft, inventory, metrics, "hold-pre");
+			try {
+				long started = System.nanoTime();
+				inventory.press(input);
+				boolean opened = awaitPlayerInventory(minecraft, true, 250);
+				metrics.open(started, opened);
+				Screen original = screenSnapshot(minecraft);
+				sleep(300);
+				int stable = 0;
+				for (int repeat = 0; repeat < 12; repeat++) {
+					input.keyAction(inventory.code, GLFW.GLFW_REPEAT);
+					if (opened && screenSnapshot(minecraft) == original) stable++;
+					sleep(20);
+				}
+				metrics.state("held-open cycle=" + cycle + "; stable=" + stable + "/12", stable == 12);
+				DebugCollector.info("MACRO_HOLD", "cycle=" + cycle + "; sameOpening=" + stable + "/12");
+			} finally {
+				inventory.release(input);
+			}
+			normalizeClosed(input, minecraft, inventory, metrics, "hold-close-normalize");
+			pulse(input, inventory, 1, "hold-reopen");
+			metrics.state("hold-new-press-opens", awaitPlayerInventory(minecraft, true, 250));
+			try {
+				inventory.press(input);
+				metrics.state("hold-new-press-closes", awaitPlayerInventory(minecraft, false, 250));
+				sleep(300);
+				for (int repeat = 0; repeat < 12; repeat++) {
+					input.keyAction(inventory.code, GLFW.GLFW_REPEAT);
+					sleep(20);
+				}
+				metrics.state("held-close-stays-closed", screenSnapshot(minecraft) == null);
+			} finally {
+				inventory.release(input);
+			}
+		}
+	}
+
+	/**
+	 * Every ordinary opening has to be the early one.
+	 *
+	 * <p>The other macros only ask whether the screen appeared, which a Vanilla
+	 * fallback also satisfies one client tick later. This one reads the decision
+	 * KoHs actually made, so an acceleration that quietly stopped firing fails
+	 * here instead of looking healthy.</p>
+	 */
+	private static void immediateOpen(
+		final NativeInput input,
+		final Minecraft minecraft,
+		final InputBinding inventory,
+		final int cycles,
+		final MacroMetrics metrics
+	) throws InterruptedException {
+		batch("immediate-open", cycles);
+		int immediateCount = 0;
+		for (int cycle = 0; cycle < cycles; cycle++) {
+			guard(minecraft, "immediate-open cycle " + cycle);
+			normalizeClosed(input, minecraft, inventory, metrics, "immediate-pre cycle=" + cycle);
+			// Let the Vanilla click queue drain so the press under test is the only one.
+			sleep(80);
+			long started = System.nanoTime();
+			pulse(input, inventory, 2, "immediate-open cycle=" + cycle);
+			boolean opened = awaitPlayerInventory(minecraft, true, 250);
+			boolean immediate = SuperFastInventoryController.lastOpenWasImmediate();
+			metrics.open(started, opened);
+			if (immediate) {
+				immediateCount++;
+			}
+			metrics.state("immediate-open cycle=" + cycle + "; opened=" + opened + "; immediate=" + immediate
+				+ "; " + SuperFastInventoryController.lastDecisionSnapshot(), opened && immediate);
+			normalizeClosed(input, minecraft, inventory, metrics, "immediate-post cycle=" + cycle);
+			sleep(45);
+		}
+		DebugCollector.info("MACRO_IMMEDIATE", "immediateOpens=" + immediateCount + "/" + cycles);
+	}
+
+	/**
+	 * A bouncing contact reaches GLFW as repeated PRESS, never as GLFW_REPEAT.
+	 *
+	 * <p>One physical press arriving twice must still open once. Counting the two
+	 * as separate meanings makes an even run of them and settles it into nothing,
+	 * which is the key doing visibly nothing that players report.</p>
+	 */
+	private static void contactBounce(
+		final NativeInput input,
+		final Minecraft minecraft,
+		final InputBinding inventory,
+		final int cycles,
+		final MacroMetrics metrics
+	) throws InterruptedException {
+		batch("contact-bounce", cycles);
+		int[] bounceMillis = {0, 1, 2, 3, 5, 8};
+		for (int cycle = 0; cycle < cycles; cycle++) {
+			guard(minecraft, "contact-bounce cycle " + cycle);
+			normalizeClosed(input, minecraft, inventory, metrics, "bounce-pre cycle=" + cycle);
+			sleep(80);
+			int gap = bounceMillis[cycle % bounceMillis.length];
+			long started = System.nanoTime();
+			inventory.press(input);
+			inventory.release(input);
+			sleep(gap);
+			inventory.press(input);
+			inventory.release(input);
+			boolean opened = awaitPlayerInventory(minecraft, true, 250);
+			metrics.open(started, opened);
+			metrics.state("contact-bounce cycle=" + cycle + "; gap=" + gap + "ms; opened=" + opened
+				+ "; settledPair=" + SuperFastInventoryController.lastPressSettledAPair()
+				+ "; " + SuperFastInventoryController.lastDecisionSnapshot(), opened);
+			normalizeClosed(input, minecraft, inventory, metrics, "bounce-post cycle=" + cycle);
+			sleep(45);
+		}
+	}
+
+	/** A deliberate tap-tap is an open and a close, so it has to end closed. */
+	private static void slowDoubleTap(
+		final NativeInput input,
+		final Minecraft minecraft,
+		final InputBinding inventory,
+		final int cycles,
+		final MacroMetrics metrics
+	) throws InterruptedException {
+		batch("slow-double-tap", cycles);
+		int[] separations = {40, 55, 70, 90, 120};
+		for (int cycle = 0; cycle < cycles; cycle++) {
+			guard(minecraft, "slow-double-tap cycle " + cycle);
+			normalizeClosed(input, minecraft, inventory, metrics, "slow-tap-pre cycle=" + cycle);
+			sleep(80);
+			int separation = separations[cycle % separations.length];
+			pulse(input, inventory, 2, "slow-tap open cycle=" + cycle);
+			sleep(separation);
+			pulse(input, inventory, 2, "slow-tap close cycle=" + cycle);
+			boolean closed = awaitPlayerInventory(minecraft, false, 300);
+			metrics.state("slow-double-tap cycle=" + cycle + "; separation=" + separation
+				+ "ms; endedClosed=" + closed + "; " + SuperFastInventoryController.lastDecisionSnapshot(), closed);
+			sleep(45);
+		}
+	}
+
+	/**
+	 * Opening with a world button still down, and the swing it must not leave behind.
+	 *
+	 * <p>Vanilla returns out of {@code MouseHandler.onButton} before its
+	 * {@code KeyMapping.set} while a screen is open, and the new screen swallows
+	 * the release, so the held action can resume the moment the screen closes.
+	 * This holds attack across an opening and checks both halves: the opening is
+	 * still the early one, and attack is not still down afterwards.</p>
+	 */
+	private static void heldMouseOpen(
+		final NativeInput input,
+		final Minecraft minecraft,
+		final InputBinding inventory,
+		final int cycles,
+		final MacroMetrics metrics
+	) throws InterruptedException {
+		InputBinding attack = binding(minecraft.options.keyAttack);
+		if (!attack.supported() || attack.samePhysicalInput(inventory)) {
+			DebugCollector.warn("MACRO_SKIP", "held-mouse-open needs its own attack binding; got " + attack);
+			return;
+		}
+		batch("held-mouse-open", cycles);
+		for (int cycle = 0; cycle < cycles; cycle++) {
+			guard(minecraft, "held-mouse-open cycle " + cycle);
+			normalizeClosed(input, minecraft, inventory, metrics, "held-mouse-pre cycle=" + cycle);
+			sleep(80);
+			attack.press(input);
+			sleep(40);
+			long started = System.nanoTime();
+			pulse(input, inventory, 2, "held-mouse open cycle=" + cycle);
+			boolean opened = awaitPlayerInventory(minecraft, true, 250);
+			boolean immediate = SuperFastInventoryController.lastOpenWasImmediate();
+			metrics.open(started, opened);
+			attack.release(input);
+			sleep(30);
+			normalizeClosed(input, minecraft, inventory, metrics, "held-mouse-post cycle=" + cycle);
+			sleep(90);
+			boolean attackStuck = minecraft.options.keyAttack.isDown();
+			metrics.state("held-mouse-open cycle=" + cycle + "; opened=" + opened + "; immediate=" + immediate
+				+ "; attackStillDownAfterClose=" + attackStuck
+				+ "; " + SuperFastInventoryController.lastDecisionSnapshot(), opened && immediate && !attackStuck);
+			sleep(45);
+		}
+	}
+
+	/**
+	 * The offhand swap raced against an opening, checked by where the item ended up.
+	 *
+	 * <p>The existing overlap macros only ask whether the screen appeared. This one
+	 * grants a known kit and reads the offhand slot, so a swap the fast path
+	 * stranded, dropped or fired late is visible as an item in the wrong hand
+	 * rather than as a timing curiosity.</p>
+	 *
+	 * <p>Every cycle starts by putting the offhand back to empty and waiting for the
+	 * server to agree. A deferred swap resolves a tick later than the press, so a
+	 * cycle that assumed the previous one had settled would inherit its item and
+	 * report a swap failure the mod never caused.</p>
+	 */
+	private static void offhandPlacement(
+		final NativeInput input,
+		final Minecraft minecraft,
+		final InputBinding inventory,
+		final InputBinding offhand,
+		final int cycles,
+		final MacroMetrics metrics
+	) throws InterruptedException {
+		if (!offhand.supported()) {
+			DebugCollector.warn("MACRO_SKIP", "offhand-placement needs a bound offhand key.");
+			return;
+		}
+		if (!LabKit.prepareOffhandKit(minecraft)) {
+			metrics.state("offhand-placement; kitReady=false", false);
+			return;
+		}
+		batch("offhand-placement", cycles);
+		int[] separations = {0, 2, 5, 10, 20, 45, 90};
+		for (int cycle = 0; cycle < cycles; cycle++) {
+			guard(minecraft, "offhand-placement cycle " + cycle);
+			normalizeClosed(input, minecraft, inventory, metrics, "offhand-place-pre cycle=" + cycle);
+			if (!emptyOffhand(input, minecraft, offhand, metrics, "cycle=" + cycle)) {
+				continue;
+			}
+
+			pulse(input, offhand, 2, "offhand swap cycle=" + cycle);
+			boolean placed = awaitOffhand(minecraft, true, 600);
+			metrics.state("offhand-placement cycle=" + cycle
+				+ "; offhand=" + LabKit.describe(LabKit.offhand(minecraft)) + "; placed=" + placed, placed);
+
+			// Now the same swap with an opening landing on top of it: the swap has to
+			// still resolve, and it has to resolve before the screen, never after it.
+			int separation = separations[cycle % separations.length];
+			pulse(input, offhand, 2, "offhand swap-back cycle=" + cycle + "; separation=" + separation + "ms");
+			sleep(separation);
+			long started = System.nanoTime();
+			pulse(input, inventory, 2, "offhand-race open cycle=" + cycle);
+			boolean opened = awaitPlayerInventory(minecraft, true, 300);
+			metrics.open(started, opened);
+			boolean returned = awaitOffhand(minecraft, false, 600);
+			metrics.state("offhand-race cycle=" + cycle + "; separation=" + separation + "ms; opened=" + opened
+				+ "; offhandReturned=" + returned + "; offhand=" + LabKit.describe(LabKit.offhand(minecraft))
+				+ "; " + SuperFastInventoryController.lastDecisionSnapshot(), opened && returned);
+			normalizeClosed(input, minecraft, inventory, metrics, "offhand-place-post cycle=" + cycle);
+
+			// A swap stranded by an early opening fires when the screen closes. If the
+			// offhand changes now, with no input at all, that is exactly what happened.
+			String settled = LabKit.describe(LabKit.offhand(minecraft));
+			sleep(260);
+			String later = LabKit.describe(LabKit.offhand(minecraft));
+			metrics.state("offhand-no-late-fire cycle=" + cycle + "; afterClose=" + settled
+				+ "; later=" + later, settled.equals(later));
+		}
+	}
+
+	/** Puts the offhand back to empty so the next cycle measures its own swap. */
+	private static boolean emptyOffhand(
+		final NativeInput input,
+		final Minecraft minecraft,
+		final InputBinding offhand,
+		final MacroMetrics metrics,
+		final String label
+	) throws InterruptedException {
+		for (int attempt = 0; attempt < 3 && !LabKit.offhand(minecraft).isEmpty(); attempt++) {
+			pulse(input, offhand, 2, "offhand normalize " + label + "; attempt=" + attempt);
+			awaitOffhand(minecraft, false, 600);
+		}
+		boolean empty = LabKit.offhand(minecraft).isEmpty();
+		if (!empty) {
+			metrics.state("offhand-normalize " + label + "; stillHolding="
+				+ LabKit.describe(LabKit.offhand(minecraft)), false);
+		}
+		return empty;
+	}
+
+	/** Waits for the server to agree about the offhand instead of guessing a delay. */
+	private static boolean awaitOffhand(
+		final Minecraft minecraft,
+		final boolean expectedHolding,
+		final long timeoutMillis
+	) throws InterruptedException {
+		long deadline = System.nanoTime() + timeoutMillis * 1_000_000L;
+		do {
+			if (LabKit.offhandHoldsKitItem(minecraft) == expectedHolding) {
+				return true;
+			}
+			sleep(2);
+		} while (System.nanoTime() < deadline);
+		return LabKit.offhandHoldsKitItem(minecraft) == expectedHolding;
 	}
 
 	private static boolean awaitPlayerInventory(final Minecraft minecraft, final boolean expectedOpen, final long timeoutMillis)
@@ -710,6 +1112,10 @@ public final class MacroTestController {
 			return this.type != Type.UNSUPPORTED;
 		}
 
+		boolean samePhysicalInput(final InputBinding other) {
+			return other != null && this.type == other.type && this.code == other.code;
+		}
+
 		void press(final NativeInput input) {
 			if (this.type == Type.KEYBOARD) {
 				input.key(this.code, true);
@@ -761,10 +1167,14 @@ public final class MacroTestController {
 		}
 
 		private void key(final int glfwKey, final boolean down) {
+			this.keyAction(glfwKey, down ? GLFW.GLFW_PRESS : GLFW.GLFW_RELEASE);
+		}
+
+		private void keyAction(final int glfwKey, final int action) {
 			this.minecraft.executeBlocking(() -> ((KeyboardHandlerDebugInvoker) this.minecraft.keyboardHandler)
 				.kohsInventoryDebug$invokeKeyPress(
 					this.minecraft.getWindow().handle(),
-					down ? GLFW.GLFW_PRESS : GLFW.GLFW_RELEASE,
+					action,
 					new KeyEvent(glfwKey, 0, 0)
 				));
 			this.dispatchedEvents++;

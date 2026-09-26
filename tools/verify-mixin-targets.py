@@ -353,9 +353,13 @@ def referenced_methods(source: str) -> list[str]:
     return names
 
 
-def verify(source_root: Path, jars: list[Path]) -> int:
+def verify(source_root: Path, jars: list[Path], mixin_dir: Path | None = None) -> int:
     index = JarIndex(jars)
-    mixin_dir = source_root / "src/client/java/dev/zymekoh/kohsinventorytweaks/mixin"
+    explicit = mixin_dir is not None
+    mixin_dir = mixin_dir or source_root / "src/client/java/dev/zymekoh/kohsinventorytweaks/mixin"
+    if not mixin_dir.is_dir() and explicit:
+        print(f"no mixin package at {mixin_dir}", file=sys.stderr)
+        return 2
     if not mixin_dir.is_dir():
         # An overlay tree carries only metadata and compiles another tree's client
         # sources, so the mixins to check are the ones its build script points at.
@@ -510,6 +514,18 @@ def main() -> int:
     parser.add_argument("--source-root", default=".", type=Path)
     parser.add_argument("--minecraft-jar", type=Path)
     parser.add_argument(
+        "--mixin-dir",
+        type=Path,
+        help="mixin package to check, relative to the source root (the debug companions keep theirs elsewhere)",
+    )
+    parser.add_argument(
+        "--extra-jar",
+        type=Path,
+        action="append",
+        default=[],
+        help="another jar to resolve targets in, such as the KoHs build a companion instruments",
+    )
+    parser.add_argument(
         "--minecraft-version",
         help="verify against this Minecraft version instead of the tree's default",
     )
@@ -522,6 +538,11 @@ def main() -> int:
         else default_jars(source_root, arguments.minecraft_version)
     )
     jars = [jar for jar in jars if jar.is_file()]
+    extra = [jar.resolve() for jar in arguments.extra_jar]
+    missing = [jar for jar in extra if not jar.is_file()]
+    if missing:
+        print(f"extra jar not found: {missing[0]}", file=sys.stderr)
+        return 2
     if not jars:
         print("No named Minecraft jar found in the Loom cache.", file=sys.stderr)
         print("Run a Gradle build for this tree first.", file=sys.stderr)
@@ -530,8 +551,11 @@ def main() -> int:
     print(f"source : {source_root}")
     for jar in jars:
         print(f"client : {jar}")
+    for jar in extra:
+        print(f"extra  : {jar}")
     print()
-    return verify(source_root, jars)
+    mixin_dir = source_root / arguments.mixin_dir if arguments.mixin_dir else None
+    return verify(source_root, jars + extra, mixin_dir)
 
 
 if __name__ == "__main__":

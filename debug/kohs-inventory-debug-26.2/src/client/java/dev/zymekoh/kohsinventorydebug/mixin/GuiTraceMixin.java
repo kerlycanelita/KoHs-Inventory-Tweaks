@@ -21,5 +21,14 @@ abstract class GuiTraceMixin {
 	@Inject(method = "setScreen", at = @At("RETURN"))
 	private void kohsInventoryDebug$screenReturn(final @Nullable Screen screen, final CallbackInfo callbackInfo) {
 		DebugCollector.onSetScreen(Minecraft.getInstance(), screen, true);
+		if (screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen) {
+			dev.zymekoh.kohsinventorydebug.RecordingOverlay.opened();
+		}
+		if (screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen) {
+			dev.zymekoh.kohsinventorydebug.RecordingOverlay.opened();
+		}
+		if (screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen) {
+			dev.zymekoh.kohsinventorydebug.RecordingOverlay.opened();
+		}
 	}
 }

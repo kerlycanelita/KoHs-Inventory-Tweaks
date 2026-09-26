@@ -1,6 +1,8 @@
 package dev.zymekoh.kohsinventorydebug.mixin;
 
 import dev.zymekoh.kohsinventorydebug.DebugCollector;
+import dev.zymekoh.kohsinventorydebug.CursorContractLab;
+import dev.zymekoh.kohsinventorydebug.CursorWeightLab;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -43,21 +45,23 @@ abstract class KoHsCursorTraceMixin {
 	}
 
 	@Inject(method = "onScreenOpened", at = @At("HEAD"), remap = false)
-	private static void kohsInventoryDebug$initHead(
+	private static void kohsInventoryDebug$screenOpenedHead(
 		final Minecraft minecraft,
 		final Screen screen,
 		final CallbackInfo callbackInfo
 	) {
-		DebugCollector.onCursorContainerInit(minecraft, screen, false);
+		DebugCollector.onCursorScreenOpened(minecraft, screen, false);
 	}
 
 	@Inject(method = "onScreenOpened", at = @At("RETURN"), remap = false)
-	private static void kohsInventoryDebug$initReturn(
+	private static void kohsInventoryDebug$screenOpenedReturn(
 		final Minecraft minecraft,
 		final Screen screen,
 		final CallbackInfo callbackInfo
 	) {
-		DebugCollector.onCursorContainerInit(minecraft, screen, true);
+		DebugCollector.onCursorScreenOpened(minecraft, screen, true);
+		CursorContractLab.onOpened(minecraft, screen);
+		CursorWeightLab.onOpened(minecraft, screen);
 	}
 
 	@Inject(method = "warp", at = @At("HEAD"), remap = false)
@@ -67,6 +71,8 @@ abstract class KoHsCursorTraceMixin {
 		final CallbackInfo callbackInfo
 	) {
 		DebugCollector.onCursorWarp(minecraft, position, false);
+		CursorContractLab.onWarp();
+		CursorWeightLab.onWarp();
 	}
 
 	@Inject(method = "warp", at = @At("RETURN"), remap = false)

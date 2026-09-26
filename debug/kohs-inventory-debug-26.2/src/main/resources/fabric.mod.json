@@ -26,7 +26,7 @@
     "fabricloader": ">=0.19.3",
     "minecraft": "${minecraft_version}",
     "java": ">=25",
-    "kohs_inventory_tweaks": "*"
+    "kohs_inventory_tweaks": ">=1.0.6"
   },
   "suggests": {
     "modmenu": "*"

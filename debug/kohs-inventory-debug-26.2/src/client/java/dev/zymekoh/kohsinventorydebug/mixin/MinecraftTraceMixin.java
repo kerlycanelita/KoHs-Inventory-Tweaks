@@ -18,6 +18,7 @@ abstract class MinecraftTraceMixin {
 	@Inject(method = "runTick", at = @At("RETURN"))
 	private void kohsInventoryDebug$frameEnd(final boolean advanceGameTime, final CallbackInfo callbackInfo) {
 		DebugCollector.onFrameEnd((Minecraft) (Object) this);
+		dev.zymekoh.kohsinventorydebug.FrameRecorder.onFrameEnd((Minecraft) (Object) this);
 	}
 
 	@Inject(method = "tick", at = @At("HEAD"))
@@ -28,5 +29,6 @@ abstract class MinecraftTraceMixin {
 	@Inject(method = "tick", at = @At("RETURN"))
 	private void kohsInventoryDebug$tickEnd(final CallbackInfo callbackInfo) {
 		DebugCollector.onTickEnd((Minecraft) (Object) this);
+		dev.zymekoh.kohsinventorydebug.RecordingLab.onTickEnd();
 	}
 }
