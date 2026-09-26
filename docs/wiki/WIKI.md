@@ -20,6 +20,7 @@ Since 26 September 2026 the mod supports Minecraft 1.21.11 and later. The 1.21.1
 - [GUI Scaler](#gui-scaler)
 - [Item Highlighter](#item-highlighter)
 - [Resource packs](#resource-packs)
+- [Player Visibility](#player-visibility)
 - [Saving and files](#saving-and-files)
 - [Troubleshooting](#troubleshooting)
 
@@ -79,23 +80,36 @@ Chest, Shulker Box, Ender Chest, and Barrel have independent switches. When one 
 
 ## Inventory Tweaks
 
+Each option shows only its name on the page; hover it to read what it does. Super Fast Inventory, Center Mouse Fix and Reduce inventory visual motion also play a short recording there, Vanilla on the left and KoHs on the right, made with the same input on both sides.
+
 ### Center Mouse Fix
 
-Center Mouse Fix supplies the custom or vanilla centered coordinates to `MouseHandler#releaseMouse` exactly once for each player-inventory opening. It performs no initialization-time refinement, rendered-frame verification, interpolation, or later corrective movement.
+Vanilla centres the pointer when the inventory opens, but GLFW can restore it to a stale position instead, for example after the window was resized while the mouse was captured. Center Mouse Fix checks the position once, right after Minecraft releases the mouse, and corrects it only when it is not where the opening asked for. A Cursor Landing position takes priority over the centre.
 
-It does not create a dragging effect, block later mouse movement, or affect chests, Ender Chests, barrels, or other containers. A separately configured Cursor Landing position remains a local visual placement and never changes an inventory action.
+That check is the only time it moves the pointer. Movement you make while the screen is opening, such as heading for a totem, is left to you, and it never recenters while you move. It does not affect chests, Ender Chests, barrels or other containers.
 
 ### Super Fast Inventory
 
-When enabled, a physical inventory-key press—or a mouse button remapped to Inventory—constructs the ordinary local `InventoryScreen` immediately instead of waiting for the next client tick. It consumes only the logical inventory click Vanilla just queued, preventing the next tick from opening a duplicate screen. If offhand, hotbar, attack, use, drop, or pick input is already queued in that tick, KoHs does not open early and lets Vanilla process the complete input batch. It does not queue offhand input, synthesize clicks, retry actions, reset cooldowns, or send packets directly. Server-controlled inventory openings always stay on Vanilla's tick and packet path.
+When enabled, a physical inventory-key press, or a mouse button remapped to Inventory, opens the ordinary local `InventoryScreen` immediately instead of waiting for the next client tick (up to 50 ms). It consumes only the inventory click Vanilla just queued, so the next tick does not open a second screen.
 
-This changes local opening and possible follow-up input timing by up to one client tick. Packet types, payloads, ordering, slot validation, and action handlers remain Vanilla, but a server can observe the naturally earlier timing of a click the player performs after the early screen appears.
+It still waits for the tick when opening early would change what Vanilla does:
 
-### Remove absolutely all inventory animations
+- a key Vanilla handles before the inventory is pending: hotbar slots, perspective, smooth camera, social interactions and hotbar save/load (on 26.1 and later also the HUD toggle, and on 26.2 chat, commands and advancements);
+- an attack or item use is pending, because Vanilla still runs them after the opening;
+- an item is in use (shield, bow, food) or a block is being broken, which the tick-time opening ends;
+- the window is not active, or several inventory presses are queued.
 
-This optional setting disables inventory-side animation work for players who prefer the most static possible interface. When enabled, animated custom backgrounds use a single static frame and enchanted item foil is suppressed while inventory slots are drawn.
+A pending offhand swap, drop or pick-block click does not make it wait: Vanilla discards those itself when the inventory opens in that tick. The line under the option names the reason whenever an opening waited.
 
-The option does not alter server logic, item ownership, or container transactions. Its anti-ghosting safeguards only reconcile client-side visual state with the latest vanilla slot state. Enchantment rendering outside inventory slots, including the HUD hotbar, held items, entities, and the world, remains vanilla.
+Server-controlled openings stay on Vanilla's tick and packet path. Packet types, payloads, ordering, slot validation and action handlers are Vanilla's; a server can only observe the earlier timing of a click made after the screen appears.
+
+**Fast open while holding mouse** (on by default) keeps early opening available while a mouse button is held. **One toggle per key press** stops a held inventory key from opening and closing the screen repeatedly; recipe search keeps normal typing.
+
+### Reduce inventory visual motion
+
+Reduces cosmetic motion: recipe-button bounce, item return motion, enchanting-book motion and custom background animation, which shows a static frame. Progress indicators, recipe choices and enchanted-item glint stay Vanilla's; Minecraft's accessibility settings already control glint speed and strength. It also turns off the Player Visibility pulse.
+
+Versions before 1.0.12 called this option **Remove absolutely all inventory animations**; the saved setting carries over. It does not alter server logic, item ownership or container transactions.
 
 ## Customization
 
@@ -226,9 +240,15 @@ After resource packs are reloaded, composed textures are invalidated and generat
 
 ## Player Visibility
 
-Open **Customization**, scroll to **Player Visibility**, and select **Configure**. It provides palette-based model highlighting, local light intensity, distance, and an optional pulse. Its preview extracts the current player's active skin and equipment into an animated walking render without modifying the live entity.
+Open **Customization**, scroll to **Player Visibility**, and select **Configure**. It makes normally visible players easier to pick out while your inventory is open:
 
-The effect runs only while the player inventory is open and only outside its panel. Blocks still occlude players and it never uses a through-wall outline. Dependent settings remain hidden while Player Visibility is disabled; **Visible-player depth intensity** appears only after Player Visibility is enabled.
+- **Player tint** blends the chosen color into visible player models, with its own intensity and distance.
+- **Silhouette glow** draws a soft glowing rim around each visible player's silhouette, with its own strength.
+- **Soft player pulse** adds a slow pulse to both; Reduce inventory visual motion turns it off.
+
+The page shows a live world view beside the inventory preview. The preview uses your current skin and equipment on a walking render without modifying the live entity.
+
+The effect runs only while the player inventory is open and only outside its panel. The tint and the glow both use the ordinary depth test: blocks hide them exactly like the body, and Minecraft's through-wall glowing outline is never used. Nothing is sent to the server. Dependent settings remain hidden while Player Visibility is disabled; **Visible-player depth intensity** appears only after Player Visibility is enabled.
 
 Profiles, Smart Highlighter, and the general Advanced Tools catalogue are not part of the current interface. Item Highlighter applies only explicit per-item rules selected by the user.
 

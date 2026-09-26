@@ -59,7 +59,7 @@
   "screen.kohs_inventory_tweaks.customization.description": "Cambia colores, transparencia y fondos animados del inventario.",
   "screen.kohs_inventory_tweaks.customization.right": "Configuración",
   "screen.kohs_inventory_tweaks.customization.preview": "Vista: %s",
-  "screen.kohs_inventory_tweaks.customization.preview.tooltip": "Haz clic para recorrer todas las superficies de inventario de Vanilla 26.1.2.",
+  "screen.kohs_inventory_tweaks.customization.preview.tooltip": "Haz clic para recorrer todas las superficies de inventario de Vanilla.",
   "screen.kohs_inventory_tweaks.customization.preview.previous": "Muestra la preview del contenedor anterior.",
   "screen.kohs_inventory_tweaks.customization.preview.next": "Muestra la siguiente preview de contenedor.",
   "screen.kohs_inventory_tweaks.customization.affects_all": "Todos los contenedores compatibles",

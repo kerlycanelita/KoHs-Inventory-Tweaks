@@ -59,7 +59,7 @@
   "screen.kohs_inventory_tweaks.customization.description": "Change inventory colors, transparency, and animated backgrounds.",
   "screen.kohs_inventory_tweaks.customization.right": "Settings",
   "screen.kohs_inventory_tweaks.customization.preview": "Preview: %s",
-  "screen.kohs_inventory_tweaks.customization.preview.tooltip": "Click to cycle through every Vanilla 26.1.2 inventory surface.",
+  "screen.kohs_inventory_tweaks.customization.preview.tooltip": "Click to cycle through every Vanilla inventory surface.",
   "screen.kohs_inventory_tweaks.customization.preview.previous": "Show the previous container preview.",
   "screen.kohs_inventory_tweaks.customization.preview.next": "Show the next container preview.",
   "screen.kohs_inventory_tweaks.customization.affects_all": "All supported containers",

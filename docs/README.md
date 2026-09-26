@@ -19,7 +19,7 @@
 | Setting | Value |
 | --- | --- |
 | Minecraft | `26.1.2` |
-| Mod version | `1.0.12+mc26.1.2` |
+| Mod version | `1.0.13+mc26.1.2` |
 | Loader | Fabric `0.19.3` |
 | Loom | `1.17-SNAPSHOT` |
 | JDK | 25 |

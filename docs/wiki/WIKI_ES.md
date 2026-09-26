@@ -20,6 +20,7 @@ Desde el 26 de septiembre de 2026 el mod da soporte a Minecraft 1.21.11 y poster
 - [GUI Scaler](#gui-scaler)
 - [Item Highlighter](#item-highlighter)
 - [Resource packs](#resource-packs)
+- [Visibilidad de jugadores](#visibilidad-de-jugadores)
 - [Guardado y archivos](#guardado-y-archivos)
 - [Solución de problemas](#solución-de-problemas)
 
@@ -79,23 +80,36 @@ Chest, Shulker Box, Ender Chest y Barrel tienen interruptores independientes. Si
 
 ## Inventory Tweaks
 
+Cada opción muestra solo su nombre en la página; pasa el cursor por encima para leer qué hace. Inventario superrápido, Center Mouse Fix y Reducir el movimiento visual del inventario muestran además una grabación corta, Vanilla a la izquierda y KoHs a la derecha, hecha con la misma entrada en ambos lados.
+
 ### Center Mouse Fix
 
-Center Mouse Fix entrega a `MouseHandler#releaseMouse` la posición personalizada o centrada Vanilla exactamente una vez por cada apertura del inventario del jugador. No refina la posición durante la inicialización, no verifica frames renderizados ni aplica interpolación o correcciones posteriores.
+Vanilla centra el puntero al abrir el inventario, pero GLFW puede devolverlo a una posición vieja, por ejemplo después de cambiar el tamaño de la ventana con el mouse capturado. Center Mouse Fix comprueba la posición una sola vez, justo después de que Minecraft libera el mouse, y la corrige solo si no está donde la apertura la pidió. Una posición de Cursor Landing tiene prioridad sobre el centro.
 
-No genera efecto de arrastre, no bloquea los movimientos posteriores del jugador y no afecta cofres, Ender Chests, barriles ni otros contenedores. Una posición configurada aparte en Cursor Landing sigue siendo solamente una colocación visual local y nunca cambia una acción del inventario.
+Esa comprobación es la única vez que mueve el puntero. El movimiento que hagas mientras se abre la pantalla, como ir hacia un tótem, queda en tus manos, y nunca recentra mientras te mueves. No afecta cofres, Ender Chests, barriles ni otros contenedores.
 
 ### Inventario superrápido
 
-Al activarlo, la pulsación física de la tecla del inventario —o un botón del mouse reasignado— construye inmediatamente el `InventoryScreen` local en lugar de esperar al siguiente tick del cliente. Consume únicamente el clic lógico de inventario que Vanilla acaba de encolar para impedir una apertura duplicada. Si offhand, hotbar, ataque, uso, soltar o recoger ya están encolados en ese tick, KoHs no adelanta la apertura y deja que Vanilla procese el lote completo. No encola offhand, no inventa clics, no reintenta acciones, no reinicia cooldowns ni envía paquetes directamente. Los inventarios controlados por el servidor siempre conservan su ruta Vanilla.
+Al activarlo, la pulsación física de la tecla del inventario, o un botón del mouse reasignado, abre inmediatamente el `InventoryScreen` local en lugar de esperar al siguiente tick del cliente (hasta 50 ms). Consume solo el clic de inventario que Vanilla acaba de encolar, así el siguiente tick no abre una segunda pantalla.
 
-Esto adelanta la apertura local y una posible interacción posterior hasta un tick. Los tipos, contenido y orden de paquetes, la validación de slots y los manejadores siguen siendo Vanilla, aunque el servidor puede observar el tiempo naturalmente anterior de un clic hecho después de que aparezca la pantalla adelantada.
+Sigue esperando al tick cuando abrir antes cambiaría lo que hace Vanilla:
 
-### Eliminar absolutamente todas las animaciones del inventario
+- hay pendiente una tecla que Vanilla atiende antes del inventario: slots de la hotbar, perspectiva, cámara suave, interacciones sociales y guardar/cargar hotbar (desde 26.1 también ocultar el HUD, y en 26.2 chat, comandos y logros);
+- hay un ataque o un uso de objeto pendiente, porque Vanilla los sigue ejecutando después de abrir;
+- hay un objeto en uso (escudo, arco, comida) o se está rompiendo un bloque, cosas que la apertura del tick termina;
+- la ventana no está activa, o hay varias pulsaciones de inventario en cola.
 
-Esta opción utiliza un frame estático para fondos animados, elimina animaciones visuales propias del inventario y suprime el brillo animado de objetos encantados mientras se dibujan los slots.
+Un cambio a la mano secundaria, soltar o elegir bloque pendientes no la hacen esperar: Vanilla los descarta por sí mismo cuando el inventario se abre en ese tick. La línea bajo la opción indica el motivo cada vez que una apertura esperó.
 
-No modifica la lógica del servidor, la propiedad de objetos ni las transacciones. La hotbar del HUD, los objetos sostenidos, las entidades y el mundo conservan su render Vanilla.
+Los inventarios controlados por el servidor conservan su ruta Vanilla. Los tipos, contenido y orden de paquetes, la validación de slots y los manejadores siguen siendo Vanilla; el servidor solo puede observar el tiempo anterior de un clic hecho después de que aparezca la pantalla.
+
+**Apertura rápida con el mouse presionado** (activada por defecto) mantiene la apertura anticipada con un botón del mouse presionado. **Un cambio por pulsación** evita que mantener la tecla del inventario lo abra y cierre una y otra vez; la búsqueda de recetas escribe con normalidad.
+
+### Reducir el movimiento visual del inventario
+
+Reduce el movimiento cosmético: el rebote de los botones de recetas, el regreso de objetos, el movimiento del libro de encantamientos y la animación de fondos personalizados, que muestran un frame estático. Los indicadores de progreso, las opciones de recetas y el brillo de objetos encantados siguen siendo Vanilla; las opciones de accesibilidad de Minecraft ya controlan su velocidad e intensidad. También apaga el pulso de Visibilidad de jugadores.
+
+Antes de 1.0.12 esta opción se llamaba **Eliminar absolutamente todas las animaciones del inventario**; el valor guardado se conserva. No modifica la lógica del servidor, la propiedad de objetos ni las transacciones.
 
 ## Customization
 
@@ -218,9 +232,15 @@ Después de recargar resource packs, las texturas compuestas se invalidan y se g
 
 ## Visibilidad de jugadores
 
-Abre **Customization**, baja hasta **Visibilidad de jugadores** y selecciona **Configurar**. Incluye resaltado del modelo mediante paleta, iluminación local, distancia y pulso opcional. Su preview extrae la skin y el equipo actuales del jugador y los muestra caminando sin modificar la entidad real.
+Abre **Customization**, baja hasta **Visibilidad de jugadores** y selecciona **Configurar**. Hace más fáciles de distinguir a los jugadores que ya se ven normalmente mientras tu inventario está abierto:
 
-El efecto se ejecuta únicamente mientras el inventario del jugador está abierto y siempre fuera de su panel. Los bloques siguen ocultando jugadores y nunca utiliza un contorno visible a través de paredes. Las opciones dependientes permanecen ocultas mientras Visibilidad de jugadores está desactivada; **Intensidad de profundidad del jugador** aparece solamente después de activarla.
+- **Tinte del jugador** mezcla el color elegido con los modelos de los jugadores visibles, con su propia intensidad y distancia.
+- **Brillo de silueta** dibuja un borde luminoso suave alrededor de la silueta de cada jugador visible, con su propia intensidad.
+- **Pulso suave** añade un pulso lento a ambos; Reducir el movimiento visual del inventario lo apaga.
+
+La página muestra una vista del mundo en vivo junto a la vista previa del inventario. La vista previa usa tu skin y tu equipo actuales en un render caminando sin modificar la entidad real.
+
+El efecto se ejecuta únicamente mientras el inventario del jugador está abierto y siempre fuera de su panel. El tinte y el brillo usan la prueba de profundidad normal: los bloques los ocultan igual que al cuerpo y nunca se usa el contorno de Minecraft visible a través de paredes. No se envía nada al servidor. Las opciones dependientes permanecen ocultas mientras Visibilidad de jugadores está desactivada; **Intensidad de profundidad del jugador** aparece solamente después de activarla.
 
 Perfiles, Resaltador inteligente y el catálogo general de Herramientas avanzadas ya no forman parte de la interfaz actual. Item Highlighter aplica solamente reglas explícitas elegidas por el usuario.
 
