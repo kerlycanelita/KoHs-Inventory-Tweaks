@@ -48,6 +48,7 @@ public final class MacroTestController {
 		OFFHAND_THEN_INVENTORY("offhand-then-inventory", "kohs_inventory_debug.screen.macro_off_inv", "kohs_inventory_debug.lab.off_inv.desc", true, false),
 		CENTERED_CURSOR("centered-cursor", "kohs_inventory_debug.screen.macro_center", "kohs_inventory_debug.lab.center.desc", false, false),
 		CURSOR_CONTRACT("cursor-contract", "kohs_inventory_debug.lab.cursor_contract", "kohs_inventory_debug.lab.cursor_contract.desc", false, true),
+		CURSOR_WEIGHT("cursor-weight", "kohs_inventory_debug.lab.cursor_weight", "kohs_inventory_debug.lab.cursor_weight.desc", false, true),
 		PVP_INPUT("pvp-input", "kohs_inventory_debug.lab.pvp_input", "kohs_inventory_debug.lab.pvp_input.desc", false, true),
 		LATENCY_SWEEP("latency-sweep", "kohs_inventory_debug.lab.latency", "kohs_inventory_debug.lab.latency.desc", false, true),
 		EXTREME_OPEN_CLOSE("extreme-open-close", "kohs_inventory_debug.lab.extreme", "kohs_inventory_debug.lab.extreme.desc", false, true),
@@ -178,7 +179,7 @@ public final class MacroTestController {
 						minecraft.getWindow().getY() + (int) Math.round(originalPointer[1])
 					);
 				}
-				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.PVP_INPUT) {
+				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.PVP_INPUT) {
 					DebugCollector.info("MACRO_SUMMARY", metrics.summary());
 				}
 				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id + "; screen=" + screenName(screenSnapshot(minecraft))
@@ -249,6 +250,7 @@ public final class MacroTestController {
 			case HELD_MOUSE_OPEN -> heldMouseOpen(input, minecraft, inventory, 24, metrics);
 			case OFFHAND_PLACEMENT -> offhandPlacement(input, minecraft, inventory, offhand, 24, metrics);
 			case CURSOR_CONTRACT -> CursorContractLab.run(minecraft);
+			case CURSOR_WEIGHT -> CursorWeightLab.run(minecraft);
 			case PVP_INPUT -> PvpInputRegressionLab.run(minecraft);
 			case FULL_STRESS -> {
 				fastOpenClose(input, minecraft, inventory, 12, metrics);

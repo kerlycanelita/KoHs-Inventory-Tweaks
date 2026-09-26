@@ -9,11 +9,13 @@
   Fix on. The check now runs inside `releaseMouse`, right after GLFW leaves
   disabled-cursor mode, where it still catches a pointer GLFW restored to a stale
   centre. A pointer that has moved since the release is left to the player.
-- Super Fast Inventory no longer waits for the client tick because an attack,
-  use, offhand, drop or pick-block click is pending. `handleKeybinds` drains
-  those after the inventory, and the opening it has just made zeroes their
-  clicks, so Vanilla dropped them whether the inventory waited or not: waiting
-  only made it up to 50 ms late, most often in a fight.
+- Super Fast Inventory no longer waits for the client tick because an offhand,
+  drop or pick-block click is pending. `handleKeybinds` drains those after the
+  inventory, and the opening it has just made zeroes their clicks, so Vanilla
+  dropped them whether the inventory waited or not: waiting only made it up to
+  50 ms late. A pending attack or use still waits: those are toggle mappings,
+  which keep their clicks through the opening, so Vanilla still runs them in
+  that tick and an early opening would strand them until the screen closed.
 - A held mouse button no longer sends every opening to the tick on 26.2, 26.1.1,
   26.1 and 1.21.11. Only an item in use or a block being broken still wait: the
   tick-time opening ends both, and an early one would leave a shield raised, a

@@ -14,6 +14,7 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.ToggleKeyMapping;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.KeyEvent;
@@ -456,12 +457,18 @@ public final class SuperFastInventoryController {
 	 * the same client tick.
 	 *
 	 * <p>{@code handleKeybinds} reaches these only after {@code keyInventory}, and the
-	 * {@code setScreen} it has just made runs {@code KeyMapping.releaseAll}, whose
-	 * {@code release} zeroes every click count. A queued attack, use, offhand swap or
-	 * drop therefore never survives a tick-time opening either: waiting for the tick on
-	 * its account only made the inventory late, and the action was lost anyway.</p>
+	 * {@code setScreen} it has just made runs {@code KeyMapping.releaseAll}. A plain
+	 * mapping's {@code release} zeroes its click count, so a queued offhand swap, drop
+	 * or pick never survived a tick-time opening either: waiting for the tick on its
+	 * account only made the inventory late. A {@code ToggleKeyMapping} -- attack, use,
+	 * sneak and sprint -- only resets its toggle there and keeps its clicks, so Vanilla
+	 * still runs a pending attack or use after opening; an early opening would strand
+	 * it until the screen closed, and those still wait.</p>
 	 */
 	private static boolean droppedByVanillaOpening(final Minecraft minecraft, final KeyMapping mapping) {
+		if (mapping instanceof ToggleKeyMapping) {
+			return false;
+		}
 		var options = minecraft.options;
 		return mapping == options.keyAdvancements || mapping == options.keyQuickActions
 			|| mapping == options.keySwapOffhand || mapping == options.keyDrop

@@ -59,5 +59,7 @@
   "kohs_inventory_debug.lab.held_mouse": "Open with a button held",
   "kohs_inventory_debug.lab.held_mouse.desc": "Holds attack across an opening and requires both the early open and no swing still running once the screen closes.",
   "kohs_inventory_debug.lab.offhand_place": "Offhand placement",
-  "kohs_inventory_debug.lab.offhand_place.desc": "Grants a known kit and races the offhand swap against an opening, checking the slot the item ended in and that nothing fires late."
+  "kohs_inventory_debug.lab.offhand_place.desc": "Grants a known kit and races the offhand swap against an opening, checking the slot the item ended in and that nothing fires late.",
+  "kohs_inventory_debug.lab.cursor_weight": "Cursor weight",
+  "kohs_inventory_debug.lab.cursor_weight.desc": "Moves the real pointer while the inventory initializes and checks that the opening keeps the movement. Also resizes the window while the mouse is captured to show what Center Mouse Fix corrects."
 }

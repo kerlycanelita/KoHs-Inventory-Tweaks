@@ -8,6 +8,7 @@
     "ClientCommonPacketListenerTraceMixin",
     "ClientPacketListenerTraceMixin",
     "ConfigStoreTraceMixin",
+    "InventoryScreenInitProbeMixin",
     "KeyMappingDebugAccessor",
     "KeyMappingTraceMixin",
     "KeyboardHandlerDebugInvoker",

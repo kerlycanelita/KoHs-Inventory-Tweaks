@@ -2,6 +2,7 @@ package dev.zymekoh.kohsinventorydebug.mixin;
 
 import dev.zymekoh.kohsinventorydebug.DebugCollector;
 import dev.zymekoh.kohsinventorydebug.CursorContractLab;
+import dev.zymekoh.kohsinventorydebug.CursorWeightLab;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -60,6 +61,7 @@ abstract class KoHsCursorTraceMixin {
 	) {
 		DebugCollector.onCursorScreenOpened(minecraft, screen, true);
 		CursorContractLab.onOpened(minecraft, screen);
+		CursorWeightLab.onOpened(minecraft, screen);
 	}
 
 	@Inject(method = "warp", at = @At("HEAD"), remap = false)
@@ -70,6 +72,7 @@ abstract class KoHsCursorTraceMixin {
 	) {
 		DebugCollector.onCursorWarp(minecraft, position, false);
 		CursorContractLab.onWarp();
+		CursorWeightLab.onWarp();
 	}
 
 	@Inject(method = "warp", at = @At("RETURN"), remap = false)

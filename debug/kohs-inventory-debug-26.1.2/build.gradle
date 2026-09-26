@@ -42,7 +42,8 @@ dependencies {
 	def inventoryTweaksProperties = new Properties()
 	file('../../gradle.properties').withInputStream { inventoryTweaksProperties.load(it) }
 	def inventoryTweaksJar = file("../../build/libs/kohs-inventory-tweaks-${inventoryTweaksProperties.mod_version}.jar")
-	clientRuntimeOnly files(inventoryTweaksJar)
+	// -PinventoryTweaksJar=<path> runs the labs against another build (A/B); they still compile against this tree.
+	clientRuntimeOnly files(project.hasProperty('inventoryTweaksJar') ? file(project.property('inventoryTweaksJar')) : inventoryTweaksJar)
 	clientCompileOnly files(inventoryTweaksJar)
 }
 
@@ -92,7 +93,7 @@ tasks.named('sourcesJar').configure {
 tasks.named('runClient').configure {
 	if (project.hasProperty('debugMacro')) {
 		jvmArgs "-Dkohs.inventory.debug.autorun=${project.property('debugMacro')}"
-		if (project.property('debugMacro') in ['cursor-contract', 'pvp-input']) {
+		if (project.property('debugMacro') in ['cursor-contract', 'cursor-weight', 'pvp-input']) {
 			args '--width', '1440', '--height', '1000'
 		}
 	}

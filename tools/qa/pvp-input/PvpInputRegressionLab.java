@@ -98,12 +98,21 @@ public final class PvpInputRegressionLab {
 				config.suppressInventoryKeyRepeats = true;
 				config.fastInventoryWhileMouseHeld = false;
 				for (int presses = 1; presses <= 6; presses++) {
+					// Longer than the quickest human double tap, so every press is a meaning.
+					java.util.concurrent.locks.LockSupport.parkNanos(30_000_000L);
 					for (int index = 0; index < presses; index++) tap(mc, inventory);
 					SuperFastInventoryController.afterInputPoll(mc);
 					check((mc.screen instanceof InventoryScreen) == (presses % 2 == 1), "fresh press parity " + presses);
 					check(((KeyMappingDebugAccessor) mc.options.keyInventory).kohsInventoryDebug$getClickCount() == 0, "owned queue drained " + presses);
 					close(mc);
 				}
+				// Contact bounce: two presses inside a batch shorter than a hand can tap twice.
+				SuperFastInventoryController.afterInputPoll(mc);
+				tap(mc, inventory);
+				tap(mc, inventory);
+				SuperFastInventoryController.afterInputPoll(mc);
+				check(mc.screen instanceof InventoryScreen, "contact bounce collapses to one press");
+				close(mc);
 				for (boolean fast : new boolean[]{false, true}) {
 					config.superFastInventory = fast;
 					mc.setScreen(new InventoryScreen(mc.player));
@@ -135,15 +144,27 @@ public final class PvpInputRegressionLab {
 					check(mc.player.inventoryMenu.getCarried().isEmpty(), "inherited release does not pick up items");
 					close(mc);
 				}
-				// handleKeybinds reaches keyAttack after keyInventory, and the opening it has just
-				// made zeroes every click count, so a tick-time opening drops a pending attack too.
+				// keyAttack is a ToggleKeyMapping: releaseAll resets its toggle but keeps its clicks,
+				// so Vanilla still attacks after a tick-time opening. That batch keeps waiting.
 				mouse(mc, 0, GLFW.GLFW_PRESS);
 				tap(mc, inventory);
 				SuperFastInventoryController.afterInputPoll(mc);
-				check(mc.screen instanceof InventoryScreen && SuperFastInventoryController.lastOpenWasImmediate(), "pending attack no longer delays the open");
-				check(((KeyMappingDebugAccessor) mc.options.keyAttack).kohsInventoryDebug$getClickCount() == 0, "attack dropped as the tick-time opening drops it");
-				check(((KeyMappingDebugAccessor) mc.options.keyInventory).kohsInventoryDebug$getClickCount() == 0, "inventory click consumed");
+				check(mc.screen == null && SuperFastInventoryController.lastOpenHadInputConflict(), "pending attack retains Vanilla ownership");
+				check(((KeyMappingDebugAccessor) mc.options.keyAttack).kohsInventoryDebug$getClickCount() == 1, "attack queue preserved");
+				check(((KeyMappingDebugAccessor) mc.options.keyInventory).kohsInventoryDebug$getClickCount() == 1, "inventory fallback queue preserved");
+				while (mc.options.keyAttack.consumeClick()) { }
+				while (mc.options.keyInventory.consumeClick()) { }
 				mouse(mc, 0, GLFW.GLFW_RELEASE);
+				close(mc);
+				// keyDrop is plain: the tick-time opening zeroes its click, so Vanilla never drops
+				// on that tick either and the press no longer holds the opening back.
+				java.util.concurrent.locks.LockSupport.parkNanos(30_000_000L);
+				tap(mc, binding(mc.options.keyDrop));
+				tap(mc, inventory);
+				SuperFastInventoryController.afterInputPoll(mc);
+				check(mc.screen instanceof InventoryScreen && SuperFastInventoryController.lastOpenWasImmediate(), "pending drop no longer delays the open");
+				check(((KeyMappingDebugAccessor) mc.options.keyDrop).kohsInventoryDebug$getClickCount() == 0, "drop click dropped as the tick-time opening drops it");
+				check(((KeyMappingDebugAccessor) mc.options.keyInventory).kohsInventoryDebug$getClickCount() == 0, "inventory click consumed");
 				close(mc);
 				// A hotbar key is drained before keyInventory, so an early opening would take a
 				// selection Vanilla still makes: that batch keeps waiting for the tick.
