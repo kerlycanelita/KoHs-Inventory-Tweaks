@@ -65,7 +65,7 @@ public final class UiShowcaseLab {
     private static void hoverFirstTweak(final Minecraft mc) throws Exception {
         mc.executeBlocking(() -> {
             double x = mc.getWindow().getScreenWidth() * 0.5;
-            double y = mc.getWindow().getScreenHeight() * 0.36;
+            double y = mc.getWindow().getScreenHeight() * 0.235;
             org.lwjgl.glfw.GLFW.glfwSetCursorPos(mc.getWindow().handle(), x, y);
         });
         Thread.sleep(700);

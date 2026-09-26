@@ -404,5 +404,8 @@
   "screen.kohs_inventory_tweaks.center_mouse_fix.warning.description": "Gives each opening a consistent starting position when Vanilla misses the center. It can override another mod's remembered cursor position during opening. KoHs custom landing positions still take priority.",
   "screen.kohs_inventory_tweaks.tweaks.cursor.automatic": "Precise slot shortcuts",
   "screen.kohs_inventory_tweaks.tweaks.cursor.automatic.description": "Always follows your cursor. Set a custom landing to change the starting position.",
-  "screen.kohs_inventory_tweaks.tweaks.inactive": "Inactive"
+  "screen.kohs_inventory_tweaks.tweaks.inactive": "Inactive",
+  "screen.kohs_inventory_tweaks.preview.vanilla": "Vanilla",
+  "screen.kohs_inventory_tweaks.preview.kohs": "KoHs",
+  "screen.kohs_inventory_tweaks.preview.latency": "Measured: Vanilla %s ms, KoHs %s ms"
 }

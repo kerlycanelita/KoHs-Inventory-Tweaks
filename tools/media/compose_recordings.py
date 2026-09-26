@@ -27,7 +27,7 @@ CLIPS = {
     # clip: (title, window start ms rel. to press, window end ms rel. to press, source step ms, playback fps)
     "fast": ("Super Fast Inventory", -250, 700, 1000 / 30, 12),   # 2.5x slow motion
     "center": ("Center Mouse Fix", -150, 2500, 1000 / 15, 15),
-    "animations": ("Remove inventory animations", 0, 2400, 1000 / 15, 15),
+    "animations": ("Reduce inventory motion", 0, 2400, 1000 / 15, 15),
 }
 PURPLE = (184, 107, 255)
 GREY = (140, 131, 152)
@@ -67,8 +67,8 @@ def overlay(canvas: Image.Image, x: int, y: int, t_ms: float, shown_ms: float, e
     draw.text((x + 8, y + 4), "E", font=big, fill=(26, 11, 42) if lit else (215, 196, 242))
     if t_ms < events_ms["press"]:
         return
-    if "open" in events_ms and shown_ms > events_ms["open"]:
-        text, color = f"opened after {round(events_ms['open'] - events_ms['press'])} ms", (156, 247, 180)
+    if "visible" in events_ms and shown_ms >= events_ms["visible"]:
+        text, color = f"visible after {round(events_ms['visible'] - events_ms['press'])} ms", (156, 247, 180)
     else:
         text, color = f"waiting {round(t_ms - events_ms['press'])} ms", (255, 210, 122)
     draw.rounded_rectangle((x + 32, y + 2, x + 40 + draw.textlength(text, font=small), y + 24), radius=4, fill=(16, 8, 24))
@@ -105,14 +105,21 @@ def compose(recordings: Path, clip: str) -> dict:
     on_frames, on_events = read_take(on_dir)
     off_zero = off_events.get("press", off_frames[0][1])
     on_zero = on_events.get("press", on_frames[0][1])
-    latency = {
-        "off": (off_events["open"] - off_events["press"]) // 1000 if "open" in off_events and "press" in off_events else None,
-        "on": (on_events["open"] - on_events["press"]) // 1000 if "open" in on_events and "press" in on_events else None,
-    }
+    def visible_after(frames_list, events):
+        if "open" not in events or "press" not in events:
+            return None
+        shown = next((when for _, when in frames_list if when > events["open"]), events["open"])
+        return (shown - events["press"]) // 1000
+    latency = {"off": visible_after(off_frames, off_events), "on": visible_after(on_frames, on_events)}
 
     page_width = 960
     label_height = 34
     caption_height = 28
+    # What a player sees is the first frame drawn after the opening, so that frame is
+    # where the timer stops.
+    for frames_list, events in ((off_frames, off_events), (on_frames, on_events)):
+        if "open" in events:
+            events["visible"] = next((when for _, when in frames_list if when > events["open"]), events["open"])
     off_ms = {k: (v - off_zero) / 1000 for k, v in off_events.items()}
     on_ms = {k: (v - on_zero) / 1000 for k, v in on_events.items()}
     big, small = font(18), font(13)

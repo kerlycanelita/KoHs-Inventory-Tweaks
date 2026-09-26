@@ -27,6 +27,16 @@ enum InventoryTweakOption {
 		this.category = category;
 	}
 
+	/** The recorded before/after strip shown in this option's hover, if it has one. */
+	String previewClip() {
+		return switch (this) {
+			case FAST -> "fast";
+			case CENTER -> "center";
+			case ANIMATIONS -> "animations";
+			case HELD_MOUSE, KEY_REPEAT -> null;
+		};
+	}
+
 	boolean enabled(final InventoryTweaksConfig config) {
 		return switch (this) {
 			case FAST -> config.superFastInventory;

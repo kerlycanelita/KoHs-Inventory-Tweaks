@@ -112,6 +112,18 @@ public final class RecordingLab {
         command(mc, "item replace entity @s inventory.13 with minecraft:enchanted_book");
         command(mc, "item replace entity @s inventory.14 with minecraft:nether_star");
         command(mc, "item replace entity @s inventory.22 with minecraft:experience_bottle 32");
+        command(mc, "item replace entity @s inventory.0 with minecraft:enchanted_book");
+        command(mc, "item replace entity @s inventory.2 with minecraft:enchanted_golden_apple 4");
+        command(mc, "item replace entity @s inventory.6 with minecraft:experience_bottle 16");
+        command(mc, "item replace entity @s inventory.8 with minecraft:nether_star");
+        command(mc, "item replace entity @s inventory.9 with minecraft:enchanted_book");
+        command(mc, "item replace entity @s inventory.11 with minecraft:enchanted_golden_apple 4");
+        command(mc, "item replace entity @s inventory.15 with minecraft:experience_bottle 16");
+        command(mc, "item replace entity @s inventory.17 with minecraft:nether_star");
+        command(mc, "item replace entity @s inventory.18 with minecraft:enchanted_book");
+        command(mc, "item replace entity @s inventory.20 with minecraft:enchanted_golden_apple 4");
+        command(mc, "item replace entity @s inventory.24 with minecraft:experience_bottle 16");
+        command(mc, "item replace entity @s inventory.26 with minecraft:nether_star");
         command(mc, "item replace entity @s weapon.offhand with minecraft:totem_of_undying");
         command(mc, "tp @s ~ ~ ~ 180 4");
         Thread.sleep(600);
@@ -236,8 +248,30 @@ public final class RecordingLab {
         }
     }
 
+    private static void mouse(final Minecraft mc, final int button, final int action, final int mods) {
+        ((dev.zymekoh.kohsinventorydebug.mixin.MouseHandlerDebugInvoker) mc.mouseHandler).kohsInventoryDebug$invokeButton(
+            mc.getWindow().handle(), new net.minecraft.client.input.MouseButtonInfo(button, mods), action);
+    }
+
+    private static void use(final Minecraft mc, final int action) {
+        var key = ((KeyMappingDebugAccessor) mc.options.keyUse).kohsInventoryDebug$getKey();
+        if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE) {
+            mouse(mc, key.getValue(), action, 0);
+        } else {
+            var event = new KeyEvent(key.getValue(), GLFW.glfwGetKeyScancode(key.getValue()), 0);
+            ((KeyboardHandlerDebugInvoker) mc.keyboardHandler).kohsInventoryDebug$invokeKeyPress(mc.getWindow().handle(), action, event);
+        }
+    }
+
+    /**
+     * The enchanting book is the clearest motion Reduce inventory motion removes on
+     * 26.1.2: Vanilla opens it and flips pages when an item goes in; with the option
+     * it stays still. Glint and progress are deliberately left to Vanilla there.
+     */
     private static void animations(final Minecraft mc) throws Exception {
-        mc.executeBlocking(() -> mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, true));
+        command(mc, "setblock ~ ~ ~-2 minecraft:enchanting_table");
+        command(mc, "tp @s ~ ~ ~ 180 38");
+        Thread.sleep(500);
         for (boolean on : new boolean[] {false, true}) {
             mc.executeBlocking(() -> {
                 var config = ConfigStore.get();
@@ -245,18 +279,46 @@ public final class RecordingLab {
                 config.superFastInventory = true;
             });
             await(mc, false);
-            CloseHotbarRegressionLab.atPoll(mc, () -> tapInventory(mc));
-            await(mc, true);
+            // Whatever Use is bound to, through the normal key or mouse handler.
+            CloseHotbarRegressionLab.atPoll(mc, () -> use(mc, GLFW.GLFW_PRESS));
+            Thread.sleep(80);
+            CloseHotbarRegressionLab.atPoll(mc, () -> use(mc, GLFW.GLFW_RELEASE));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            boolean[] open = {false};
+            while (!open[0] && System.nanoTime() < deadline) {
+                mc.executeBlocking(() -> open[0] = mc.screen instanceof net.minecraft.client.gui.screens.inventory.EnchantmentScreen);
+                Thread.sleep(5);
+            }
+            if (!open[0]) throw new IllegalStateException("Enchanting table did not open");
             Thread.sleep(400);
             quietHud(mc);
-            RecordingOverlay.begin(on ? "Remove inventory animations: ON" : "Vanilla animations", on ? PURPLE : GREY, false, "E");
+            RecordingOverlay.begin(on ? "Reduce inventory motion: ON" : "Vanilla animations", on ? PURPLE : GREY, false, "");
             FrameRecorder.start(takeDirectory(mc, "animations-" + (on ? "on" : "off")));
+            Thread.sleep(500);
+            // Shift-click the sword from the hotbar into the table, as a player would.
+            mc.executeBlocking(() -> {
+                if (!(mc.screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen)) return;
+                var access = (AbstractContainerScreenAccessor) screen;
+                for (Slot slot : screen.getMenu().slots) {
+                    if (slot.getItem().is(Items.DIAMOND_SWORD)) {
+                        double x = access.kohsInventoryTweaks$getLeftPos() + slot.x + 8;
+                        double y = access.kohsInventoryTweaks$getTopPos() + slot.y + 8;
+                        var event = new net.minecraft.client.input.MouseButtonEvent(x, y,
+                            new net.minecraft.client.input.MouseButtonInfo(0, GLFW.GLFW_MOD_SHIFT));
+                        screen.mouseClicked(event, false);
+                        screen.mouseReleased(event);
+                        return;
+                    }
+                }
+            });
             Thread.sleep(2600);
             DebugCollector.info("RECORDING_TAKE", "animations-" + (on ? "on" : "off") + "; frames=" + FrameRecorder.stop());
             RecordingOverlay.end();
             closeInventory(mc);
             Thread.sleep(300);
         }
+        command(mc, "setblock ~ ~ ~-2 minecraft:air");
+        command(mc, "tp @s ~ ~ ~ 180 4");
     }
 
     /** The first opening of a session loads classes; keep that out of every take. */

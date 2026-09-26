@@ -3,6 +3,6 @@
   "frameWidth": 258,
   "frameHeight": 112,
   "frameMillis": 134,
-  "latencyOffMillis": 4,
-  "latencyOnMillis": 3
+  "latencyOffMillis": 30,
+  "latencyOnMillis": 25
 }

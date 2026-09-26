@@ -348,7 +348,12 @@ public final class InventoryTweaksScreen extends Screen {
 		graphics.pose().popMatrix();
 
 		InventoryTweakOption hoveredTweak = this.modal == Modal.TWEAKS ? this.tweakCardAt(mouseX, mouseY) : null;
-		if (this.tweakHover.settled(hoveredTweak) && hoveredTweak != null) {
+		java.util.Optional<FeaturePreview.Strip> hoveredStrip = hoveredTweak == null || hoveredTweak.previewClip() == null
+			? java.util.Optional.empty()
+			: FeaturePreview.of(hoveredTweak.previewClip());
+		if (this.tweakHover.settled(hoveredTweak) && hoveredTweak != null && hoveredStrip.isPresent()) {
+			this.drawTweakPreviewPanel(graphics, hoveredTweak, hoveredStrip.get(), mouseX, mouseY);
+		} else if (this.tweakHover.settled(hoveredTweak) && hoveredTweak != null) {
 			List<FormattedCharSequence> lines = new java.util.ArrayList<>();
 			lines.add(Component.translatable(hoveredTweak.key).withStyle(net.minecraft.ChatFormatting.BOLD).getVisualOrderText());
 			lines.addAll(this.font.split(this.tweakDescription(hoveredTweak), Math.min(260, this.width / 2)));
@@ -1673,6 +1678,45 @@ public final class InventoryTweaksScreen extends Screen {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * The hover of an option with a recording: its description above the recorded
+	 * Vanilla/KoHs strip, and the measured times when the take has them.
+	 */
+	private void drawTweakPreviewPanel(
+		final GuiGraphicsExtractor graphics,
+		final InventoryTweakOption option,
+		final FeaturePreview.Strip strip,
+		final int mouseX,
+		final int mouseY
+	) {
+		int panelWidth = Math.min(292, this.width - 12);
+		int inner = panelWidth - 16;
+		List<FormattedCharSequence> lines = this.font.split(this.tweakDescription(option), inner);
+		int previewHeight = Math.round(strip.frameHeight() * inner / (float) strip.frameWidth());
+		int height = 8 + 10 + 3 + lines.size() * 10 + 6 + 11 + previewHeight + (strip.hasLatency() ? 13 : 0) + 7;
+		int x = mouseX + 14 + panelWidth <= this.width - 4 ? mouseX + 14 : mouseX - 14 - panelWidth;
+		x = Mth.clamp(x, 4, Math.max(4, this.width - panelWidth - 4));
+		int y = Mth.clamp(mouseY + 10, 4, Math.max(4, this.height - height - 4));
+		UiRender.panel(graphics, x, y, panelWidth, height, 8, UiTheme.GLASS, UiTheme.BORDER);
+		int cursorY = y + 8;
+		graphics.text(this.font, Component.translatable(option.key), x + 8, cursorY, UiTheme.ACCENT_BRIGHT, false);
+		cursorY += 13;
+		for (FormattedCharSequence line : lines) {
+			graphics.text(this.font, line, x + 8, cursorY, UiTheme.TEXT_MUTED, false);
+			cursorY += 10;
+		}
+		cursorY += 6;
+		int half = inner / 2;
+		graphics.text(this.font, Component.translatable("screen.kohs_inventory_tweaks.preview.vanilla"), x + 8, cursorY, UiTheme.TEXT_MUTED, false);
+		graphics.text(this.font, Component.translatable("screen.kohs_inventory_tweaks.preview.kohs"), x + 8 + half + 2, cursorY, UiTheme.ACCENT_BRIGHT, false);
+		cursorY += 11;
+		cursorY += FeaturePreview.draw(graphics, strip, x + 8, cursorY, inner);
+		if (strip.hasLatency()) {
+			graphics.text(this.font, Component.translatable("screen.kohs_inventory_tweaks.preview.latency",
+				strip.offMillis(), strip.onMillis()), x + 8, cursorY + 4, UiTheme.TEXT, false);
+		}
 	}
 
 	private Component tweakDescription(final InventoryTweakOption option) {

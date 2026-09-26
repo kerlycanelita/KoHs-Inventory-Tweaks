@@ -404,5 +404,8 @@
   "screen.kohs_inventory_tweaks.center_mouse_fix.warning.description": "Da un punto de inicio consistente cuando Vanilla no centra el mouse. Puede reemplazar la posición que otro mod recuerda al abrir. Las posiciones personalizadas de KoHs siguen teniendo prioridad.",
   "screen.kohs_inventory_tweaks.tweaks.cursor.automatic": "Atajos de slot precisos",
   "screen.kohs_inventory_tweaks.tweaks.cursor.automatic.description": "Sigue siempre al cursor. Configura una posición inicial en Cursor Landing.",
-  "screen.kohs_inventory_tweaks.tweaks.inactive": "Inactivo"
+  "screen.kohs_inventory_tweaks.tweaks.inactive": "Inactivo",
+  "screen.kohs_inventory_tweaks.preview.vanilla": "Vanilla",
+  "screen.kohs_inventory_tweaks.preview.kohs": "KoHs",
+  "screen.kohs_inventory_tweaks.preview.latency": "Medido: Vanilla %s ms, KoHs %s ms"
 }
