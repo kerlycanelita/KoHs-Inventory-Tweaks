@@ -70,6 +70,12 @@ public final class CursorContractLab {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             DoubleBuffer px = stack.mallocDouble(1), py = stack.mallocDouble(1);
             GLFW.glfwGetCursorPos(mc.getWindow().handle(), px, py);
+            // Windows can report the previous desktop position for a moment after a
+            // SetCursorPos; give it a few milliseconds before calling it a mismatch.
+            for (int retry = 0; retry < 8 && (Math.abs(px.get(0) - x) > 1 || Math.abs(py.get(0) - y) > 1); retry++) {
+                try { Thread.sleep(1); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+                GLFW.glfwGetCursorPos(mc.getWindow().handle(), px, py);
+            }
             check(Math.abs(px.get(0) - x) <= 1 && Math.abs(py.get(0) - y) <= 1
                 && Math.abs(mc.mouseHandler.xpos() - x) <= 1 && Math.abs(mc.mouseHandler.ypos() - y) <= 1,
                 stage + "; expected=" + x + "," + y + "; native=" + px.get(0) + "," + py.get(0)

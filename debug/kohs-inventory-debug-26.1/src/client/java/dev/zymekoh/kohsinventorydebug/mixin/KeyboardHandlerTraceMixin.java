@@ -29,4 +29,13 @@ abstract class KeyboardHandlerTraceMixin {
 			DebugCollector.onPhysicalKey(this.minecraft, action, event);
 		}
 	}
+
+	@Inject(method = "keyPress", at = @At("RETURN"))
+	private void kohsInventoryDebug$keyReturn(
+		final long windowHandle, final int action, final KeyEvent event, final CallbackInfo callbackInfo
+	) {
+		if (windowHandle == this.minecraft.getWindow().handle()) {
+			DebugCollector.onKeyboardReturn(this.minecraft, action, event);
+		}
+	}
 }

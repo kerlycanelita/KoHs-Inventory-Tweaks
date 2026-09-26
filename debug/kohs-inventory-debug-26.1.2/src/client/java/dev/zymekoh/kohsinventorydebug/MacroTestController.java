@@ -163,6 +163,10 @@ public final class MacroTestController {
 		}
 
 		current = kind.id;
+		// The labs drive InventoryScreen; a creative lab world would open the creative inventory.
+		if (minecraft.player.isCreative() && minecraft.player.connection != null) {
+			minecraft.player.connection.sendCommand("gamemode survival");
+		}
 		DebugCollector.addUserMarker();
 		DebugCollector.warn("MACRO_START", "LOCAL-ONLY L2 LAB macro=" + kind.id
 			+ "; inventory=" + inventory + "; offhand=" + offhand

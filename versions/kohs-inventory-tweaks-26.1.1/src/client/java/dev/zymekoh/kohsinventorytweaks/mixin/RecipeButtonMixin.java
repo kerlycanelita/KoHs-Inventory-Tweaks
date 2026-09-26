@@ -21,7 +21,7 @@ public abstract class RecipeButtonMixin {
 		final float partialTick,
 		final CallbackInfo callbackInfo
 	) {
-		if (InventoryAnimationController.suppressAllInventoryAnimations()) {
+		if (InventoryAnimationController.reduceMotionEnabled()) {
 			this.animationTime = 0.0F;
 		}
 	}

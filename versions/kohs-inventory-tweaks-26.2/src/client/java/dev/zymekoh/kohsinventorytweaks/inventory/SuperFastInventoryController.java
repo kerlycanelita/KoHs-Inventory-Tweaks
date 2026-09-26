@@ -44,16 +44,15 @@ public final class SuperFastInventoryController {
 	/**
 	 * Shortest interval in which a hand can deliver two deliberate presses.
 	 *
-	 * <p>Contact bounce and key repeat land one to ten milliseconds apart; the
-	 * quickest human double tap is around fifty, and forty for a practised one.
-	 * Twenty-five sits between the two with room on both sides, and erring high
-	 * only ever sends a press to Vanilla instead of merging it away.</p>
+	 * <p>Contact bounce lands one to ten milliseconds apart; the quickest human
+	 * double tap is around fifty, and forty for a practised one. Twenty-five sits
+	 * between the two, and erring high only ever sends a press to Vanilla.</p>
 	 */
 	private static final long HUMAN_DOUBLE_TAP_FLOOR_NANOS = 25_000_000L;
 	private static long previousPollNanos;
 	/** Inventory clicks this controller watched enter Vanilla's queue and left there. */
 	private static int deferredInventoryClicks;
-	/** What the player meant by those clicks, after collapsing hardware double-fire. */
+	/** Fresh physical presses retained alongside the deferred Vanilla clicks. */
 	private static int deferredInventoryIntents;
 	private static boolean physicalInputObserved;
 	private static boolean conflictingPhysicalInputObserved;
@@ -75,7 +74,7 @@ public final class SuperFastInventoryController {
 	) {
 		if (action != GLFW.GLFW_REPEAT || minecraft == null
 			|| windowHandle != minecraft.getWindow().handle()
-			|| !ConfigStore.get().superFastInventory
+			|| !ConfigStore.get().suppressInventoryKeyRepeats
 			|| !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)
 			|| !minecraft.options.keyInventory.matches(event)
 			|| minecraft.player == null || minecraft.gameMode == null
@@ -152,11 +151,10 @@ public final class SuperFastInventoryController {
 
 	/** Called once after GLFW has delivered every event in this rendered frame. */
 	public static void afterInputPoll(final Minecraft minecraft) {
-		// How much real time this batch covers has to be measured here, once per
-		// frame, including the frames that carry no input at all. A timestamp taken
-		// inside the key callback cannot stand in for it: GLFW hands the whole queued
-		// burst to those callbacks from within one pollEvents, so two presses forty
-		// milliseconds apart on a slow frame still arrive microseconds apart.
+		// Measured once per frame, including the frames carrying no input, because it
+		// is the only available bound on how far apart two presses inside one batch
+		// can physically be: GLFW hands the whole queued burst to the callbacks from
+		// within a single pollEvents, so their own timestamps are all but identical.
 		long now = System.nanoTime();
 		long batchSpanNanos = previousPollNanos == 0L ? Long.MAX_VALUE : now - previousPollNanos;
 		previousPollNanos = now;
@@ -194,14 +192,12 @@ public final class SuperFastInventoryController {
 		inventoryPhysicalInputNanos = 0L;
 		int queuedInventoryClicks = queuedClicks(minecraft.options.keyInventory);
 
-		// Two presses in one GLFW batch are a failing switch or a key repeat rather
-		// than an open followed by a close -- but only while the batch is shorter than
-		// a hand can tap twice. Sharing a frame was carrying that argument alone, and a
-		// frame is only eight milliseconds at 120 fps: at 30 fps it is thirty-three,
-		// inside human range, so a deliberate quick open-and-close was being answered
-		// with a single open. The batch has to be short enough that the two presses
-		// cannot have been two intentions.
-		boolean chatterCollapsed = inventoryPresses == 2
+		// Contact bounce reaches GLFW as repeated PRESS, never as GLFW_REPEAT, so the
+		// repeat suppression above cannot see it. Counting those as separate meanings
+		// made an even run out of one physical press and settled it into nothing: the
+		// key did visibly nothing on every bouncing switch. A batch shorter than a
+		// hand can tap twice cannot hold two intentions, so it carries exactly one.
+		boolean chatterCollapsed = inventoryPresses > 1
 			&& batchSpanNanos <= HUMAN_DOUBLE_TAP_FLOOR_NANOS;
 		int batchIntents = chatterCollapsed ? 1 : inventoryPresses;
 
@@ -285,7 +281,7 @@ public final class SuperFastInventoryController {
 		// A tick-time opening goes on to call continueAttack(false) in the same pass,
 		// and with no block being broken its only effect is clearing the miss penalty.
 		((MinecraftAccessor) minecraft).kohsInventoryTweaks$setMissTime(0);
-		String openReason = chatterCollapsed ? "merged-double-press"
+		String openReason = chatterCollapsed ? "collapsed-contact-bounce"
 			: intents == 1 ? "sole-inventory-input" : "settled-press-run";
 		finishDecision("early-open", openReason);
 	}
@@ -434,25 +430,21 @@ public final class SuperFastInventoryController {
 	 * Queued clicks an early opening would take from an action Vanilla still runs.
 	 *
 	 * <p>These are the mappings {@code handleKeybinds} drains before {@code keyInventory}
-	 * (26.2 bytecode order), including the five it hands to {@code Gui.handleKeybinds}
-	 * first. The ones it drains after the inventory are not here: see
-	 * {@link #droppedByVanillaOpening}.</p>
+	 * (26.1.2 bytecode order). The ones it drains after the inventory
+	 * are not here: see {@link #droppedByVanillaOpening}.</p>
 	 */
 	private static String queuedVanillaActions(final Minecraft minecraft) {
 		StringBuilder result = new StringBuilder();
-		appendQueued(result, minecraft.options.keyToggleGui);
-		appendQueued(result, minecraft.options.keySocialInteractions);
-		appendQueued(result, minecraft.options.keyChat);
-		appendQueued(result, minecraft.options.keyCommand);
-		appendQueued(result, minecraft.options.keyAdvancements);
 		appendQueued(result, minecraft.options.keyTogglePerspective);
 		appendQueued(result, minecraft.options.keySmoothCamera);
+		appendQueued(result, minecraft.options.keyToggleGui);
 		appendQueued(result, minecraft.options.keyToggleSpectatorShaderEffects);
 		appendQueued(result, minecraft.options.keySaveHotbarActivator);
 		appendQueued(result, minecraft.options.keyLoadHotbarActivator);
 		for (KeyMapping mapping : minecraft.options.keyHotbarSlots) {
 			appendQueued(result, mapping);
 		}
+		appendQueued(result, minecraft.options.keySocialInteractions);
 		return result.isEmpty() ? "none" : result.toString();
 	}
 
@@ -474,10 +466,11 @@ public final class SuperFastInventoryController {
 			return false;
 		}
 		var options = minecraft.options;
-		return mapping == options.keyQuickActions || mapping == options.keySwapOffhand
-			|| mapping == options.keyDrop || mapping == options.keyAttack
-			|| mapping == options.keyUse || mapping == options.keyPickItem
-			|| mapping == options.keySpectatorHotbar;
+		return mapping == options.keyAdvancements || mapping == options.keyQuickActions
+			|| mapping == options.keySwapOffhand || mapping == options.keyDrop
+			|| mapping == options.keyChat || mapping == options.keyCommand
+			|| mapping == options.keyAttack || mapping == options.keyUse
+			|| mapping == options.keyPickItem || mapping == options.keySpectatorHotbar;
 	}
 
 	private static void appendQueued(final StringBuilder result, final KeyMapping mapping) {
@@ -506,10 +499,14 @@ public final class SuperFastInventoryController {
 		if (opensScreen && minecraft.gameMode != null && minecraft.gameMode.isDestroying()) {
 			return "block-breaking";
 		}
-		// Any other held button drives nothing that outlives the opening. Its release
-		// does reach the new screen, but a fresh InventoryScreen starts with
-		// skipNextRelease=true and no clickedSlot, so it cannot become an inventory
-		// click or drag.
+		// Any other held button drives nothing that outlives the opening. A fresh
+		// InventoryScreen starts with skipNextRelease=true and no clickedSlot, so the
+		// inherited release cannot become a new inventory click or drag.
+		if (opensScreen
+			&& !ConfigStore.get().fastInventoryWhileMouseHeld
+			&& ((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$getActiveButton() != null) {
+			return "mouse-button-held";
+		}
 		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)) {
 			return "inventory-tweaks-unavailable";
 		}

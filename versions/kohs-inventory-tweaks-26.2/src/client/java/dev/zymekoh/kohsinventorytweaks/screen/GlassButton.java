@@ -1,16 +1,19 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
+import java.util.List;
 import java.util.function.BooleanSupplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.util.FormattedCharSequence;
 import org.jspecify.annotations.Nullable;
 
 public final class GlassButton extends Button {
 	private static final long ENTRANCE_DURATION_NANOS = 240_000_000L;
-	private static final float HOVER_SPEED = 0.18F;
 
 	public enum Variant {
 		NORMAL,
@@ -26,7 +29,10 @@ public final class GlassButton extends Button {
 	private final long createdAtNanos = System.nanoTime();
 	private final WidgetClip clip = new WidgetClip();
 	private @Nullable Component subtitle;
+	private @Nullable Component narrationLabel;
+	private @Nullable KohsTabIcon icon;
 	private float hoverAmount;
+	private long lastRenderNanos;
 
 	public GlassButton(
 		final int x,
@@ -60,6 +66,22 @@ public final class GlassButton extends Button {
 		return this;
 	}
 
+	public GlassButton setNarrationLabel(final Component label) {
+		this.narrationLabel = label;
+		return this;
+	}
+
+	public GlassButton setIcon(final @Nullable KohsTabIcon icon) {
+		this.icon = icon;
+		return this;
+	}
+
+	@Override
+	protected MutableComponent createNarrationMessage() {
+		return this.narrationLabel == null ? super.createNarrationMessage()
+			: wrapDefaultNarrationMessage(this.narrationLabel.copy().append(": ").append(this.getMessage()));
+	}
+
 	public GlassButton setClipBounds(final int left, final int top, final int right, final int bottom) {
 		this.clip.set(left, top, right, bottom);
 		return this;
@@ -81,7 +103,13 @@ public final class GlassButton extends Button {
 		this.clip.begin(graphics);
 		boolean isSelected = this.selected != null && this.selected.getAsBoolean();
 		boolean highlighted = this.isHoveredOrFocused();
-		this.hoverAmount += ((highlighted ? 1.0F : 0.0F) - this.hoverAmount) * HOVER_SPEED;
+		long now = System.nanoTime();
+		float deltaSeconds = this.lastRenderNanos == 0L
+			? 1.0F / 60.0F
+			: Math.min(0.1F, Math.max(0.0F, (now - this.lastRenderNanos) / 1_000_000_000.0F));
+		this.lastRenderNanos = now;
+		float transition = 1.0F - (float) Math.exp(-12.0F * deltaSeconds);
+		this.hoverAmount += ((highlighted ? 1.0F : 0.0F) - this.hoverAmount) * transition;
 		float entrance = cubicOut(clamp01((System.nanoTime() - this.createdAtNanos) / (float) ENTRANCE_DURATION_NANOS));
 		boolean stableSwitch = this.variant == Variant.SWITCH;
 		float scale = stableSwitch ? 1.0F : 0.965F + entrance * 0.035F;
@@ -138,19 +166,49 @@ public final class GlassButton extends Button {
 	private void renderText(final GuiGraphicsExtractor graphics, final int x, final int y, final int textColor) {
 		Font font = Minecraft.getInstance().font;
 		boolean showSubtitle = this.subtitle != null && this.getHeight() >= 30 && this.variant != Variant.SWITCH;
-		int textInset = showSubtitle ? 23 : (this.variant == Variant.SWITCH ? 20 : 5);
+		int iconSize = showSubtitle ? 16 : Math.min(14, Math.max(8, this.getHeight() - 6));
+		int textInset = this.icon == null
+			? (showSubtitle ? 23 : (this.variant == Variant.SWITCH ? 20 : 5))
+			: iconSize + 10;
 		int maximumTextWidth = Math.max(1, this.getWidth() - textInset - 5);
+		if (!showSubtitle && this.getHeight() >= 22 && font.width(this.getMessage()) > maximumTextWidth) {
+			// Two whole lines read better than one cut with an ellipsis.
+			List<FormattedCharSequence> lines = font.split(this.getMessage(), maximumTextWidth);
+			if (lines.size() == 2) {
+				int lineWidth = Math.max(font.width(lines.get(0)), font.width(lines.get(1)));
+				int contentWidth = lineWidth + (this.icon == null ? 0 : iconSize + 4);
+				int contentX = x + (this.getWidth() - contentWidth) / 2;
+				if (this.icon != null) {
+					this.drawIcon(graphics, contentX, y + (this.getHeight() - iconSize) / 2, iconSize);
+					contentX += iconSize + 4;
+				}
+				int textY = y + (this.getHeight() - 18) / 2;
+				graphics.text(font, lines.get(0), contentX, textY, textColor, false);
+				graphics.text(font, lines.get(1), contentX, textY + 10, textColor, false);
+				return;
+			}
+		}
 		Component title = truncate(font, this.getMessage(), maximumTextWidth);
 		if (!showSubtitle) {
-			graphics.centeredText(font, title, x + this.getWidth() / 2, y + (this.getHeight() - 8) / 2, textColor);
+			int titleWidth = font.width(title);
+			int contentWidth = titleWidth + (this.icon == null ? 0 : iconSize + 4);
+			int contentX = x + (this.getWidth() - contentWidth) / 2;
+			if (this.icon != null) {
+				this.drawIcon(graphics, contentX, y + (this.getHeight() - iconSize) / 2, iconSize);
+				contentX += iconSize + 4;
+			}
+			graphics.text(font, title, contentX, y + (this.getHeight() - 8) / 2, textColor, false);
 			return;
 		}
-
-		int iconX = x + 7;
-		int iconY = y + this.getHeight() / 2 - 4;
-		graphics.fill(iconX, iconY + 2, iconX + 8, iconY + 6, UiTheme.ACCENT_DEEP);
-		graphics.fill(iconX + 2, iconY, iconX + 6, iconY + 8, UiTheme.ACCENT);
-		graphics.fill(iconX + 3, iconY + 1, iconX + 5, iconY + 3, UiTheme.ACCENT_BRIGHT);
+		if (this.icon != null) {
+			this.drawIcon(graphics, x + 6, y + (this.getHeight() - iconSize) / 2, iconSize);
+		} else {
+			int iconX = x + 7;
+			int iconY = y + this.getHeight() / 2 - 4;
+			graphics.fill(iconX, iconY + 2, iconX + 8, iconY + 6, UiTheme.ACCENT_DEEP);
+			graphics.fill(iconX + 2, iconY, iconX + 6, iconY + 8, UiTheme.ACCENT);
+			graphics.fill(iconX + 3, iconY + 1, iconX + 5, iconY + 3, UiTheme.ACCENT_BRIGHT);
+		}
 		graphics.text(font, title, x + textInset, y + 6, textColor, false);
 		graphics.text(
 			font,
@@ -160,6 +218,11 @@ public final class GlassButton extends Button {
 			UiTheme.TEXT_MUTED,
 			false
 		);
+	}
+
+	private void drawIcon(final GuiGraphicsExtractor graphics, final int x, final int y, final int size) {
+		graphics.blit(RenderPipelines.GUI_TEXTURED, this.icon.texture(), x, y, 0.0F, 0.0F,
+			size, size, size, size);
 	}
 
 	private static Component truncate(final Font font, final Component component, final int maximumWidth) {

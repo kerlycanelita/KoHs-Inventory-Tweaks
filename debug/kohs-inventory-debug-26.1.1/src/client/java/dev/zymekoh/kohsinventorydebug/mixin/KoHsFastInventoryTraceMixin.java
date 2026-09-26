@@ -1,6 +1,7 @@
 package dev.zymekoh.kohsinventorydebug.mixin;
 
 import dev.zymekoh.kohsinventorydebug.DebugCollector;
+import dev.zymekoh.kohsinventorydebug.CloseHotbarRegressionLab;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -62,6 +63,8 @@ abstract class KoHsFastInventoryTraceMixin {
 
 	@Inject(method = "afterInputPoll", at = @At("HEAD"), remap = false)
 	private static void kohsInventoryDebug$batchHead(final Minecraft minecraft, final CallbackInfo callbackInfo) {
+		CloseHotbarRegressionLab.drainPoll(minecraft);
+		dev.zymekoh.kohsinventorydebug.RecordingLab.onPoll(minecraft);
 		DebugCollector.onFastBatch(minecraft, false);
 	}
 

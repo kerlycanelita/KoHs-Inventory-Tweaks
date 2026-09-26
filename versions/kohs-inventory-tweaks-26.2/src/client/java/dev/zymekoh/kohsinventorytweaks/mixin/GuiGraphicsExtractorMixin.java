@@ -4,7 +4,6 @@ import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
-import dev.zymekoh.kohsinventorytweaks.render.InventoryAnimationController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -46,7 +45,7 @@ public abstract class GuiGraphicsExtractorMixin {
 		at = @At("HEAD"),
 		cancellable = true
 	)
-	private void kohsInventoryTweaks$removeInventoryProgressAnimations(
+	private void kohsInventoryTweaks$customizeHorseSlots(
 		final com.mojang.blaze3d.pipeline.RenderPipeline pipeline,
 		final Identifier sprite,
 		final int textureWidth,
@@ -69,12 +68,6 @@ public abstract class GuiGraphicsExtractorMixin {
 			drawSlotGrid((GuiGraphicsExtractor) (Object) this, x, y, width, height, config);
 			callbackInfo.cancel();
 			return;
-		}
-		if (InventoryAnimationController.suppressAllInventoryAnimations() && (path.endsWith("/lit_progress")
-			|| path.endsWith("/burn_progress")
-			|| path.equals("container/brewing_stand/brew_progress")
-			|| path.equals("container/brewing_stand/bubbles"))) {
-			callbackInfo.cancel();
 		}
 	}
 

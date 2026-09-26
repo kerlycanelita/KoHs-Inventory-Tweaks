@@ -19,7 +19,7 @@ public abstract class EnchantmentScreenMixin {
 
 	@Inject(method = "tickBook", at = @At("HEAD"), cancellable = true)
 	private void kohsInventoryTweaks$freezeBook(final CallbackInfo callbackInfo) {
-		if (!InventoryAnimationController.suppressAllInventoryAnimations()) {
+		if (!InventoryAnimationController.reduceMotionEnabled()) {
 			return;
 		}
 		this.flip = 0.0F;

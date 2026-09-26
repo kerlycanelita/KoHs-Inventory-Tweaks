@@ -1,5 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.config;
 
+import com.google.gson.annotations.SerializedName;
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorTarget;
 import dev.zymekoh.kohsinventorytweaks.inventory.ContainerScaleTarget;
 import java.util.ArrayList;
@@ -27,9 +28,21 @@ public final class InventoryTweaksConfig {
 		}
 	}
 
+	/**
+	 * Schema of the file this config was read from; absent, and so zero, in
+	 * anything written before 1.0.12.
+	 *
+	 * <p>It exists only so a default that changed after release can reach the
+	 * players who already have the old value on disk. Gson keeps a stored value
+	 * over a field initialiser, so without it a corrected default never arrives.</p>
+	 */
+	public int schema;
 	public boolean centerMouseFix = true;
 	public boolean superFastInventory = true;
-	public boolean removeAllInventoryAnimations;
+	public boolean fastInventoryWhileMouseHeld = true;
+	public boolean suppressInventoryKeyRepeats = true;
+	@SerializedName(value = "reduceInventoryMotion", alternate = {"removeAllInventoryAnimations"})
+	public boolean reduceInventoryMotion;
 	public ProfilePreset activeProfile = ProfilePreset.CUSTOM;
 	public boolean autoProfileSwitch;
 	public ProfilePreset singleplayerProfile = ProfilePreset.BUILDING;
@@ -97,9 +110,12 @@ public final class InventoryTweaksConfig {
 
 	public InventoryTweaksConfig copy() {
 		InventoryTweaksConfig copy = new InventoryTweaksConfig();
+		copy.schema = this.schema;
 		copy.centerMouseFix = this.centerMouseFix;
 		copy.superFastInventory = this.superFastInventory;
-		copy.removeAllInventoryAnimations = this.removeAllInventoryAnimations;
+		copy.fastInventoryWhileMouseHeld = this.fastInventoryWhileMouseHeld;
+		copy.suppressInventoryKeyRepeats = this.suppressInventoryKeyRepeats;
+		copy.reduceInventoryMotion = this.reduceInventoryMotion;
 		copy.activeProfile = this.activeProfile;
 		copy.autoProfileSwitch = this.autoProfileSwitch;
 		copy.singleplayerProfile = this.singleplayerProfile;
@@ -253,6 +269,7 @@ public final class InventoryTweaksConfig {
 			case SHULKER -> this.shulkerContainerScaleEnabled;
 			case ENDER_CHEST -> this.enderChestContainerScaleEnabled;
 			case BARREL -> this.barrelContainerScaleEnabled;
+			default -> this.affectAllContainers;
 		};
 	}
 
@@ -262,6 +279,7 @@ public final class InventoryTweaksConfig {
 			case SHULKER -> this.shulkerContainerScale;
 			case ENDER_CHEST -> this.enderChestContainerScale;
 			case BARREL -> this.barrelContainerScale;
+			default -> this.inventoryGuiScale;
 		};
 	}
 
@@ -273,9 +291,11 @@ public final class InventoryTweaksConfig {
 			case CUSTOM -> {
 			}
 			case VANILLA -> {
-				this.centerMouseFix = true;
+				this.centerMouseFix = false;
 				this.superFastInventory = false;
-				this.removeAllInventoryAnimations = false;
+				this.fastInventoryWhileMouseHeld = false;
+				this.suppressInventoryKeyRepeats = false;
+				this.reduceInventoryMotion = false;
 				this.inventoryGuiScalerEnabled = false;
 				this.smartHighlighterEnabled = false;
 				this.accessibilitySlotFocusEnabled = false;
@@ -285,8 +305,10 @@ public final class InventoryTweaksConfig {
 			}
 			case PVP -> {
 				this.centerMouseFix = true;
+				this.fastInventoryWhileMouseHeld = true;
+				this.suppressInventoryKeyRepeats = true;
 				this.superFastInventory = true;
-				this.removeAllInventoryAnimations = true;
+				this.reduceInventoryMotion = true;
 				this.smartHighlighterEnabled = true;
 				this.smartLowDurabilityEnabled = true;
 				this.smartHighlighterHotbar = true;
@@ -296,8 +318,10 @@ public final class InventoryTweaksConfig {
 			}
 			case BUILDING -> {
 				this.centerMouseFix = true;
+				this.fastInventoryWhileMouseHeld = false;
+				this.suppressInventoryKeyRepeats = true;
 				this.superFastInventory = true;
-				this.removeAllInventoryAnimations = false;
+				this.reduceInventoryMotion = false;
 				this.smartHighlighterEnabled = false;
 				this.accessibilitySlotFocusEnabled = true;
 				this.visiblePlayerGlowEnabled = false;
@@ -306,8 +330,10 @@ public final class InventoryTweaksConfig {
 			}
 			case PERFORMANCE -> {
 				this.centerMouseFix = true;
+				this.fastInventoryWhileMouseHeld = true;
+				this.suppressInventoryKeyRepeats = true;
 				this.superFastInventory = true;
-				this.removeAllInventoryAnimations = true;
+				this.reduceInventoryMotion = true;
 				this.smartHighlighterEnabled = false;
 				this.accessibilitySlotFocusEnabled = false;
 				this.visiblePlayerGlowEnabled = false;
@@ -347,9 +373,12 @@ public final class InventoryTweaksConfig {
 
 	public boolean sameValues(final InventoryTweaksConfig other) {
 		return other != null
+			&& this.schema == other.schema
 			&& this.centerMouseFix == other.centerMouseFix
 			&& this.superFastInventory == other.superFastInventory
-			&& this.removeAllInventoryAnimations == other.removeAllInventoryAnimations
+			&& this.fastInventoryWhileMouseHeld == other.fastInventoryWhileMouseHeld
+			&& this.suppressInventoryKeyRepeats == other.suppressInventoryKeyRepeats
+			&& this.reduceInventoryMotion == other.reduceInventoryMotion
 			&& this.activeProfile == other.activeProfile
 			&& this.autoProfileSwitch == other.autoProfileSwitch
 			&& this.singleplayerProfile == other.singleplayerProfile

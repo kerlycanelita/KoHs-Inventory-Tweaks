@@ -38,10 +38,20 @@ dependencies {
 	// Development-runtime only: validates this companion against the exact local
 	// KoHs build. These dependencies are not nested into the debug JAR.
 	clientRuntimeOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// Recording overlay hooks only; the companion still ships without Fabric API inside.
+	clientCompileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 	clientRuntimeOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
-	// Test exactly this release; never load stale siblings from build/libs.
-	clientRuntimeOnly files('../../versions/kohs-inventory-tweaks-26.1/build/libs/kohs-inventory-tweaks-1.0.9+mc26.1.jar')
+	def inventoryTweaksProperties = new Properties()
+	file('../../versions/kohs-inventory-tweaks-26.1/gradle.properties').withInputStream { inventoryTweaksProperties.load(it) }
+	def inventoryTweaksJar = file("../../versions/kohs-inventory-tweaks-26.1/build/libs/kohs-inventory-tweaks-${inventoryTweaksProperties.mod_version}.jar")
+	// -PinventoryTweaksJar=<path> runs the labs against another build (A/B); they still compile against this tree.
+	clientRuntimeOnly files(project.hasProperty('inventoryTweaksJar') ? file(project.property('inventoryTweaksJar')) : inventoryTweaksJar)
+	clientCompileOnly files(inventoryTweaksJar)
 }
+
+sourceSets.client.java.srcDir('../../tools/qa/cursor-contract')
+sourceSets.client.java.srcDir('../../tools/qa/pvp-input')
+sourceSets.client.java.srcDir('../../tools/qa/showcase')
 
 processResources {
 	inputs.property 'version', project.version
@@ -76,15 +86,28 @@ java {
 	targetCompatibility = JavaVersion.VERSION_25
 }
 
+// Both QA source roots carry a README of their own, and the sources jar copies
+// every source root into one tree, so the second one lands on the first.
+tasks.named('sourcesJar').configure {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+
 tasks.named('runClient').configure {
-	if (project.hasProperty('debugExit')) {
-		jvmArgs '-Dkohs.inventory.debug.exitAfterMacro=true'
-	}
 	if (project.hasProperty('debugMacro')) {
 		jvmArgs "-Dkohs.inventory.debug.autorun=${project.property('debugMacro')}"
+		if (project.property('debugMacro') in ['cursor-contract', 'cursor-weight', 'pvp-input', 'ui-showcase', 'record-all', 'record-fast', 'record-center', 'record-animations']) {
+			args '--width', '1440', '--height', '1000'
+		}
+	}
+	if (project.hasProperty('debugCreateWorld')) {
+		jvmArgs '-Dkohs.inventory.debug.createLabWorld=true'
 	}
 	if (project.hasProperty('debugWorld')) {
 		args '--quickPlaySingleplayer', project.property('debugWorld').toString()
+	}
+	if (project.hasProperty('debugExit')) {
+		jvmArgs '-Dkohs.inventory.debug.exitAfterMacro=true'
 	}
 }
 

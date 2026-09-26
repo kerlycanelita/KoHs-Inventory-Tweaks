@@ -63,9 +63,8 @@ public final class CursorLandingController {
 			return null;
 		}
 
-		// A custom target replaces Vanilla's release-time center so the cursor never
-		// flashes through an unrelated point. Center Mouse Fix deliberately returns
-		// null here and lets Vanilla perform its normal release-time center.
+		// Let Vanilla attempt its normal center. The opening finalizer also covers
+		// an already released mouse (releaseMouse returns without centering then).
 		return customPoint(target) == null && landingItem(target) == null
 			? null
 			: resolvePhysicalPosition(minecraft, screen, target, false);
@@ -199,9 +198,7 @@ public final class CursorLandingController {
 		final boolean initialized
 	) {
 		Window window = minecraft.getWindow();
-		// A disabled custom landing target must remain truly vanilla. Center Mouse
-		// Fix may still verify the player inventory's vanilla centered position, but
-		// it never reuses a saved custom point while that target's switch is off.
+		// A disabled target never reuses its saved custom point.
 		CursorPoint point = customPoint(target);
 		Slot itemSlot = landingSlot(minecraft, screen, target);
 		if (point == null && itemSlot == null) {
@@ -259,15 +256,7 @@ public final class CursorLandingController {
 	}
 
 	private static boolean shouldPlaceCursor(final CursorTarget target) {
-		// A stored point is Cursor Landing's own request for that target.
-		if (customPoint(target) != null || landingItem(target) != null) {
-			return true;
-		}
-		// Without one, only Center Mouse Fix asks for the vanilla centered position, and
-		// only for the player inventory. The player inventory has no enable switch, so
-		// this is the only thing that switch controls; reading it here is what makes it
-		// mean anything at all.
-		return isCenterMouseFixTarget(target);
+		return isCenterMouseFixTarget(target) || customPoint(target) != null || landingItem(target) != null;
 	}
 
 	/**
@@ -321,9 +310,8 @@ public final class CursorLandingController {
 	}
 
 	private static boolean isCenterMouseFixTarget(final CursorTarget target) {
-		return CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)
-			&& target == CursorTarget.INVENTORY
-			&& ConfigStore.get().centerMouseFix;
+		return target == CursorTarget.INVENTORY && ConfigStore.get().centerMouseFix
+			&& CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
 	}
 
 	private static boolean isCustomCursorLandingAvailable() {
@@ -335,9 +323,7 @@ public final class CursorLandingController {
 		if (target == null) {
 			return false;
 		}
-		return isCustomCursorLandingAvailable()
-			|| (target == CursorTarget.INVENTORY
-				&& CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS));
+		return shouldPlaceCursor(target);
 	}
 
 	private static @Nullable CursorTarget classify(final @Nullable Screen screen) {
