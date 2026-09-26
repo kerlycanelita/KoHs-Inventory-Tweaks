@@ -61,5 +61,9 @@
   "kohs_inventory_debug.lab.offhand_place": "Colocacion en la mano secundaria",
   "kohs_inventory_debug.lab.offhand_place.desc": "Entrega un kit conocido y enfrenta el intercambio de mano secundaria con una apertura, comprobando en que ranura acabo el objeto y que nada dispare tarde.",
   "kohs_inventory_debug.lab.cursor_weight": "Peso del cursor",
-  "kohs_inventory_debug.lab.cursor_weight.desc": "Mueve el puntero real mientras el inventario se inicializa y comprueba que la apertura conserve el movimiento. También redimensiona la ventana con el ratón capturado para mostrar lo que corrige Center Mouse Fix."
+  "kohs_inventory_debug.lab.cursor_weight.desc": "Mueve el puntero real mientras el inventario se inicializa y comprueba que la apertura conserve el movimiento. También redimensiona la ventana con el ratón capturado para mostrar lo que corrige Center Mouse Fix.",
+  "kohs_inventory_debug.lab.ui_showcase": "Escaparate de la interfaz",
+  "kohs_inventory_debug.lab.ui_showcase.desc": "Monta una escena pequeña y captura el editor de Player Visibility, el menú principal y el brillo de silueta para revisarlos.",
+  "kohs_inventory_debug.lab.record": "Grabar tomas A/B",
+  "kohs_inventory_debug.lab.record.desc": "Graba cada función apagada y encendida con la misma entrada, para la página del mod y las vistas previas del juego."
 }

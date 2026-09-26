@@ -170,6 +170,7 @@ public final class InventoryTweaksScreen extends Screen {
 	private final List<GlassButton> tweakScrollingWidgets = new ArrayList<>();
 	private GlassButton tweakCursorButton;
 	private List<InventoryTweakOption> visibleTweaks = List.of();
+	private final HoverDescription tweakHover = new HoverDescription();
 	private int customizationPreviewX;
 	private int customizationPreviewY;
 	private int customizationPreviewWidth;
@@ -345,6 +346,14 @@ public final class InventoryTweaksScreen extends Screen {
 			this.drawActiveScrollFades(graphics);
 		}
 		graphics.pose().popMatrix();
+
+		InventoryTweakOption hoveredTweak = this.modal == Modal.TWEAKS ? this.tweakCardAt(mouseX, mouseY) : null;
+		if (this.tweakHover.settled(hoveredTweak) && hoveredTweak != null) {
+			List<FormattedCharSequence> lines = new java.util.ArrayList<>();
+			lines.add(Component.translatable(hoveredTweak.key).withStyle(net.minecraft.ChatFormatting.BOLD).getVisualOrderText());
+			lines.addAll(this.font.split(this.tweakDescription(hoveredTweak), Math.min(260, this.width / 2)));
+			graphics.setTooltipForNextFrame(lines, mouseX, mouseY);
+		}
 
 		if (entrance < 1.0F) {
 			int veilAlpha = Math.round((1.0F - entrance) * 112.0F);
@@ -653,8 +662,7 @@ public final class InventoryTweaksScreen extends Screen {
 			Component.translatable(titleKey),
 			onPress,
 			variant
-		).setSubtitle(description)
-			.setIcon(icon)
+		).setIcon(icon)
 			.setClipBounds(railX + 2, visibleTop, railX + railWidth - 2, visibleBottom);
 		button.active = available;
 		button.setTooltip(Tooltip.create(description));
@@ -832,10 +840,6 @@ public final class InventoryTweaksScreen extends Screen {
 			boolean needsFast = option == InventoryTweakOption.HELD_MOUSE && !this.working.superFastInventory;
 			button.active = compatible && !needsFast;
 			button.setMessage(this.tweakStateLabel(option));
-			button.setTooltip(Tooltip.create(Component.translatable(option.key).append("\n")
-				.append(Component.translatable(!compatible ? "screen.kohs_inventory_tweaks.compatibility.feature_disabled"
-					: needsFast ? "screen.kohs_inventory_tweaks.fast_held_mouse.requires_fast" : option.key + ".description"))));
-			button.setTooltipDelay(Duration.ofMillis(220));
 		}
 	}
 
@@ -1657,6 +1661,27 @@ public final class InventoryTweaksScreen extends Screen {
 		};
 	}
 
+	private InventoryTweakOption tweakCardAt(final int mouseX, final int mouseY) {
+		if (mouseX < this.tweakOptionsX || mouseX >= this.tweakOptionsX + this.tweakOptionsWidth
+			|| mouseY < this.tweakViewportTop || mouseY >= this.tweakViewportBottom) {
+			return null;
+		}
+		for (int index = 0; index < this.visibleTweaks.size(); index++) {
+			int y = this.tweakFirstCardY + index * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
+			if (mouseY >= y && mouseY < y + this.tweakCardHeight) {
+				return this.visibleTweaks.get(index);
+			}
+		}
+		return null;
+	}
+
+	private Component tweakDescription(final InventoryTweakOption option) {
+		boolean compatible = CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
+		boolean needsFast = option == InventoryTweakOption.HELD_MOUSE && !this.working.superFastInventory;
+		return Component.translatable(!compatible ? "screen.kohs_inventory_tweaks.compatibility.feature_disabled"
+			: needsFast ? "screen.kohs_inventory_tweaks.fast_held_mouse.requires_fast" : option.key + ".description");
+	}
+
 	private void drawTweakCard(
 		final GuiGraphicsExtractor graphics,
 		final int x,
@@ -1668,19 +1693,12 @@ public final class InventoryTweaksScreen extends Screen {
 		final String descriptionKey
 	) {
 		UiRender.panel(graphics, x, y, width, height, 8, UiTheme.GLASS_LIGHT, UiTheme.BORDER_SOFT);
+		// The whole title, on two lines when it needs them. The description is the hover.
 		List<FormattedCharSequence> titleLines = this.font.split(Component.translatable(titleKey), textWidth);
-		int maximumTitleLines = Math.max(1, Math.min(2, (height - 9) / 10));
-		int drawnTitleLines = Math.min(titleLines.size(), maximumTitleLines);
+		int drawnTitleLines = Math.min(titleLines.size(), Math.max(1, Math.min(2, (height - 6) / 10)));
+		int titleY = y + (height - drawnTitleLines * 10 + 2) / 2;
 		for (int index = 0; index < drawnTitleLines; index++) {
-			graphics.text(this.font, titleLines.get(index), x + 10, y + 7 + index * 10, UiTheme.TEXT);
-		}
-		int descriptionY = y + 9 + drawnTitleLines * 10;
-		int descriptionLines = Math.max(0, (y + height - 5 - descriptionY) / 10);
-		if (descriptionLines > 0) {
-			List<FormattedCharSequence> lines = this.font.split(Component.translatable(descriptionKey), textWidth);
-			for (int index = 0; index < Math.min(lines.size(), descriptionLines); index++) {
-				graphics.text(this.font, lines.get(index), x + 10, descriptionY + index * 10, UiTheme.TEXT_MUTED);
-			}
+			graphics.text(this.font, titleLines.get(index), x + 10, titleY + index * 10, UiTheme.TEXT);
 		}
 	}
 
@@ -2494,7 +2512,7 @@ public final class InventoryTweaksScreen extends Screen {
 		this.mainPreviewY = previewTop + Math.max(0, (availableHeight - this.mainPreviewHeight) / 2);
 
 		this.mainCardWidth = Math.max(1, railWidth - 10);
-		this.mainCardHeight = this.compactMain ? 23 : 36;
+		this.mainCardHeight = this.compactMain ? 22 : 28;
 		int cardGap = this.compactMain ? 5 : 7;
 		int leftRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
 		int rightRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
@@ -2593,7 +2611,7 @@ public final class InventoryTweaksScreen extends Screen {
 		this.tweakViewportTop = this.contentTop + 28;
 		this.tweakViewportBottom = Math.max(this.tweakViewportTop + 1, this.contentBottom - 36);
 		this.tweakCardGap = 8;
-		this.tweakCardHeight = this.compactModal ? 54 : 64;
+		this.tweakCardHeight = this.compactModal ? 30 : 34;
 		this.tweakFirstCardY = this.tweakViewportTop;
 		int cardCount = this.visibleTweaks.size() + (this.tweakCategory == InventoryTweakOption.Category.CURSOR ? 1 : 0);
 		int cardsHeight = cardCount * (this.tweakCardHeight + this.tweakCardGap) - this.tweakCardGap;

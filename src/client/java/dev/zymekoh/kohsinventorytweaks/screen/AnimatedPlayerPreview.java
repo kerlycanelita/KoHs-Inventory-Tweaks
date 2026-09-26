@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -30,6 +31,9 @@ public final class AnimatedPlayerPreview {
 		EntityRenderState state = minecraft.getEntityRenderDispatcher().extractEntity(entity, 1.0F);
 		state.shadowPieces.clear();
 		state.outlineColor = 0;
+		// Vanilla lights every GUI entity at full brightness; the world light at the
+		// player's feet made the preview a black silhouette in the dark.
+		state.lightCoords = LightCoordsUtil.FULL_BRIGHT;
 		float time = System.nanoTime() / 1_000_000_000.0F;
 		if (state instanceof LivingEntityRenderState living) {
 			float turn = (float) Math.sin(time * 0.72F) * 8.0F;

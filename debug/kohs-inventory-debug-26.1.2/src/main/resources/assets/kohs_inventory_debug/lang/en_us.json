@@ -61,5 +61,9 @@
   "kohs_inventory_debug.lab.offhand_place": "Offhand placement",
   "kohs_inventory_debug.lab.offhand_place.desc": "Grants a known kit and races the offhand swap against an opening, checking the slot the item ended in and that nothing fires late.",
   "kohs_inventory_debug.lab.cursor_weight": "Cursor weight",
-  "kohs_inventory_debug.lab.cursor_weight.desc": "Moves the real pointer while the inventory initializes and checks that the opening keeps the movement. Also resizes the window while the mouse is captured to show what Center Mouse Fix corrects."
+  "kohs_inventory_debug.lab.cursor_weight.desc": "Moves the real pointer while the inventory initializes and checks that the opening keeps the movement. Also resizes the window while the mouse is captured to show what Center Mouse Fix corrects.",
+  "kohs_inventory_debug.lab.ui_showcase": "UI showcase",
+  "kohs_inventory_debug.lab.ui_showcase.desc": "Builds a small scene and captures the Player Visibility editor, the main menu and the silhouette glow for review.",
+  "kohs_inventory_debug.lab.record": "Record A/B takes",
+  "kohs_inventory_debug.lab.record.desc": "Records each feature off and on with the same input, for the mod page and the in-game previews."
 }

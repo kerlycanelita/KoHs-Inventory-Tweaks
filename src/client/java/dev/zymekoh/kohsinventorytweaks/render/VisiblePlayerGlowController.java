@@ -16,9 +16,10 @@ import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Applies a local tint to the ordinary depth-tested player model. It deliberately
- * does not use Minecraft's outline/glowing pipeline because that pipeline can be
- * visible through blocks.
+ * Decides which normally visible players get the local tint and silhouette glow.
+ * Neither uses Minecraft's outline/glowing pipeline, which is visible through
+ * blocks: the tint recolours the ordinary depth-tested model and the glow is a
+ * depth-tested shell drawn by {@link PlayerGlowLayer}.
  */
 public final class VisiblePlayerGlowController {
 	private static final Map<AvatarRenderState, InventoryTweaksConfig> PREVIEW_STATES = Collections.synchronizedMap(new WeakHashMap<>());
@@ -39,21 +40,21 @@ public final class VisiblePlayerGlowController {
 		return multiply(vanillaTint, blendWhite(config.visiblePlayerGlowColor, strength));
 	}
 
-	/** Raises only the submitted model light; normal depth testing remains intact. */
-	public static int light(final AvatarRenderState state, final int vanillaLight) {
+	/**
+	 * ARGB colour of the silhouette glow drawn by {@link PlayerGlowLayer}, or 0 when
+	 * this state gets none. The alpha carries the configured strength.
+	 */
+	public static int silhouetteColor(final AvatarRenderState state) {
 		InventoryTweaksConfig config = configFor(state);
 		if (config == null || !config.visiblePlayerLightGlowEnabled) {
-			return vanillaLight;
+			return 0;
 		}
-		double amount = config.visiblePlayerGlowBrightness / 255.0;
+		double strength = config.visiblePlayerGlowBrightness / 255.0;
 		if (config.visiblePlayerGlowPulse && !InventoryAnimationController.reduceMotionEnabled()) {
-			amount *= 0.84 + 0.16 * Math.sin(System.nanoTime() / 210_000_000.0 + state.id);
+			strength *= 0.72 + 0.28 * Math.sin(System.nanoTime() / 210_000_000.0 + state.id);
 		}
-		int block = vanillaLight & 0xFFFF;
-		int sky = vanillaLight >>> 16 & 0xFFFF;
-		block = (int) Math.round(block + (0xF0 - block) * Math.max(0.0, Math.min(1.0, amount)));
-		sky = (int) Math.round(sky + (0xF0 - sky) * Math.max(0.0, Math.min(1.0, amount)));
-		return sky << 16 | block;
+		int alpha = (int) Math.round(Math.max(0.0, Math.min(1.0, strength)) * 255.0);
+		return alpha << 24 | config.visiblePlayerGlowColor & 0xFFFFFF;
 	}
 
 	/** Registers an extracted render state without mutating the real player entity. */

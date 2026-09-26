@@ -64,6 +64,7 @@ abstract class KoHsFastInventoryTraceMixin {
 	@Inject(method = "afterInputPoll", at = @At("HEAD"), remap = false)
 	private static void kohsInventoryDebug$batchHead(final Minecraft minecraft, final CallbackInfo callbackInfo) {
 		CloseHotbarRegressionLab.drainPoll(minecraft);
+		dev.zymekoh.kohsinventorydebug.RecordingLab.onPoll(minecraft);
 		DebugCollector.onFastBatch(minecraft, false);
 	}
 

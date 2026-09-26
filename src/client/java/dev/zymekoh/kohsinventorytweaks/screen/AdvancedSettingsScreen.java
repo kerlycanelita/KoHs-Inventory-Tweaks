@@ -37,6 +37,11 @@ import org.lwjgl.system.MemoryStack;
 /** Explanatory tool catalogue with a separate, preview-backed editor per feature. */
 public final class AdvancedSettingsScreen extends Screen {
 	private static final Identifier GENERIC_CONTAINER = Identifier.withDefaultNamespace("textures/gui/container/generic_54.png");
+	/** One-line option card; its description lives in a hover tooltip. */
+	private static final int CARD_HEIGHT = 30;
+	private static final int CARD_GAP = 4;
+	private static final int SLIDER_CARD_HEIGHT = 46;
+	private static final int PALETTE_CARD_HEIGHT = 88;
 
 	private enum Tab {
 		PLAYER_GLOW("player_glow"),
@@ -85,6 +90,7 @@ public final class AdvancedSettingsScreen extends Screen {
 	private final List<Card> cards = new ArrayList<>();
 	private final List<MovingWidget> movingWidgets = new ArrayList<>();
 	private final SmoothScroll smoothScroll = new SmoothScroll();
+	private final HoverDescription hover = new HoverDescription();
 	private InventoryTweaksConfig working;
 	private Tab tab;
 	private boolean editing;
@@ -204,13 +210,15 @@ public final class AdvancedSettingsScreen extends Screen {
 		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 9, UiTheme.GLASS, UiTheme.BORDER);
 		graphics.text(this.font, this.title, this.panelX + 12, this.panelY + 10, UiTheme.TEXT, false);
 		if (this.editing) {
-			graphics.centeredText(
-				this.font,
-				Component.translatable(this.tab.titleKey()),
-				this.contentX + this.contentWidth / 2,
-				this.contentY + 9,
-				UiTheme.ACCENT_BRIGHT
-			);
+			if (!this.directEntry) {
+				graphics.centeredText(
+					this.font,
+					Component.translatable(this.tab.titleKey()),
+					this.contentX + this.contentWidth / 2,
+					this.contentY + 9,
+					UiTheme.ACCENT_BRIGHT
+				);
+			}
 		} else {
 			graphics.text(
 				this.font,
@@ -263,6 +271,27 @@ public final class AdvancedSettingsScreen extends Screen {
 				UiTheme.TEXT_MUTED
 			);
 		}
+		Card hovered = this.editing ? this.cardAt(mouseX, mouseY) : null;
+		if (this.hover.settled(hovered) && hovered != null && !hovered.description.getString().isBlank()) {
+			HoverDescription.show(graphics, this.font, hovered.description, mouseX, mouseY, Math.min(260, this.width / 2));
+		}
+	}
+
+	private Card cardAt(final int mouseX, final int mouseY) {
+		if (mouseY < this.bodyTop || mouseY >= this.bodyBottom
+			|| mouseX < this.optionsX || mouseX >= this.optionsX + this.optionsWidth) {
+			return null;
+		}
+		for (Card card : this.cards) {
+			int y = this.bodyTop + card.baseY - this.scroll;
+			int indent = card.depth * 11;
+			int x = this.optionsX + 7 + indent;
+			int width = Math.max(20, this.optionsWidth - 14 - indent);
+			if (mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + card.height) {
+				return card;
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -331,26 +360,28 @@ public final class AdvancedSettingsScreen extends Screen {
 		this.panelY = (this.height - this.panelHeight) / 2;
 		int gap = this.panelWidth < 500 ? 5 : 10;
 		this.tabX = this.panelX + 9;
-		this.tabY = this.panelY + 38;
+		// A direct entry has no tab bar and no second header line to make room for.
+		this.tabY = this.panelY + (this.editing && this.directEntry ? 24 : 38);
 		this.tabWidth = this.editing ? 0 : Math.min(Mth.clamp(this.panelWidth / 4, 58, 180), Math.max(28, this.panelWidth / 3));
 		this.contentX = this.editing ? this.panelX + 9 : this.tabX + this.tabWidth + gap;
 		this.contentY = this.tabY;
 		this.contentWidth = Math.max(1, this.panelX + this.panelWidth - 9 - this.contentX);
 		this.footerY = this.panelY + this.panelHeight - 31;
 		this.contentHeight = Math.max(1, this.footerY - this.contentY - 12);
+		int headerOffset = this.editing && this.directEntry ? 12 : 34;
 		this.previewVisible = this.editing
 			&& this.needsLivePreview()
-			&& this.contentHeight >= 178
-			&& this.contentWidth >= 560;
+			&& this.contentHeight >= 160
+			&& this.contentWidth >= 520;
 		if (this.previewVisible) {
 			int editorGap = this.contentWidth < 700 ? 14 : 18;
 			this.optionsWidth = Mth.clamp((int) (this.contentWidth * 0.42F), 220, 340);
 			this.previewWidth = Math.max(220, this.contentWidth - this.optionsWidth - editorGap);
 			this.previewX = this.contentX;
 			this.optionsX = this.previewX + this.previewWidth + editorGap;
-			this.previewY = this.contentY + 34;
-			this.previewHeight = Math.max(1, this.contentHeight - 42);
-			this.bodyTop = this.contentY + 34;
+			this.previewY = this.contentY + headerOffset;
+			this.previewHeight = Math.max(1, this.contentHeight - headerOffset - 8);
+			this.bodyTop = this.contentY + headerOffset;
 		} else {
 			this.previewWidth = 0;
 			this.previewHeight = 0;
@@ -358,7 +389,7 @@ public final class AdvancedSettingsScreen extends Screen {
 			this.optionsX = this.contentX + (this.contentWidth - this.optionsWidth) / 2;
 			this.previewX = this.contentX;
 			this.previewY = this.contentY;
-			this.bodyTop = Math.min(this.contentY + 34, this.contentY + Math.max(0, this.contentHeight - 1));
+			this.bodyTop = Math.min(this.contentY + headerOffset, this.contentY + Math.max(0, this.contentHeight - 1));
 		}
 		this.bodyBottom = Math.max(this.bodyTop + 1, this.contentY + this.contentHeight - 8);
 		int availableTabs = Math.max(70, this.contentHeight - 4);
@@ -748,7 +779,7 @@ public final class AdvancedSettingsScreen extends Screen {
 	) {
 		this.cards.add(new Card(
 			y,
-			116,
+			PALETTE_CARD_HEIGHT,
 			depth,
 			Component.translatable(titleKey),
 			Component.translatable(descriptionKey),
@@ -759,7 +790,7 @@ public final class AdvancedSettingsScreen extends Screen {
 		int width = Math.max(1, this.optionsWidth - 20 - indent);
 		ColorPaletteWidget palette = new ColorPaletteWidget(
 			x,
-			this.bodyTop + y + 52 - this.scroll,
+			this.bodyTop + y + 22 - this.scroll,
 			width,
 			60,
 			Component.translatable(titleKey),
@@ -770,15 +801,13 @@ public final class AdvancedSettingsScreen extends Screen {
 				this.persist(false);
 			}
 		);
-		palette.setTooltip(Tooltip.create(Component.translatable(descriptionKey)));
-		palette.setTooltipDelay(Duration.ofMillis(220));
-		this.registerMovingWidget(palette, y + 52, 60);
-		return y + 128;
+		this.registerMovingWidget(palette, y + 22, 60);
+		return y + PALETTE_CARD_HEIGHT + CARD_GAP;
 	}
 
 	private int addInfo(final int y, final int depth, final Component title, final Component description) {
-		this.cards.add(new Card(y, 54, depth, title, description, false));
-		return y + 64;
+		this.cards.add(new Card(y, CARD_HEIGHT, depth, Component.literal("\u2714 ").append(title), description, false));
+		return y + CARD_HEIGHT + CARD_GAP;
 	}
 
 	private int addAction(
@@ -802,23 +831,24 @@ public final class AdvancedSettingsScreen extends Screen {
 		final GlassButton.Variant variant,
 		final boolean selected
 	) {
-		this.cards.add(new Card(y, 54, depth, title, description, true));
-		int indent = depth * 11;
-		int width = Math.max(1, Math.min(Math.max(1, this.optionsWidth - 20), Math.max(42, Math.min(112, this.optionsWidth / 3))));
+		this.cards.add(new Card(y, CARD_HEIGHT, depth, title, description, true));
+		int width = this.sideControlWidth();
 		GlassButton button = new GlassButton(
 			this.optionsX + this.optionsWidth - width - 10,
-			this.bodyTop + y + 16 - this.scroll,
+			this.bodyTop + y + 5 - this.scroll,
 			width,
-			22,
+			20,
 			action,
 			onPress,
 			variant,
 			variant == GlassButton.Variant.SWITCH ? () -> selected : null
 		);
-		button.setTooltip(Tooltip.create(description));
-		button.setTooltipDelay(Duration.ofMillis(220));
-		this.registerMovingWidget(button, y + 16, 22);
-		return y + 64;
+		this.registerMovingWidget(button, y + 5, 20);
+		return y + CARD_HEIGHT + CARD_GAP;
+	}
+
+	private int sideControlWidth() {
+		return Math.max(1, Math.min(Math.max(1, this.optionsWidth - 20), Math.max(42, Math.min(104, this.optionsWidth / 3))));
 	}
 
 	private int addIntSlider(
@@ -849,13 +879,13 @@ public final class AdvancedSettingsScreen extends Screen {
 		final DoubleConsumer consumer,
 		final String valueKey
 	) {
-		this.cards.add(new Card(y, 76, depth, Component.translatable(titleKey), Component.translatable(descriptionKey), false));
+		this.cards.add(new Card(y, SLIDER_CARD_HEIGHT, depth, Component.translatable(titleKey), Component.translatable(descriptionKey), false));
 		int indent = depth * 11;
 		int x = this.optionsX + 10 + indent;
 		int width = Math.max(1, this.optionsWidth - 20 - indent);
 		AdvancedSlider slider = new AdvancedSlider(
 			x,
-			this.bodyTop + y + 50 - this.scroll,
+			this.bodyTop + y + 21 - this.scroll,
 			width,
 			minimum,
 			maximum,
@@ -867,8 +897,8 @@ public final class AdvancedSettingsScreen extends Screen {
 				this.persist(false);
 			}
 		);
-		this.registerMovingWidget(slider, y + 50, 20);
-		return y + 86;
+		this.registerMovingWidget(slider, y + 21, 20);
+		return y + SLIDER_CARD_HEIGHT + CARD_GAP;
 	}
 
 	private void registerMovingWidget(final AbstractWidget widget, final int baseY, final int height) {
@@ -958,23 +988,18 @@ public final class AdvancedSettingsScreen extends Screen {
 		int width = Math.max(20, this.optionsWidth - 14 - indent);
 		if (card.depth > 0) {
 			int branchX = x - 7;
-			graphics.fill(branchX, y - 6, branchX + 1, y + card.height / 2, UiTheme.ACCENT_SOFT);
-			graphics.fill(branchX, y + card.height / 2, x - 2, y + card.height / 2 + 1, UiTheme.ACCENT_SOFT);
+			graphics.fill(branchX, y - 4, branchX + 1, y + Math.min(card.height, CARD_HEIGHT) / 2, UiTheme.ACCENT_SOFT);
+			graphics.fill(branchX, y + Math.min(card.height, CARD_HEIGHT) / 2, x - 2, y + Math.min(card.height, CARD_HEIGHT) / 2 + 1, UiTheme.ACCENT_SOFT);
 		}
 		graphics.fill(x + 3, y + card.height - 1, x + width - 3, y + card.height, 0x578A4FB7);
-		int reserved = card.sideControl ? Math.max(70, Math.min(122, this.optionsWidth / 3 + 10)) : 0;
+		int reserved = card.sideControl ? this.sideControlWidth() + 14 : 0;
 		int textWidth = Math.max(20, width - reserved - 10);
-		graphics.text(
-			this.font,
-			this.font.plainSubstrByWidth(card.title.getString(), textWidth),
-			x + 8,
-				y + 8,
-			UiTheme.TEXT,
-			false
-		);
-		List<net.minecraft.util.FormattedCharSequence> lines = this.font.split(card.description, textWidth);
-		for (int index = 0; index < Math.min(2, lines.size()); index++) {
-			graphics.text(this.font, lines.get(index), x + 8, y + 24 + index * 9, UiTheme.TEXT_MUTED, false);
+		// The whole title, on two lines when it needs them; the description is the hover.
+		List<net.minecraft.util.FormattedCharSequence> lines = this.font.split(card.title, textWidth);
+		int shown = Math.min(2, lines.size());
+		int textY = card.height == CARD_HEIGHT ? y + (CARD_HEIGHT - shown * 10 + 1) / 2 : y + 6;
+		for (int index = 0; index < shown; index++) {
+			graphics.text(this.font, lines.get(index), x + 8, textY + index * 10, UiTheme.TEXT, false);
 		}
 	}
 
@@ -1118,55 +1143,40 @@ public final class AdvancedSettingsScreen extends Screen {
 		int areaHeight = Math.max(1, this.previewHeight - 28);
 		graphics.fillGradient(areaX, areaY, areaX + areaWidth, areaY + areaHeight, 0x85230D3C, 0xB10C0816);
 
-		float inventoryScale = Math.min((areaWidth - 100.0F) / 176.0F, (areaHeight - 16.0F) / 166.0F);
+		// The world view on the left, the inventory it is seen from on the right.
+		int worldWidth = Mth.clamp(areaWidth * 38 / 100, 64, 170);
+		int gap = 8;
+		int inventoryAreaX = areaX + worldWidth + gap;
+		int inventoryAreaWidth = Math.max(1, areaWidth - worldWidth - gap);
+		float inventoryScale = Math.min((inventoryAreaWidth - 8.0F) / 176.0F, (areaHeight - 12.0F) / 166.0F);
 		inventoryScale = Math.max(0.25F, Math.min(1.0F, inventoryScale));
 		int inventoryWidth = Math.round(176 * inventoryScale);
 		int inventoryHeight = Math.round(166 * inventoryScale);
-		int inventoryX = areaX + (areaWidth - inventoryWidth) / 2;
+		int inventoryX = inventoryAreaX + (inventoryAreaWidth - inventoryWidth) / 2;
 		int inventoryY = areaY + (areaHeight - inventoryHeight) / 2;
 		UiRender.glow(graphics, inventoryX, inventoryY, inventoryWidth, inventoryHeight, 9, 30);
 		this.drawInventoryAt(graphics, inventoryX, inventoryY, inventoryScale, mouseX, mouseY);
 
-		int modelRight = inventoryX - 6;
-		int modelLeft = areaX + 2;
-		int modelWidth = Math.max(0, modelRight - modelLeft);
-		int color = this.working.visiblePlayerGlowColor & 0xFFFFFF;
-		if (modelWidth >= 32 && this.working.visiblePlayerGlowEnabled) {
-			int haloAlpha = this.working.visiblePlayerLightGlowEnabled
-				? 18 + this.working.visiblePlayerGlowBrightness / 5 + this.working.visiblePlayerDepthIntensity / 4
-				: 10 + this.working.visiblePlayerDepthIntensity / 4;
-			UiRender.roundedRect(
-				graphics,
-				modelLeft,
-				areaY + 3,
-				modelWidth,
-				Math.max(24, areaHeight - 6),
-				12,
-				UiRender.withAlpha(color, Math.min(132, haloAlpha))
-			);
+		int worldTop = areaY + 3;
+		int worldBottom = areaY + areaHeight - 3;
+		UiRender.roundedRect(graphics, areaX + 2, worldTop, worldWidth - 4, worldBottom - worldTop, 10, 0x70060310);
+		Component label = Component.translatable("screen.kohs_inventory_tweaks.advanced.preview.world_layer");
+		boolean labelFits = this.font.width(label) <= worldWidth - 12;
+		if (labelFits) {
+			graphics.centeredText(this.font, label, areaX + worldWidth / 2, worldTop + 5, UiTheme.ACCENT_BRIGHT);
 		}
-		if (modelWidth >= 32 && this.minecraft.player != null) {
+		int modelTop = labelFits ? worldTop + 17 : worldTop + 4;
+		if (this.minecraft.player != null && worldBottom - modelTop >= 40) {
+			int size = Mth.clamp((worldBottom - modelTop) * 10 / 23, 18, 96);
 			AnimatedPlayerPreview.draw(
 				graphics,
 				this.minecraft.player,
-				modelLeft,
-				areaY + 3,
-				modelRight,
-				areaY + areaHeight - 3,
-				Math.max(22, Math.min(58, areaHeight - 15)),
+				areaX + 2,
+				modelTop,
+				areaX + worldWidth - 2,
+				worldBottom - 2,
+				size,
 				this.working
-			);
-		}
-		if (modelWidth >= 48) {
-			graphics.centeredText(
-				this.font,
-				this.font.plainSubstrByWidth(
-					Component.translatable("screen.kohs_inventory_tweaks.advanced.preview.world_layer").getString(),
-					Math.max(1, modelWidth - 6)
-				),
-				modelLeft + modelWidth / 2,
-				areaY + 5,
-				UiTheme.ACCENT_BRIGHT
 			);
 		}
 	}

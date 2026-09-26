@@ -1,5 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
+import java.util.List;
 import java.util.function.BooleanSupplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -8,6 +9,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.util.FormattedCharSequence;
 import org.jspecify.annotations.Nullable;
 
 public final class GlassButton extends Button {
@@ -169,6 +171,23 @@ public final class GlassButton extends Button {
 			? (showSubtitle ? 23 : (this.variant == Variant.SWITCH ? 20 : 5))
 			: iconSize + 10;
 		int maximumTextWidth = Math.max(1, this.getWidth() - textInset - 5);
+		if (!showSubtitle && this.getHeight() >= 22 && font.width(this.getMessage()) > maximumTextWidth) {
+			// Two whole lines read better than one cut with an ellipsis.
+			List<FormattedCharSequence> lines = font.split(this.getMessage(), maximumTextWidth);
+			if (lines.size() == 2) {
+				int lineWidth = Math.max(font.width(lines.get(0)), font.width(lines.get(1)));
+				int contentWidth = lineWidth + (this.icon == null ? 0 : iconSize + 4);
+				int contentX = x + (this.getWidth() - contentWidth) / 2;
+				if (this.icon != null) {
+					this.drawIcon(graphics, contentX, y + (this.getHeight() - iconSize) / 2, iconSize);
+					contentX += iconSize + 4;
+				}
+				int textY = y + (this.getHeight() - 18) / 2;
+				graphics.text(font, lines.get(0), contentX, textY, textColor, false);
+				graphics.text(font, lines.get(1), contentX, textY + 10, textColor, false);
+				return;
+			}
+		}
 		Component title = truncate(font, this.getMessage(), maximumTextWidth);
 		if (!showSubtitle) {
 			int titleWidth = font.width(title);

@@ -49,6 +49,11 @@ public final class MacroTestController {
 		CENTERED_CURSOR("centered-cursor", "kohs_inventory_debug.screen.macro_center", "kohs_inventory_debug.lab.center.desc", false, false),
 		CURSOR_CONTRACT("cursor-contract", "kohs_inventory_debug.lab.cursor_contract", "kohs_inventory_debug.lab.cursor_contract.desc", false, true),
 		CURSOR_WEIGHT("cursor-weight", "kohs_inventory_debug.lab.cursor_weight", "kohs_inventory_debug.lab.cursor_weight.desc", false, true),
+		UI_SHOWCASE("ui-showcase", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
+		RECORD_ALL("record-all", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
+		RECORD_FAST("record-fast", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
+		RECORD_CENTER("record-center", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
+		RECORD_ANIMATIONS("record-animations", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
 		PVP_INPUT("pvp-input", "kohs_inventory_debug.lab.pvp_input", "kohs_inventory_debug.lab.pvp_input.desc", false, true),
 		LATENCY_SWEEP("latency-sweep", "kohs_inventory_debug.lab.latency", "kohs_inventory_debug.lab.latency.desc", false, true),
 		EXTREME_OPEN_CLOSE("extreme-open-close", "kohs_inventory_debug.lab.extreme", "kohs_inventory_debug.lab.extreme.desc", false, true),
@@ -179,7 +184,7 @@ public final class MacroTestController {
 						minecraft.getWindow().getY() + (int) Math.round(originalPointer[1])
 					);
 				}
-				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.PVP_INPUT) {
+				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT) {
 					DebugCollector.info("MACRO_SUMMARY", metrics.summary());
 				}
 				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id + "; screen=" + screenName(screenSnapshot(minecraft))
@@ -251,6 +256,11 @@ public final class MacroTestController {
 			case OFFHAND_PLACEMENT -> offhandPlacement(input, minecraft, inventory, offhand, 24, metrics);
 			case CURSOR_CONTRACT -> CursorContractLab.run(minecraft);
 			case CURSOR_WEIGHT -> CursorWeightLab.run(minecraft);
+			case UI_SHOWCASE -> UiShowcaseLab.run(minecraft);
+			case RECORD_ALL -> RecordingLab.run(minecraft, "all");
+			case RECORD_FAST -> RecordingLab.run(minecraft, "fast");
+			case RECORD_CENTER -> RecordingLab.run(minecraft, "center");
+			case RECORD_ANIMATIONS -> RecordingLab.run(minecraft, "animations");
 			case PVP_INPUT -> PvpInputRegressionLab.run(minecraft);
 			case FULL_STRESS -> {
 				fastOpenClose(input, minecraft, inventory, 12, metrics);
