@@ -135,13 +135,26 @@ public final class PvpInputRegressionLab {
 					check(mc.player.inventoryMenu.getCarried().isEmpty(), "inherited release does not pick up items");
 					close(mc);
 				}
+				// handleKeybinds reaches keyAttack after keyInventory, and the opening it has just
+				// made zeroes every click count, so a tick-time opening drops a pending attack too.
 				mouse(mc, 0, GLFW.GLFW_PRESS);
 				tap(mc, inventory);
 				SuperFastInventoryController.afterInputPoll(mc);
-				check(mc.screen == null && SuperFastInventoryController.lastOpenHadInputConflict(), "pending attack retains Vanilla ownership");
-				check(((KeyMappingDebugAccessor) mc.options.keyAttack).kohsInventoryDebug$getClickCount() == 1, "attack queue preserved");
-				check(((KeyMappingDebugAccessor) mc.options.keyInventory).kohsInventoryDebug$getClickCount() == 1, "inventory fallback queue preserved");
+				check(mc.screen instanceof InventoryScreen && SuperFastInventoryController.lastOpenWasImmediate(), "pending attack no longer delays the open");
+				check(((KeyMappingDebugAccessor) mc.options.keyAttack).kohsInventoryDebug$getClickCount() == 0, "attack dropped as the tick-time opening drops it");
+				check(((KeyMappingDebugAccessor) mc.options.keyInventory).kohsInventoryDebug$getClickCount() == 0, "inventory click consumed");
 				mouse(mc, 0, GLFW.GLFW_RELEASE);
+				close(mc);
+				// A hotbar key is drained before keyInventory, so an early opening would take a
+				// selection Vanilla still makes: that batch keeps waiting for the tick.
+				tap(mc, binding(mc.options.keyHotbarSlots[1]));
+				tap(mc, inventory);
+				SuperFastInventoryController.afterInputPoll(mc);
+				check(mc.screen == null && SuperFastInventoryController.lastOpenHadInputConflict(), "pending hotbar selection retains Vanilla ownership");
+				check(((KeyMappingDebugAccessor) mc.options.keyHotbarSlots[1]).kohsInventoryDebug$getClickCount() == 1, "hotbar queue preserved");
+				check(((KeyMappingDebugAccessor) mc.options.keyInventory).kohsInventoryDebug$getClickCount() == 1, "inventory fallback queue preserved");
+				while (mc.options.keyHotbarSlots[1].consumeClick()) { }
+				while (mc.options.keyInventory.consumeClick()) { }
 				close(mc);
 			});
 

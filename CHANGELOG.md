@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.0.13 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11 (unreleased)
+
+- Center Mouse Fix no longer pulls the pointer back after the inventory opens.
+  Its check ran after `Screen#init`, so movement made while the screen was being
+  initialized looked like a misplaced pointer and was undone: the weight players
+  felt at the start of every move toward a totem or any item with Center Mouse
+  Fix on. The check now runs inside `releaseMouse`, right after GLFW leaves
+  disabled-cursor mode, where it still catches a pointer GLFW restored to a stale
+  centre. A pointer that has moved since the release is left to the player.
+- Super Fast Inventory no longer waits for the client tick because an attack,
+  use, offhand, drop or pick-block click is pending. `handleKeybinds` drains
+  those after the inventory, and the opening it has just made zeroes their
+  clicks, so Vanilla dropped them whether the inventory waited or not: waiting
+  only made it up to 50 ms late, most often in a fight.
+- A held mouse button no longer sends every opening to the tick on 26.2, 26.1.1,
+  26.1 and 1.21.11. Only an item in use or a block being broken still wait: the
+  tick-time opening ends both, and an early one would leave a shield raised, a
+  bow drawn or food being eaten behind the inventory. On 26.1.2 this closes the
+  same gap in the held-button path, which opened early regardless.
+- After an early opening the miss penalty is cleared, as the tick-time opening's
+  `continueAttack(false)` clears it.
+- Hotbar save/load activators wait for the tick too, since Vanilla drains them
+  before the inventory. On 26.2 so do the chat, command, advancement, social and
+  HUD-toggle keys, which that version handles before the inventory.
+- The readout under Super Fast Inventory names the two new reasons.
+- 26.2, 26.1.1, 26.1 and 1.21.11 also carry the 1.0.12 fix that stops a second
+  mapping on the inventory key from disabling fast opening.
+
 ## Support change — 26 September 2026
 
 - KoHs Inventory Tweaks now supports Minecraft 1.21.11 and later. Minecraft

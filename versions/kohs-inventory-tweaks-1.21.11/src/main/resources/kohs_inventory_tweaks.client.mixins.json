@@ -18,6 +18,7 @@
     "InventoryScreenMixin",
     "ItemStackMixin",
     "KeyMappingAccessor",
+    "MinecraftAccessor",
     "KeyboardHandlerMixin",
     "LivingEntityRendererMixin",
     "MinecraftScreenMixin",

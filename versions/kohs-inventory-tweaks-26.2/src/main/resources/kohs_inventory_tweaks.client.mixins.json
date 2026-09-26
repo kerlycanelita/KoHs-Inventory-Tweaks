@@ -20,6 +20,7 @@
     "InventoryScreenMixin",
     "ItemStackMixin",
     "KeyMappingAccessor",
+    "MinecraftAccessor",
     "KeyboardHandlerMixin",
     "LivingEntityRendererMixin",
     "MouseHandlerAccessor",

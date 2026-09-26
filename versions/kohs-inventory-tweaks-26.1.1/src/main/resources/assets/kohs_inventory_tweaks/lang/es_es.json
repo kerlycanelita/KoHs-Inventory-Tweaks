@@ -359,6 +359,8 @@
   "screen.kohs_inventory_tweaks.fast_open.settled_pair": "Últimas pulsaciones: apertura y cierre resueltos de una vez",
   "screen.kohs_inventory_tweaks.fast_open.conflict": "Última apertura: esperó al tick, compartida con %s",
   "screen.kohs_inventory_tweaks.fast_open.reason.mouse_button_held": "Última apertura: esperó al tick, había un botón del mouse pulsado",
+  "screen.kohs_inventory_tweaks.fast_open.reason.item_in_use": "Última apertura: esperó al tick, había un objeto en uso",
+  "screen.kohs_inventory_tweaks.fast_open.reason.block_breaking": "Última apertura: esperó al tick, se estaba rompiendo un bloque",
   "screen.kohs_inventory_tweaks.fast_open.reason.window_not_active": "Última apertura: esperó al tick, la ventana no estaba activa",
   "screen.kohs_inventory_tweaks.fast_open.reason.multiple_clicks": "Última apertura: esperó al tick, había varias pulsaciones de inventario en cola",
   "screen.kohs_inventory_tweaks.fast_open.reason.already_consumed": "Última apertura: esperó al tick, la pulsación ya estaba consumida",

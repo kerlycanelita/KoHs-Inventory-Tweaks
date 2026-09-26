@@ -1604,6 +1604,8 @@ public final class InventoryTweaksScreen extends Screen {
 	private static String fastOpenReasonKey(final String code) {
 		return switch (code) {
 			case "mouse-button-held" -> "screen.kohs_inventory_tweaks.fast_open.reason.mouse_button_held";
+			case "item-in-use" -> "screen.kohs_inventory_tweaks.fast_open.reason.item_in_use";
+			case "block-breaking" -> "screen.kohs_inventory_tweaks.fast_open.reason.block_breaking";
 			case "window-not-active" -> "screen.kohs_inventory_tweaks.fast_open.reason.window_not_active";
 			case "multiple-inventory-clicks" -> "screen.kohs_inventory_tweaks.fast_open.reason.multiple_clicks";
 			case "inventory-click-already-consumed" -> "screen.kohs_inventory_tweaks.fast_open.reason.already_consumed";

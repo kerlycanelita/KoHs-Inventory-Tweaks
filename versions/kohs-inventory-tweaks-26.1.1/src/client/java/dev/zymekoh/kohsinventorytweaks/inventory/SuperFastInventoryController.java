@@ -4,6 +4,7 @@ import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.mixin.KeyMappingAccessor;
+import dev.zymekoh.kohsinventorytweaks.mixin.MinecraftAccessor;
 import dev.zymekoh.kohsinventorytweaks.mixin.MouseHandlerAccessor;
 import dev.zymekoh.kohsinventorytweaks.mixin.AbstractRecipeBookScreenAccessor;
 import dev.zymekoh.kohsinventorytweaks.mixin.RecipeBookComponentAccessor;
@@ -280,6 +281,9 @@ public final class SuperFastInventoryController {
 		minecraft.getTutorial().onOpenInventory();
 		minecraft.setScreen(new InventoryScreen(minecraft.player));
 		discardPreOpenWorldMovement(minecraft);
+		// A tick-time opening goes on to call continueAttack(false) in the same pass,
+		// and with no block being broken its only effect is clearing the miss penalty.
+		((MinecraftAccessor) minecraft).kohsInventoryTweaks$setMissTime(0);
 		String openReason = chatterCollapsed ? "merged-double-press"
 			: intents == 1 ? "sole-inventory-input" : "settled-press-run";
 		finishDecision("early-open", openReason);
@@ -413,6 +417,7 @@ public final class SuperFastInventoryController {
 		for (KeyMapping mapping : minecraft.options.keyMappings) {
 			if (mapping != minecraft.options.keyInventory
 				&& mapping.getCategory() != KeyMapping.Category.MOVEMENT
+				&& !droppedByVanillaOpening(minecraft, mapping)
 				&& matches.test(mapping)) {
 				if (result == null) result = new StringBuilder();
 				if (!result.isEmpty()) {
@@ -424,27 +429,45 @@ public final class SuperFastInventoryController {
 		return result == null ? "none" : result.toString();
 	}
 
+	/**
+	 * Queued clicks an early opening would take from an action Vanilla still runs.
+	 *
+	 * <p>These are the mappings {@code handleKeybinds} drains before {@code keyInventory}
+	 * (26.1 and 26.1.1 bytecode order). The ones it drains after the inventory
+	 * are not here: see {@link #droppedByVanillaOpening}.</p>
+	 */
 	private static String queuedVanillaActions(final Minecraft minecraft) {
 		StringBuilder result = new StringBuilder();
 		appendQueued(result, minecraft.options.keyTogglePerspective);
 		appendQueued(result, minecraft.options.keySmoothCamera);
 		appendQueued(result, minecraft.options.keyToggleGui);
 		appendQueued(result, minecraft.options.keyToggleSpectatorShaderEffects);
-		appendQueued(result, minecraft.options.keySocialInteractions);
-		appendQueued(result, minecraft.options.keyAdvancements);
-		appendQueued(result, minecraft.options.keyQuickActions);
-		appendQueued(result, minecraft.options.keySwapOffhand);
-		appendQueued(result, minecraft.options.keyDrop);
-		appendQueued(result, minecraft.options.keyChat);
-		appendQueued(result, minecraft.options.keyCommand);
-		appendQueued(result, minecraft.options.keyAttack);
-		appendQueued(result, minecraft.options.keyUse);
-		appendQueued(result, minecraft.options.keyPickItem);
-		appendQueued(result, minecraft.options.keySpectatorHotbar);
+		appendQueued(result, minecraft.options.keySaveHotbarActivator);
+		appendQueued(result, minecraft.options.keyLoadHotbarActivator);
 		for (KeyMapping mapping : minecraft.options.keyHotbarSlots) {
 			appendQueued(result, mapping);
 		}
+		appendQueued(result, minecraft.options.keySocialInteractions);
 		return result.isEmpty() ? "none" : result.toString();
+	}
+
+	/**
+	 * Mappings whose queued clicks Vanilla drops itself when the inventory opens in
+	 * the same client tick.
+	 *
+	 * <p>{@code handleKeybinds} reaches these only after {@code keyInventory}, and the
+	 * {@code setScreen} it has just made runs {@code KeyMapping.releaseAll}, whose
+	 * {@code release} zeroes every click count. A queued attack, use, offhand swap or
+	 * drop therefore never survives a tick-time opening either: waiting for the tick on
+	 * its account only made the inventory late, and the action was lost anyway.</p>
+	 */
+	private static boolean droppedByVanillaOpening(final Minecraft minecraft, final KeyMapping mapping) {
+		var options = minecraft.options;
+		return mapping == options.keyAdvancements || mapping == options.keyQuickActions
+			|| mapping == options.keySwapOffhand || mapping == options.keyDrop
+			|| mapping == options.keyChat || mapping == options.keyCommand
+			|| mapping == options.keyAttack || mapping == options.keyUse
+			|| mapping == options.keyPickItem || mapping == options.keySpectatorHotbar;
 	}
 
 	private static void appendQueued(final StringBuilder result, final KeyMapping mapping) {
@@ -462,18 +485,21 @@ public final class SuperFastInventoryController {
 		if (!minecraft.isWindowActive() || !minecraft.getWindow().isFocused() || minecraft.getWindow().isMinimized()) {
 			return "window-not-active";
 		}
-		// A button that is still down was pressed against the world, and its release is
-		// still to come. Opening here hands that release to a screen that did not exist
-		// when the press happened: Vanilla's onButton reads minecraft.screen again on the
-		// way out, so the release is delivered to the new inventory instead of ending the
-		// world action it belongs to. Vanilla opens at the next client tick, by which time
-		// a tap has normally completed, so yielding costs at most one tick and only for
-		// the player who is actually holding a button. Settling an already-finished pair
-		// creates no screen for that release to land on, so it is not held back by this.
-		if (opensScreen
-			&& ((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$getActiveButton() != null) {
-			return "mouse-button-held";
+		// A tick-time opening ends a sustained world action in the same handleKeybinds
+		// pass: releaseAll lifts keyUse and keyAttack, and the lines after keyInventory
+		// then release the item in use and abort block breaking. An opening made here
+		// skips that pass until the screen closes, which would keep a shield raised, a
+		// bow drawn or food being eaten behind the inventory, so those openings wait.
+		if (opensScreen && minecraft.player != null && minecraft.player.isUsingItem()) {
+			return "item-in-use";
 		}
+		if (opensScreen && minecraft.gameMode != null && minecraft.gameMode.isDestroying()) {
+			return "block-breaking";
+		}
+		// Any other held button drives nothing that outlives the opening. Its release
+		// does reach the new screen, but a fresh InventoryScreen starts with
+		// skipNextRelease=true and no clickedSlot, so it cannot become an inventory
+		// click or drag.
 		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)) {
 			return "inventory-tweaks-unavailable";
 		}

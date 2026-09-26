@@ -377,6 +377,8 @@
   "screen.kohs_inventory_tweaks.fast_open.settled_pair": "Last presses: open and close settled at once",
   "screen.kohs_inventory_tweaks.fast_open.conflict": "Last open: waited for the tick, shared with %s",
   "screen.kohs_inventory_tweaks.fast_open.reason.mouse_button_held": "Last open: waited for the tick, a mouse button was still held",
+  "screen.kohs_inventory_tweaks.fast_open.reason.item_in_use": "Last open: waited for the tick, an item was still in use",
+  "screen.kohs_inventory_tweaks.fast_open.reason.block_breaking": "Last open: waited for the tick, a block was being broken",
   "screen.kohs_inventory_tweaks.fast_open.reason.window_not_active": "Last open: waited for the tick, the window was not active",
   "screen.kohs_inventory_tweaks.fast_open.reason.multiple_clicks": "Last open: waited for the tick, several inventory presses were queued",
   "screen.kohs_inventory_tweaks.fast_open.reason.already_consumed": "Last open: waited for the tick, the press was already taken",

@@ -35,6 +35,8 @@ public final class CursorLandingController {
 	private static final int LAST_MAIN_INVENTORY_SLOT = 35;
 	private static @Nullable Screen openingScreen;
 	private static @Nullable CursorTarget openingTarget;
+	/** Where this opening's release left the pointer once GLFW showed it again. */
+	private static double @Nullable [] releasedPosition;
 
 	private CursorLandingController() {
 	}
@@ -46,6 +48,7 @@ public final class CursorLandingController {
 		}
 		openingScreen = screen;
 		openingTarget = classify(screen);
+		releasedPosition = null;
 	}
 
 	public static @Nullable double[] overrideReleasePosition(final Minecraft minecraft) {
@@ -68,15 +71,41 @@ public final class CursorLandingController {
 	}
 
 	/**
-	 * Finalizes one cursor placement after {@link Minecraft#setScreen(Screen)} has
-	 * completed the whole synchronous opening transaction.
+	 * Runs inside {@code releaseMouse}, right after GLFW leaves disabled-cursor mode.
 	 *
-	 * <p>This is still the same input event/frame: no tick, render or scheduled
-	 * task is crossed. It runs after Vanilla mouse release and the screen layout.
-	 * The final read-back corrects a mismatch observed at that boundary, without
-	 * attempting to fight another component that writes afterwards. Once this
-	 * method returns, real player movement owns the cursor again; there is no
-	 * render-loop correction and therefore no dragging effect.</p>
+	 * <p>Leaving that mode puts the pointer back where GLFW saved it when the mouse
+	 * was grabbed, which is not always where Minecraft just asked for it: a window
+	 * resized while grabbed has a new centre. Checked here, microseconds after the
+	 * switch, that difference is found before the player's hand has had time to move
+	 * anything. The same check used to run after {@code Screen#init}, where movement
+	 * made during initialization looked exactly like that difference and was pulled
+	 * back to the target -- the weight players felt at the start of every move
+	 * toward an item with Center Mouse Fix on.</p>
+	 */
+	public static void afterMouseRelease(final Minecraft minecraft, final double x, final double y) {
+		Screen screen = minecraft == null ? null : minecraft.screen;
+		if (screen == null || screen != openingScreen || !canPositionCursor(minecraft)) {
+			return;
+		}
+		CursorTarget target = openingTarget;
+		if (target == null || !shouldPlaceCursor(target)) {
+			return;
+		}
+		double[] requested = {x, y};
+		warp(minecraft, requested);
+		releasedPosition = requested;
+	}
+
+	/**
+	 * Finishes the opening after {@link Minecraft#setScreen(Screen)} has completed
+	 * the whole synchronous transaction.
+	 *
+	 * <p>This is still the same input event and frame: no tick, render or scheduled
+	 * task is crossed. When the release already placed the pointer, the only thing
+	 * left to do is follow a target the initialized layout moved, and only while the
+	 * pointer is still exactly where the release left it: once it has moved, it
+	 * belongs to the player. When Vanilla skipped the release because the mouse was
+	 * already free, the pointer is placed here once.</p>
 	 */
 	public static void onScreenOpened(final Minecraft minecraft, final @Nullable Screen requestedScreen) {
 		Screen screen = minecraft == null ? null : minecraft.screen;
@@ -96,7 +125,17 @@ public final class CursorLandingController {
 		}
 
 		double[] placement = resolvePhysicalPosition(minecraft, screen, target, true);
-		warp(minecraft, placement);
+		double[] released = releasedPosition;
+		if (released == null) {
+			// One screen replacing another: nothing has placed the pointer for this opening.
+			warp(minecraft, placement);
+		} else if (!matches(placement, released)) {
+			// The initialized layout moved the target, as an open recipe book can.
+			double[] current = pointerPosition(minecraft);
+			if (current != null && matches(current, released)) {
+				warp(minecraft, placement);
+			}
+		}
 		// A Vanilla fallback can also open before handleAccumulatedMovement. Deltas
 		// sampled before this synchronous landing belong to the old screen/camera,
 		// not to a drag in the new inventory. Future callbacks remain untouched.
@@ -131,6 +170,7 @@ public final class CursorLandingController {
 	private static void clearOpeningState() {
 		openingScreen = null;
 		openingTarget = null;
+		releasedPosition = null;
 	}
 
 	private static void clearAllState() {

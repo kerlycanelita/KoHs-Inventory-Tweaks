@@ -46,6 +46,18 @@ public abstract class MouseHandlerMixin {
 		args.set(3, target[1]);
 	}
 
+	@Inject(
+		method = "releaseMouse",
+		at = @At(
+			value = "INVOKE",
+			target = "Lcom/mojang/blaze3d/platform/InputConstants;grabOrReleaseMouse(Lcom/mojang/blaze3d/platform/Window;IDD)V",
+			shift = At.Shift.AFTER
+		)
+	)
+	private void kohsInventoryTweaks$checkRestoredPointer(final CallbackInfo callbackInfo) {
+		CursorLandingController.afterMouseRelease(this.minecraft, this.xpos, this.ypos);
+	}
+
 	@Inject(method = "onButton", at = @At("TAIL"))
 	private void kohsInventoryTweaks$openLocalInventoryOnMousePress(
 		final long windowHandle,
