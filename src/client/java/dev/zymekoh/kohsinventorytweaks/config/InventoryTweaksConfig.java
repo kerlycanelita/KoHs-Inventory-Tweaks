@@ -39,8 +39,6 @@ public final class InventoryTweaksConfig {
 	public int schema;
 	public boolean centerMouseFix = true;
 	public boolean superFastInventory = true;
-	public boolean fastInventoryWhileMouseHeld = true;
-	public boolean suppressInventoryKeyRepeats = true;
 	@SerializedName(value = "reduceInventoryMotion", alternate = {"removeAllInventoryAnimations"})
 	public boolean reduceInventoryMotion;
 	public ProfilePreset activeProfile = ProfilePreset.CUSTOM;
@@ -99,8 +97,6 @@ public final class InventoryTweaksConfig {
 	public int backupRetention = 5;
 	public @Nullable String customBackgroundFile;
 	public List<ItemHighlight> itemHighlights = new ArrayList<>();
-	/** Item the player inventory landing follows, by registry id, or null. */
-	public @Nullable String inventoryLandingItem;
 	public @Nullable CursorPoint inventory;
 	public @Nullable CursorPoint chestSingle;
 	public @Nullable CursorPoint chestDouble;
@@ -113,8 +109,6 @@ public final class InventoryTweaksConfig {
 		copy.schema = this.schema;
 		copy.centerMouseFix = this.centerMouseFix;
 		copy.superFastInventory = this.superFastInventory;
-		copy.fastInventoryWhileMouseHeld = this.fastInventoryWhileMouseHeld;
-		copy.suppressInventoryKeyRepeats = this.suppressInventoryKeyRepeats;
 		copy.reduceInventoryMotion = this.reduceInventoryMotion;
 		copy.activeProfile = this.activeProfile;
 		copy.autoProfileSwitch = this.autoProfileSwitch;
@@ -177,7 +171,6 @@ public final class InventoryTweaksConfig {
 				copy.itemHighlights.add(highlight.copy());
 			}
 		}
-		copy.inventoryLandingItem = this.inventoryLandingItem;
 		copy.inventory = copyPoint(this.inventory);
 		copy.chestSingle = copyPoint(this.chestSingle);
 		copy.chestDouble = copyPoint(this.chestDouble);
@@ -236,7 +229,6 @@ public final class InventoryTweaksConfig {
 		this.shulkerCursorEnabled = false;
 		this.enderChestCursorEnabled = false;
 		this.barrelCursorEnabled = false;
-		this.inventoryLandingItem = null;
 		this.inventory = null;
 		this.chestSingle = null;
 		this.chestDouble = null;
@@ -293,8 +285,6 @@ public final class InventoryTweaksConfig {
 			case VANILLA -> {
 				this.centerMouseFix = false;
 				this.superFastInventory = false;
-				this.fastInventoryWhileMouseHeld = false;
-				this.suppressInventoryKeyRepeats = false;
 				this.reduceInventoryMotion = false;
 				this.inventoryGuiScalerEnabled = false;
 				this.smartHighlighterEnabled = false;
@@ -305,8 +295,6 @@ public final class InventoryTweaksConfig {
 			}
 			case PVP -> {
 				this.centerMouseFix = true;
-				this.fastInventoryWhileMouseHeld = true;
-				this.suppressInventoryKeyRepeats = true;
 				this.superFastInventory = true;
 				this.reduceInventoryMotion = true;
 				this.smartHighlighterEnabled = true;
@@ -318,8 +306,6 @@ public final class InventoryTweaksConfig {
 			}
 			case BUILDING -> {
 				this.centerMouseFix = true;
-				this.fastInventoryWhileMouseHeld = false;
-				this.suppressInventoryKeyRepeats = true;
 				this.superFastInventory = true;
 				this.reduceInventoryMotion = false;
 				this.smartHighlighterEnabled = false;
@@ -330,8 +316,6 @@ public final class InventoryTweaksConfig {
 			}
 			case PERFORMANCE -> {
 				this.centerMouseFix = true;
-				this.fastInventoryWhileMouseHeld = true;
-				this.suppressInventoryKeyRepeats = true;
 				this.superFastInventory = true;
 				this.reduceInventoryMotion = true;
 				this.smartHighlighterEnabled = false;
@@ -376,8 +360,6 @@ public final class InventoryTweaksConfig {
 			&& this.schema == other.schema
 			&& this.centerMouseFix == other.centerMouseFix
 			&& this.superFastInventory == other.superFastInventory
-			&& this.fastInventoryWhileMouseHeld == other.fastInventoryWhileMouseHeld
-			&& this.suppressInventoryKeyRepeats == other.suppressInventoryKeyRepeats
 			&& this.reduceInventoryMotion == other.reduceInventoryMotion
 			&& this.activeProfile == other.activeProfile
 			&& this.autoProfileSwitch == other.autoProfileSwitch
@@ -435,7 +417,6 @@ public final class InventoryTweaksConfig {
 			&& this.backupRetention == other.backupRetention
 			&& Objects.equals(this.customBackgroundFile, other.customBackgroundFile)
 			&& Objects.equals(this.itemHighlights, other.itemHighlights)
-			&& Objects.equals(this.inventoryLandingItem, other.inventoryLandingItem)
 			&& Objects.equals(this.inventory, other.inventory)
 			&& Objects.equals(this.chestSingle, other.chestSingle)
 			&& Objects.equals(this.chestDouble, other.chestDouble)

@@ -52,10 +52,7 @@ public final class KoHsInventoryTweaksClient implements ClientModInitializer {
 		});
 		ResourceLoader.get(PackType.CLIENT_RESOURCES).registerReloader(
 			Identifier.fromNamespaceAndPath(MOD_ID, "inventory_texture"),
-			(ResourceManagerReloadListener) resourceManager -> {
-				InventoryTextureManager.onResourcesReloaded();
-				dev.zymekoh.kohsinventorytweaks.screen.FeaturePreviewReload.run();
-			}
+			(ResourceManagerReloadListener) resourceManager -> InventoryTextureManager.onResourcesReloaded()
 		);
 		LOGGER.info("KoHs Inventory Tweaks initialized for Minecraft {}", runtimeMinecraftVersion());
 	}

@@ -187,17 +187,9 @@ public final class ConfigStore {
 		}
 
 		InventoryTweaksConfig sanitized = new InventoryTweaksConfig();
-		// 1.0.11 shipped the held-button path off by default and 1.0.12 turns it on,
-		// now that the world action it could strand is ended at the opening. A value
-		// already on disk outlives a changed field initialiser, so anyone who ran that
-		// one release would keep waiting for the client tick forever. Raise it once,
-		// never lower it, and stamp the file so this cannot run a second time.
 		sanitized.schema = CONFIG_SCHEMA;
-		boolean raiseHeldMousePath = candidate.schema < CONFIG_SCHEMA;
 		sanitized.centerMouseFix = candidate.centerMouseFix;
 		sanitized.superFastInventory = candidate.superFastInventory;
-		sanitized.fastInventoryWhileMouseHeld = raiseHeldMousePath || candidate.fastInventoryWhileMouseHeld;
-		sanitized.suppressInventoryKeyRepeats = candidate.suppressInventoryKeyRepeats;
 		sanitized.reduceInventoryMotion = candidate.reduceInventoryMotion;
 		// Removed profiles are migrated to their inert compatibility values.
 		sanitized.activeProfile = InventoryTweaksConfig.ProfilePreset.CUSTOM;
@@ -277,23 +269,10 @@ public final class ConfigStore {
 				sanitized.itemHighlights.add(clean);
 			}
 		}
-		// An id that no longer resolves is dropped rather than kept: a landing that
-		// can never be found would silently disable the stored point behind it.
-		sanitized.inventoryLandingItem = sanitizeItemId(candidate.inventoryLandingItem);
 		for (CursorTarget target : CursorTarget.values()) {
 			sanitized.setPosition(target, candidate.getPosition(target));
 		}
 		return sanitized;
-	}
-
-	private static @Nullable String sanitizeItemId(final @Nullable String itemId) {
-		if (itemId == null || itemId.isBlank()) {
-			return null;
-		}
-		Identifier identifier = Identifier.tryParse(itemId);
-		return identifier != null && BuiltInRegistries.ITEM.containsKey(identifier)
-			? identifier.toString()
-			: null;
 	}
 
 	private static int clampByte(final int value) {

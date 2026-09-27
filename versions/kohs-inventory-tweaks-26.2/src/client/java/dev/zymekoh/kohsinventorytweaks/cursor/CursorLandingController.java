@@ -5,10 +5,6 @@ import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.Item;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.CursorPoint;
 import dev.zymekoh.kohsinventorytweaks.mixin.AbstractContainerScreenAccessor;
 import dev.zymekoh.kohsinventorytweaks.mixin.MouseHandlerAccessor;
@@ -32,7 +28,6 @@ import java.util.Locale;
 public final class CursorLandingController {
 	private static final double CURSOR_POSITION_EPSILON = 0.5;
 	/** Hotbar and main storage. Armor sits at 36-39 and the offhand at 40. */
-	private static final int LAST_MAIN_INVENTORY_SLOT = 35;
 	private static @Nullable Screen openingScreen;
 	private static @Nullable CursorTarget openingTarget;
 	/** Where this opening's release left the pointer once GLFW showed it again. */
@@ -65,7 +60,7 @@ public final class CursorLandingController {
 
 		// Let Vanilla attempt its normal center. The opening finalizer also covers
 		// an already released mouse (releaseMouse returns without centering then).
-		return customPoint(target) == null && landingItem(target) == null
+		return customPoint(target) == null
 			? null
 			: resolvePhysicalPosition(minecraft, screen, target, false);
 	}
@@ -200,8 +195,7 @@ public final class CursorLandingController {
 		Window window = minecraft.getWindow();
 		// A disabled target never reuses its saved custom point.
 		CursorPoint point = customPoint(target);
-		Slot itemSlot = landingSlot(minecraft, screen, target);
-		if (point == null && itemSlot == null) {
+		if (point == null) {
 			// Match releaseMouse's integer center, including odd window dimensions.
 			return new double[] {window.getScreenWidth() / 2, window.getScreenHeight() / 2};
 		}
@@ -229,13 +223,11 @@ public final class CursorLandingController {
 			}
 		}
 
-		// The slot carries menu-relative coordinates, the same space the stored
-		// fraction resolves into, so both land through the identical transform.
 		// Saved fractions are authored against the preview's inclusive pixel range
 		// (0..width - 1 / 0..height - 1). Use that same range at runtime so an
 		// edge click cannot drift one logical pixel outside the inventory.
-		double localX = itemSlot != null ? itemSlot.x + 8.0 : point.x() * Math.max(0, imageWidth - 1);
-		double localY = itemSlot != null ? itemSlot.y + 8.0 : point.y() * Math.max(0, imageHeight - 1);
+		double localX = point.x() * Math.max(0, imageWidth - 1);
+		double localY = point.y() * Math.max(0, imageHeight - 1);
 		double logicalX = left + localX;
 		double logicalY = top + localY;
 		// Minecraft releases the mouse before it initializes the screen, so the
@@ -256,50 +248,7 @@ public final class CursorLandingController {
 	}
 
 	private static boolean shouldPlaceCursor(final CursorTarget target) {
-		return isCenterMouseFixTarget(target) || customPoint(target) != null || landingItem(target) != null;
-	}
-
-	/**
-	 * The slot the player inventory landing should follow, when one is configured
-	 * and the item is actually there.
-	 *
-	 * <p>A stored fraction is a position on the screen; during a fight the item is
-	 * what the player is aiming for, and it moves. Resolving the slot at the moment
-	 * the screen opens follows it. Only the hotbar and the main storage are
-	 * searched: landing on the offhand would aim the swap at the item that is
-	 * already in hand, and armor cannot be picked up by the swap either.</p>
-	 */
-	private static @Nullable Slot landingSlot(
-		final Minecraft minecraft,
-		final Screen screen,
-		final CursorTarget target
-	) {
-		Item item = landingItem(target);
-		if (item == null || minecraft.player == null || !(screen instanceof MenuAccess<?> access)) {
-			return null;
-		}
-		for (Slot slot : access.getMenu().slots) {
-			if (!slot.isActive()
-				|| slot.container != minecraft.player.getInventory()
-				|| slot.getContainerSlot() < 0
-				|| slot.getContainerSlot() > LAST_MAIN_INVENTORY_SLOT
-				|| slot.getItem().getItem() != item) {
-				continue;
-			}
-			return slot;
-		}
-		return null;
-	}
-
-	private static @Nullable Item landingItem(final CursorTarget target) {
-		InventoryTweaksConfig config = ConfigStore.get();
-		if (target != CursorTarget.INVENTORY
-			|| !isCustomCursorLandingAvailable()
-			|| config.inventoryLandingItem == null) {
-			return null;
-		}
-		Identifier identifier = Identifier.tryParse(config.inventoryLandingItem);
-		return identifier == null ? null : BuiltInRegistries.ITEM.getValue(identifier);
+		return isCenterMouseFixTarget(target) || customPoint(target) != null;
 	}
 
 	private static @Nullable CursorPoint customPoint(final CursorTarget target) {

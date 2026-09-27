@@ -95,8 +95,6 @@ public final class PvpInputRegressionLab {
 				close(mc);
 				var config = ConfigStore.get();
 				config.superFastInventory = true;
-				config.suppressInventoryKeyRepeats = true;
-				config.fastInventoryWhileMouseHeld = false;
 				for (int presses = 1; presses <= 6; presses++) {
 					// Longer than the quickest human double tap, so every press is a meaning.
 					java.util.concurrent.locks.LockSupport.parkNanos(30_000_000L);
@@ -123,27 +121,20 @@ public final class PvpInputRegressionLab {
 					check(mc.screen == null, "fresh close immediate, fast=" + fast);
 				}
 				config.superFastInventory = true;
-				config.suppressInventoryKeyRepeats = false;
-				mc.setScreen(new InventoryScreen(mc.player));
-				key(mc, inventory, GLFW.GLFW_REPEAT);
-				check(mc.screen == null, "repeat disabled restores Vanilla repeat close");
-				config.suppressInventoryKeyRepeats = true;
 				close(mc);
 
-				for (boolean held : new boolean[]{false, true}) {
-					config.fastInventoryWhileMouseHeld = held;
-					mouse(mc, 0, GLFW.GLFW_PRESS);
-					SuperFastInventoryController.afterInputPoll(mc);
-					// Model a held attack whose queued press was already processed by a tick.
-					while (mc.options.keyAttack.consumeClick()) { }
-					tap(mc, inventory);
-					SuperFastInventoryController.afterInputPoll(mc);
-					check((mc.screen instanceof InventoryScreen) == held, "held button policy=" + held);
-					if (!held) check(SuperFastInventoryController.lastFallbackCode().equals("mouse-button-held"), "held fallback reason");
-					mouse(mc, 0, GLFW.GLFW_RELEASE);
-					check(mc.player.inventoryMenu.getCarried().isEmpty(), "inherited release does not pick up items");
-					close(mc);
-				}
+				// A held button no longer sends the opening to the tick: it drives nothing
+				// that outlives the opening.
+				mouse(mc, 0, GLFW.GLFW_PRESS);
+				SuperFastInventoryController.afterInputPoll(mc);
+				// Model a held attack whose queued press was already processed by a tick.
+				while (mc.options.keyAttack.consumeClick()) { }
+				tap(mc, inventory);
+				SuperFastInventoryController.afterInputPoll(mc);
+				check(mc.screen instanceof InventoryScreen, "held button opens early");
+				mouse(mc, 0, GLFW.GLFW_RELEASE);
+				check(mc.player.inventoryMenu.getCarried().isEmpty(), "inherited release does not pick up items");
+				close(mc);
 				// keyAttack is a ToggleKeyMapping: releaseAll resets its toggle but keeps its clicks,
 				// so Vanilla still attacks after a tick-time opening. That batch keeps waiting.
 				mouse(mc, 0, GLFW.GLFW_PRESS);
@@ -318,15 +309,11 @@ public final class PvpInputRegressionLab {
 				baseline.automaticBackups = false;
 				baseline.centerMouseFix = !value;
 				baseline.superFastInventory = !value;
-				baseline.fastInventoryWhileMouseHeld = !value;
-				baseline.suppressInventoryKeyRepeats = !value;
 				baseline.reduceInventoryMotion = !value;
 				ConfigStore.replaceAndSave(baseline);
 				var changed = ConfigStore.get().copy();
 				changed.centerMouseFix = value;
 				changed.superFastInventory = value;
-				changed.fastInventoryWhileMouseHeld = value;
-				changed.suppressInventoryKeyRepeats = value;
 				changed.reduceInventoryMotion = value;
 				ConfigStore.replaceAndSave(changed);
 				checkRuntimeOptions(value, "replaceAndSave");
@@ -346,8 +333,6 @@ public final class PvpInputRegressionLab {
 					ConfigStore.importSnapshot(snapshot);
 					check(!ConfigStore.get().centerMouseFix, "import retains disabled center fix");
 					check(ConfigStore.get().reduceInventoryMotion, "legacy motion flag migrated");
-					check(ConfigStore.get().fastInventoryWhileMouseHeld, "import retains held option");
-					check(!ConfigStore.get().suppressInventoryKeyRepeats, "import retains false repeat option");
 					ConfigStore.load();
 					check(ConfigStore.get().reduceInventoryMotion, "migrated option reloads");
 				} finally { Files.deleteIfExists(snapshot); }
@@ -360,8 +345,6 @@ public final class PvpInputRegressionLab {
 		var actual = ConfigStore.get();
 		check(actual.centerMouseFix == value, stage + " center=" + value);
 		check(actual.superFastInventory == value, stage + " fast=" + value);
-		check(actual.fastInventoryWhileMouseHeld == value, stage + " held=" + value);
-		check(actual.suppressInventoryKeyRepeats == value, stage + " repeat=" + value);
 		check(actual.reduceInventoryMotion == value, stage + " motion=" + value);
 	}
 
@@ -371,12 +354,6 @@ public final class PvpInputRegressionLab {
 		check(defaults.sameValues(copy), "config copy equal");
 		copy.centerMouseFix = !copy.centerMouseFix;
 		check(!defaults.sameValues(copy), "center fix participates in config equality");
-		copy = defaults.copy();
-		copy.fastInventoryWhileMouseHeld = !copy.fastInventoryWhileMouseHeld;
-		check(!defaults.sameValues(copy), "held policy participates in config equality");
-		copy = defaults.copy();
-		copy.suppressInventoryKeyRepeats = !copy.suppressInventoryKeyRepeats;
-		check(!defaults.sameValues(copy), "repeat policy participates in config equality");
 		for (var profile : InventoryTweaksConfig.ProfilePreset.values()) {
 			var config = new InventoryTweaksConfig();
 			config.applyProfile(profile);
@@ -440,7 +417,6 @@ public final class PvpInputRegressionLab {
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				ConfigStore.get().superFastInventory = true;
 				ConfigStore.get().centerMouseFix = false;
-				ConfigStore.get().fastInventoryWhileMouseHeld = false;
 				ConfigStore.get().reduceInventoryMotion = false;
 				mc.options.guiScale().set(scale);
 				mc.resizeGui();
@@ -449,57 +425,34 @@ public final class PvpInputRegressionLab {
 			});
 			screenshot(mc, "pvp-main-icons-gui" + scale);
 			CloseHotbarRegressionLab.atPoll(mc, () -> openTweaks((InventoryTweaksScreen) mc.screen));
-			screenshot(mc, "pvp-tweaks-response-gui" + scale);
+			screenshot(mc, "pvp-tweaks-gui" + scale);
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				int x = (int) field(mc.screen, "tweakOptionsX") + 10;
 				int top = (int) field(mc.screen, "tweakViewportTop");
 				mc.screen.mouseScrolled(x, top + 10, 0, -20);
 				check(field(mc.screen, "tweakScroll").equals(field(mc.screen, "tweakMaxScroll")), "wheel reaches bottom");
 				var buttons = (java.util.List<?>) field(mc.screen, "tweakScrollingWidgets");
+				check(buttons.size() == 3, "three options on the page");
 				for (var value : buttons) {
 					var widget = (AbstractWidget) value;
 					check(!widget.isMouseOver(widget.getX() + 1, top - 1), "clipped switch rejects outside input");
 				}
+				mc.screen.mouseScrolled(x, top + 10, 0, 20);
 				clickTweak(mc.screen, 1);
-				check(field(mc.screen, "modal").toString().equals("TWEAK_WARNING"), "held option explains tradeoff before enabling");
-				check(!ConfigStore.get().fastInventoryWhileMouseHeld, "warning has not enabled held option");
+				check(field(mc.screen, "modal").toString().equals("TWEAK_WARNING"), "center warning describes remembered-position conflict");
+				check(!ConfigStore.get().centerMouseFix, "center fix unchanged before warning accepted");
 			});
-			screenshot(mc, "pvp-tweaks-held-warning-gui" + scale);
+			screenshot(mc, "pvp-tweaks-center-warning-gui" + scale);
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				mc.screen.keyPressed(new KeyEvent(GLFW.GLFW_KEY_ESCAPE, 0, 0));
 				check(field(mc.screen, "modal").toString().equals("TWEAKS"), "Escape cancels warning");
-				check(!ConfigStore.get().fastInventoryWhileMouseHeld, "cancel retains setting");
+				check(!ConfigStore.get().centerMouseFix, "cancel retains setting");
 				clickTweak(mc.screen, 1);
 				clickLabel(mc.screen, "screen.kohs_inventory_tweaks.remove_animations.warning.enable");
-				check(ConfigStore.get().fastInventoryWhileMouseHeld, "accepted held option reaches runtime store");
-				ConfigStore.load();
-				check(ConfigStore.get().fastInventoryWhileMouseHeld, "held option survives menu save and reload");
-				mc.screen.mouseScrolled((int) field(mc.screen, "tweakOptionsX") + 10,
-					(int) field(mc.screen, "tweakViewportTop") + 10, 0, 20);
-				clickTweak(mc.screen, 0);
-				var buttonsAfter = (java.util.List<?>) field(mc.screen, "tweakScrollingWidgets");
-				check(!((AbstractWidget) buttonsAfter.get(1)).active, "held option inactive when fast opening disabled");
-				check(ConfigStore.get().fastInventoryWhileMouseHeld, "inactive dependency retains preference");
-			});
-			CloseHotbarRegressionLab.atPoll(mc, () -> {
-				clickLabel(mc.screen, "screen.kohs_inventory_tweaks.tweaks.cursor");
-			});
-			screenshot(mc, "pvp-tweaks-cursor-gui" + scale);
-			CloseHotbarRegressionLab.atPoll(mc, () -> {
-				clickTweak(mc.screen, 0);
-				check(field(mc.screen, "modal").toString().equals("TWEAK_WARNING"), "center warning describes remembered-position conflict");
-				check(!ConfigStore.get().centerMouseFix, "center fix unchanged before warning accepted");
-				clickLabel(mc.screen, "screen.kohs_inventory_tweaks.remove_animations.warning.enable");
-				check(ConfigStore.get().centerMouseFix, "center fix enabled from cursor tab");
+				check(ConfigStore.get().centerMouseFix, "center fix enabled from the page");
 				ConfigStore.load();
 				check(ConfigStore.get().centerMouseFix, "center fix survives reload");
-			});
-			CloseHotbarRegressionLab.atPoll(mc, () -> {
-				clickLabel(mc.screen, "screen.kohs_inventory_tweaks.tweaks.visuals");
-			});
-			screenshot(mc, "pvp-tweaks-visuals-gui" + scale);
-			CloseHotbarRegressionLab.atPoll(mc, () -> {
-				clickTweak(mc.screen, 0);
+				clickTweak(mc.screen, 2);
 				check(field(mc.screen, "modal").toString().equals("TWEAK_WARNING"), "visual warning is shown");
 			});
 			screenshot(mc, "pvp-tweaks-visual-warning-gui" + scale);

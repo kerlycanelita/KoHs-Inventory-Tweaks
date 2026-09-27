@@ -222,7 +222,6 @@ public final class RecordingLab {
                 config.centerMouseFix = on;
                 config.superFastInventory = true;
                 config.inventory = null;
-                config.inventoryLandingItem = null;
             });
             await(mc, false);
             // A window resized while playing leaves GLFW restoring the pointer to the old centre.
@@ -367,7 +366,6 @@ public final class RecordingLab {
                 config.centerMouseFix = saved.centerMouseFix;
                 config.reduceInventoryMotion = saved.reduceInventoryMotion;
                 config.inventory = saved.inventory;
-                config.inventoryLandingItem = saved.inventoryLandingItem;
                 config.inventoryGuiScalerEnabled = saved.inventoryGuiScalerEnabled;
                 config.visiblePlayerGlowEnabled = saved.visiblePlayerGlowEnabled;
                 mc.options.guiScale().set(gui);

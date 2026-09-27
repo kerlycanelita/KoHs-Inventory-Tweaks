@@ -80,7 +80,7 @@ Chest, Shulker Box, Ender Chest y Barrel tienen interruptores independientes. Si
 
 ## Inventory Tweaks
 
-Cada opción muestra solo su nombre en la página; pasa el cursor por encima para leer qué hace. Inventario superrápido, Center Mouse Fix y Reducir el movimiento visual del inventario muestran además una grabación corta, Vanilla a la izquierda y KoHs a la derecha, hecha con la misma entrada en ambos lados.
+La página tiene tres opciones: Inventario superrápido, Center Mouse Fix y Reducir el movimiento visual del inventario. Cada una muestra solo su nombre; pasa el cursor por encima para leer qué hace.
 
 ### Center Mouse Fix
 
@@ -103,7 +103,7 @@ Un cambio a la mano secundaria, soltar o elegir bloque pendientes no la hacen es
 
 Los inventarios controlados por el servidor conservan su ruta Vanilla. Los tipos, contenido y orden de paquetes, la validación de slots y los manejadores siguen siendo Vanilla; el servidor solo puede observar el tiempo anterior de un clic hecho después de que aparezca la pantalla.
 
-**Apertura rápida con el mouse presionado** (activada por defecto) mantiene la apertura anticipada con un botón del mouse presionado. **Un cambio por pulsación** evita que mantener la tecla del inventario lo abra y cierre una y otra vez; la búsqueda de recetas escribe con normalidad.
+Dos comportamientos que antes eran opciones aparte están siempre activos: la apertura anticipada con un botón del mouse presionado y un cambio por pulsación, así mantener la tecla del inventario nunca lo abre y cierra una y otra vez. La búsqueda de recetas escribe con normalidad.
 
 ### Reducir el movimiento visual del inventario
 

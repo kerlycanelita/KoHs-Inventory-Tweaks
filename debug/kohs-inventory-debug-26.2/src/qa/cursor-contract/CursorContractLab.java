@@ -110,7 +110,6 @@ public final class CursorContractLab {
                     var config = ConfigStore.get();
                     mode = index % 4;
                     config.centerMouseFix = mode == 0 || mode == 1;
-                    config.inventoryLandingItem = null;
                     config.inventory = mode == 1 || mode == 2
                         ? new InventoryTweaksConfig.CursorPoint(index % 2 == 0 ? 1.0 : 0.23, 0.78) : null;
                     config.superFastInventory = (index / 4) % 2 == 0;
@@ -206,7 +205,6 @@ public final class CursorContractLab {
                 config.centerMouseFix = saved.centerMouseFix;
                 config.superFastInventory = saved.superFastInventory;
                 config.inventory = saved.inventory;
-                config.inventoryLandingItem = saved.inventoryLandingItem;
                 config.inventoryGuiScalerEnabled = saved.inventoryGuiScalerEnabled;
                 config.inventoryGuiScale = saved.inventoryGuiScale;
                 mc.options.guiScale().set(gui);

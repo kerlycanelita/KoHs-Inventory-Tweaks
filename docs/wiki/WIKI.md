@@ -80,7 +80,7 @@ Chest, Shulker Box, Ender Chest, and Barrel have independent switches. When one 
 
 ## Inventory Tweaks
 
-Each option shows only its name on the page; hover it to read what it does. Super Fast Inventory, Center Mouse Fix and Reduce inventory visual motion also play a short recording there, Vanilla on the left and KoHs on the right, made with the same input on both sides.
+The page has three options: Super Fast Inventory, Center Mouse Fix and Reduce inventory visual motion. Each shows only its name; hover it to read what it does.
 
 ### Center Mouse Fix
 
@@ -103,7 +103,7 @@ A pending offhand swap, drop or pick-block click does not make it wait: Vanilla 
 
 Server-controlled openings stay on Vanilla's tick and packet path. Packet types, payloads, ordering, slot validation and action handlers are Vanilla's; a server can only observe the earlier timing of a click made after the screen appears.
 
-**Fast open while holding mouse** (on by default) keeps early opening available while a mouse button is held. **One toggle per key press** stops a held inventory key from opening and closing the screen repeatedly; recipe search keeps normal typing.
+Two behaviors that used to be separate options are always on: early opening while a mouse button is held, and one toggle per key press, so holding the inventory key never opens and closes the screen repeatedly. Recipe search keeps normal typing.
 
 ### Reduce inventory visual motion
 

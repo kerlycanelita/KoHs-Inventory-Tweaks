@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""Composes the A/B takes recorded by the debug companion into page media and in-game previews.
+"""Composes the A/B takes recorded by the debug companion into page media.
 
     python tools/media/compose_recordings.py --recordings debug/kohs-inventory-debug-26.1.2/run/recordings
 
 Each clip has an "-off" and an "-on" take. Both are aligned on the key press (or
 on their first frame when the take has no press) and sampled on a common clock,
-so the two halves always show the same instant. Outputs:
-
-- docs/media/<clip>.gif and .webp: side by side, labelled, for the README and Modrinth.
-- assets/.../textures/gui/preview/<clip>.png: a vertical strip of small side-by-side
-  frames for the hover preview, with its timing in preview/<clip>.json.
+so the two halves always show the same instant. Output: docs/media/<clip>.gif and
+.webp, side by side and labelled, for the README and Modrinth.
 """
 from __future__ import annotations
 
@@ -20,7 +17,6 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 REPO = Path(__file__).resolve().parents[2]
-ASSETS = REPO / "src/main/resources/assets/kohs_inventory_tweaks/textures/gui/preview"
 MEDIA = REPO / "docs/media"
 
 CLIPS = {
@@ -123,7 +119,7 @@ def compose(recordings: Path, clip: str) -> dict:
     off_ms = {k: (v - off_zero) / 1000 for k, v in off_events.items()}
     on_ms = {k: (v - on_zero) / 1000 for k, v in on_events.items()}
     big, small = font(18), font(13)
-    page_frames, strip_frames = [], []
+    page_frames = []
     t = start
     while t <= end:
         left, left_when = frame_at(off_dir, off_frames, off_zero + t * 1000)
@@ -147,14 +143,6 @@ def compose(recordings: Path, clip: str) -> dict:
         draw.text(((page_width - width) / 2, label_height + height + 7), note, font=small, fill=(215, 196, 242))
         page_frames.append(canvas)
 
-        strip_half = 128
-        strip_height = round(left.height * strip_half / left.width)
-        # left/right are already cropped to the inventory region
-        tile = Image.new("RGB", (strip_half * 2 + 2, strip_height), BACKGROUND)
-        tile.paste(left.resize((strip_half, strip_height), Image.LANCZOS), (0, 0))
-        tile.paste(right.resize((strip_half, strip_height), Image.LANCZOS), (strip_half + 2, 0))
-        ImageDraw.Draw(tile).rectangle((strip_half, 0, strip_half + 1, strip_height), fill=PURPLE)
-        strip_frames.append(tile)
         t += step
 
     MEDIA.mkdir(parents=True, exist_ok=True)
@@ -163,30 +151,13 @@ def compose(recordings: Path, clip: str) -> dict:
     quantized[0].save(MEDIA / f"{clip}.gif", save_all=True, append_images=quantized[1:], duration=duration, loop=0, optimize=True)
     page_frames[0].save(MEDIA / f"{clip}.webp", save_all=True, append_images=page_frames[1:], duration=duration, loop=0, quality=80, method=6)
 
-    # In-game hover preview: every other frame keeps the sheet small.
-    chosen = strip_frames[::2] if len(strip_frames) > 24 else strip_frames
-    tile_w, tile_h = chosen[0].size
-    sheet = Image.new("RGB", (tile_w, tile_h * len(chosen)), BACKGROUND)
-    for index, tile in enumerate(chosen):
-        sheet.paste(tile, (0, index * tile_h))
-    ASSETS.mkdir(parents=True, exist_ok=True)
-    sheet.save(ASSETS / f"{clip}.png", optimize=True)
-    meta = {
-        "frames": len(chosen),
-        "frameWidth": tile_w,
-        "frameHeight": tile_h,
-        "frameMillis": round(duration * (len(strip_frames) / len(chosen))),
-        "latencyOffMillis": latency["off"],
-        "latencyOnMillis": latency["on"],
-    }
-    (ASSETS / f"{clip}.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     return {
         "clip": clip,
         "pageFrames": len(page_frames),
         "gif": (MEDIA / f"{clip}.gif").stat().st_size,
         "webp": (MEDIA / f"{clip}.webp").stat().st_size,
-        "sheet": (ASSETS / f"{clip}.png").stat().st_size,
-        **meta,
+        "latencyOffMillis": latency["off"],
+        "latencyOnMillis": latency["on"],
     }
 
 

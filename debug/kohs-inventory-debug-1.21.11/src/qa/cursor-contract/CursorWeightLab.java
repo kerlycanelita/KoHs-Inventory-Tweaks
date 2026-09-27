@@ -137,7 +137,6 @@ public final class CursorWeightLab {
                     boolean center = index % 2 == 0;
                     boolean custom = (index / 2) % 3 == 2;
                     config.centerMouseFix = center;
-                    config.inventoryLandingItem = null;
                     config.inventory = custom ? new InventoryTweaksConfig.CursorPoint(0.23, 0.78) : null;
                     config.superFastInventory = (index / 6) % 2 == 0;
                     config.inventoryGuiScalerEnabled = true;
@@ -192,7 +191,6 @@ public final class CursorWeightLab {
                     var config = ConfigStore.get();
                     config.centerMouseFix = index < 2;
                     config.inventory = null;
-                    config.inventoryLandingItem = null;
                     config.superFastInventory = true;
                     label = "stale-restore cycle=" + index + "; centerMouseFix=" + config.centerMouseFix
                         + "; window=" + mc.getWindow().getScreenWidth() + "x" + mc.getWindow().getScreenHeight();
@@ -231,7 +229,6 @@ public final class CursorWeightLab {
                 config.centerMouseFix = saved.centerMouseFix;
                 config.superFastInventory = saved.superFastInventory;
                 config.inventory = saved.inventory;
-                config.inventoryLandingItem = saved.inventoryLandingItem;
                 config.inventoryGuiScalerEnabled = saved.inventoryGuiScalerEnabled;
                 config.inventoryGuiScale = saved.inventoryGuiScale;
                 mc.options.guiScale().set(gui);

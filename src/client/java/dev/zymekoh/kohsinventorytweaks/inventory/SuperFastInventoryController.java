@@ -74,7 +74,6 @@ public final class SuperFastInventoryController {
 	) {
 		if (action != GLFW.GLFW_REPEAT || minecraft == null
 			|| windowHandle != minecraft.getWindow().handle()
-			|| !ConfigStore.get().suppressInventoryKeyRepeats
 			|| !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)
 			|| !minecraft.options.keyInventory.matches(event)
 			|| minecraft.player == null || minecraft.gameMode == null
@@ -502,11 +501,6 @@ public final class SuperFastInventoryController {
 		// Any other held button drives nothing that outlives the opening. A fresh
 		// InventoryScreen starts with skipNextRelease=true and no clickedSlot, so the
 		// inherited release cannot become a new inventory click or drag.
-		if (opensScreen
-			&& !ConfigStore.get().fastInventoryWhileMouseHeld
-			&& ((MouseHandlerAccessor) minecraft.mouseHandler).kohsInventoryTweaks$getActiveButton() != null) {
-			return "mouse-button-held";
-		}
 		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)) {
 			return "inventory-tweaks-unavailable";
 		}
