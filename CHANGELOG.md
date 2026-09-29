@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
+
+- New mod icon. Nothing else changes from 1.1.0.
+
 ## 1.1.0 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
 
 Fixes found by the new input labs:

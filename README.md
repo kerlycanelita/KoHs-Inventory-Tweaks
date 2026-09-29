@@ -101,7 +101,7 @@ This checks every source tree against the exact Minecraft jar it compiles agains
 
 This reports any translation key the client asks for that is missing from a language file, and any key present in English but absent from a translation.
 
-    python tools/verify-release-artifacts.py --release 1.1.0
+    python tools/verify-release-artifacts.py --release 1.1.1
 
 After building all five targets, this checks each release JAR's metadata, mixin classes, Java target and bundled translations, and prints its size and hashes.
 
