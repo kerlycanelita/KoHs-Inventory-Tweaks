@@ -31,7 +31,11 @@ This repository contains released implementations for **Minecraft 26.2, 26.1.2, 
 
 ## Supported versions
 
-Since 26 September 2026, KoHs Inventory Tweaks supports **Minecraft 1.21.11 and later**. Minecraft 1.21.10 is no longer maintained: its builds (the last one is `1.0.8+mc1.21.10`) stay downloadable on Modrinth as archived versions, but they will not receive fixes or new features. The 1.21.10 source tree and the unreleased 1.21–1.21.9 work moved to [`archive/`](archive/README.md).
+Since 26 September 2026, KoHs Inventory Tweaks supports **Minecraft 1.21.11 and later**. Minecraft 1.21.10 is no longer maintained and will not receive fixes or new features. The 1.21.10 source tree and the unreleased 1.21–1.21.9 work moved to [`archive/`](archive/README.md).
+
+### Older versions
+
+Modrinth only offers the latest version. Earlier releases stay on the [GitHub Releases](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/releases) page as archived references: they get no fixes, and each one lists the known problems that 1.1.0 fixes. The 1.0.3 and 1.0.4 releases include Minecraft 1.21.10 files.
 
 ## Compatibility
 
