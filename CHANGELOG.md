@@ -1,5 +1,58 @@
 # Changelog
 
+## 1.1.0 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
+
+Fixes found by the new input labs:
+
+- An attack or use pressed in an earlier input poll of the same tick as the
+  inventory key no longer fires when the inventory closes. Super Fast Inventory
+  opened the screen before the tick, the click stayed queued under it, and
+  closing the inventory released it as a ghost hit or a thrown pearl. Vanilla
+  runs those clicks in that tick, so such an opening now waits for the tick.
+- 26.2 gets its own key order back. 1.0.13 applied the 26.1.2 order there, so
+  chat, commands, advancements, social and the HUD toggle pressed with the
+  inventory key waited until the inventory closed; 26.2 handles them first.
+- Slot shortcuts after a fast flick hit the slot under the pointer in every
+  Vanilla container, not only the player inventory: F, 1-9, Q, Ctrl+Q, clicks
+  and the wheel. Vanilla updates the hovered slot when it draws, so a key
+  pressed right after a flick acted on the slot the pointer had just left.
+  Chests, shulker boxes, furnaces, crafting tables, anvils, villagers, horses
+  and the other Vanilla containers are covered.
+- Super Fast Inventory and Center Mouse Fix were rewritten around one decision
+  per input poll and each version's own key order, read from its client jar.
+
+Redesign:
+
+- A new interface: dark violet glass with cut corners, a slow background of a
+  turning slot-grid sigil, embers and a passing light, section titles over
+  blades, and lines of current. Cyan marks speed and precision, magenta
+  warnings, crimson danger. With Reduce inventory visual motion on, the
+  background holds still; hover and click feedback remain.
+- Buttons, tabs and screens no longer grow into place when they open, and cards
+  no longer lift on hover. The opening scale drew every control a few pixels
+  away from where it could be clicked for the first third of a second; the
+  openings are now light laid over controls that never move.
+- Switches show a track and a knob beside the state name, so the state reads by
+  shape and by word, not by colour alone.
+- New pixel icons for every card, tab and compatibility state, sharp at every
+  GUI scale.
+- The inventory previews are drawn at whole-pixel scales, sharp at every GUI
+  scale, and up to twice their size on the main menu and in Cursor Landing,
+  where a larger preview makes a position easier to place.
+- Card titles wrap between words only, and the side columns take the width the
+  longest word needs.
+- Warnings share one panel with a slow magenta pulse; it breathes, it never
+  flashes.
+
+Code:
+
+- The interface's theme, motion, drawing primitives, icons, background and
+  titles live in `ui/`; the inventory previews moved out of the main screen into
+  `InventoryPreviewRenderer`.
+- The debug companion gains the `slot-shortcuts` lab (457 checks against the
+  integrated server on every version, where Vanilla fails 4 of 4 fast-flick
+  cases) and the `ui-review` capture macro.
+
 ## 1.0.13 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
 
 - Center Mouse Fix no longer pulls the pointer back after the inventory opens.

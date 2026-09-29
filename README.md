@@ -52,12 +52,13 @@ The mod does not need to be installed on the server.
 - **Cursor Landing:** stores independent normalized coordinates for the player inventory, single chest, double chest, Shulker Box, Ender Chest, and barrel. Individual container types can fall back to vanilla cursor behavior.
 - **Center Mouse Fix:** checks the pointer once, right after Minecraft releases the mouse, and corrects it only when GLFW restored a stale position. Movement made while the inventory opens, such as reaching for a totem, is never pulled back.
 - **Super Fast Inventory:** optionally constructs the ordinary local inventory screen directly from the physical keyboard or remapped mouse press, up to one client tick (50 ms) sooner. It waits for the tick only when Vanilla would still run something first: a hotbar key, a pending attack or use, an item in use, or a block being broken. A held mouse button never holds it back, and holding the inventory key toggles it only once. Server-controlled openings, slot actions, packet types, cooldowns, and validation stay on Vanilla paths.
+- **Slot shortcuts:** F, 1-9, Q, Ctrl+Q, clicks and the wheel act on the slot under the pointer the moment they are pressed, even right after a fast flick, in the player inventory and in every Vanilla container.
 - **Reduce inventory visual motion:** stills recipe-button bounce, item return motion, the enchanting book and animated backgrounds, while progress indicators and enchanted-item glint stay Vanilla's.
 - **Customization:** composes player-inventory and compatible-container textures at runtime using RGB palettes, opacity controls, static or animated backgrounds, and resource-pack-aware sources.
 - **GUI Scaler:** scales the player inventory—including slots, items, text, and the player model—from 65% to 315%, starting at 200% on a fresh installation and using adaptive limits based on available space. The default-enabled Affect Containers switch applies that scale to supported chest, Shulker Box, barrel, and Ender Chest screens.
 - **Item Highlighter:** stores per-item colors, optional HUD hotbar highlighting, and dynamic activation based on Minecraft's calculated hovered slot.
 - **Player Visibility:** can tint normally visible players and draw a glowing silhouette around them while your inventory is open, outside its panel. Both are depth-tested like the body, so blocks hide them and nothing shows through walls; Minecraft's glowing outline is never used. Its page shows a live world view beside a walking preview of your own skin and equipment.
-- **Settings page:** each option shows only its name; hovering it explains the option.
+- **Interface:** dark violet glass, a slow animated background that holds still with Reduce inventory visual motion, and controls that never shift under the pointer. Every page fits at GUI scale 2, 3 and 4; each option shows only its name, and hovering it explains the option.
 - **Safe persistence:** sanitizes every setting and writes it through atomic replacement to config/kohs_inventory_tweaks.json.
 
 ## Install
@@ -96,7 +97,7 @@ This checks every source tree against the exact Minecraft jar it compiles agains
 
 This reports any translation key the client asks for that is missing from a language file, and any key present in English but absent from a translation.
 
-    python tools/verify-release-artifacts.py --release 1.0.13
+    python tools/verify-release-artifacts.py --release 1.1.0
 
 After building all five targets, this checks each release JAR's metadata, mixin classes, Java target and bundled translations, and prints its size and hashes.
 

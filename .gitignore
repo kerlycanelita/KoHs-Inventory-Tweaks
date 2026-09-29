@@ -42,7 +42,6 @@ tmp/
 __pycache__/
 
 # Machine-local settings and diagnostics
-.claude/settings.local.json
 .env
 .env.*
 !.env.example
