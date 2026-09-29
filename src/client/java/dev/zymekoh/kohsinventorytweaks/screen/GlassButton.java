@@ -6,14 +6,22 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.FormattedCharSequence;
+import dev.zymekoh.kohsinventorytweaks.ui.ZDraw;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMotion;
+import dev.zymekoh.kohsinventorytweaks.ui.ZTheme;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * The interface's button: dark glass with cut corners and a variant-specific light.
+ *
+ * <p>Hover, focus, selection and press only change light and colour; the geometry is
+ * fixed, so the drawn button and its hitbox are always the same rectangle.</p>
+ */
 public final class GlassButton extends Button {
-	private static final long ENTRANCE_DURATION_NANOS = 240_000_000L;
+	private static final long FLASH_NANOS = 140_000_000L;
 
 	public enum Variant {
 		NORMAL,
@@ -26,13 +34,14 @@ public final class GlassButton extends Button {
 
 	private final Variant variant;
 	private final @Nullable BooleanSupplier selected;
-	private final long createdAtNanos = System.nanoTime();
 	private final WidgetClip clip = new WidgetClip();
 	private @Nullable Component subtitle;
 	private @Nullable Component narrationLabel;
 	private @Nullable KohsTabIcon icon;
 	private float hoverAmount;
+	private float selectAmount;
 	private long lastRenderNanos;
+	private long pressedAtNanos;
 
 	public GlassButton(
 		final int x,
@@ -56,7 +65,12 @@ public final class GlassButton extends Button {
 		final Variant variant,
 		final @Nullable BooleanSupplier selected
 	) {
-		super(x, y, width, height, message, onPress, DEFAULT_NARRATION);
+		super(x, y, width, height, message, pressed -> {
+			if (pressed instanceof GlassButton glass) {
+				glass.pressedAtNanos = System.nanoTime();
+			}
+			onPress.onPress(pressed);
+		}, DEFAULT_NARRATION);
 		this.variant = variant;
 		this.selected = selected;
 	}
@@ -102,77 +116,153 @@ public final class GlassButton extends Button {
 		this.clip.trackPointer(mouseX, mouseY);
 		this.clip.begin(graphics);
 		boolean isSelected = this.selected != null && this.selected.getAsBoolean();
-		boolean highlighted = this.isHoveredOrFocused();
+		boolean highlighted = this.active && this.isHoveredOrFocused();
 		long now = System.nanoTime();
 		float deltaSeconds = this.lastRenderNanos == 0L
 			? 1.0F / 60.0F
 			: Math.min(0.1F, Math.max(0.0F, (now - this.lastRenderNanos) / 1_000_000_000.0F));
+		this.hoverAmount = ZMotion.approach(this.hoverAmount, highlighted ? 1.0F : 0.0F, 14.0F, deltaSeconds);
+		this.selectAmount = this.lastRenderNanos == 0L
+			? (isSelected ? 1.0F : 0.0F)
+			: ZMotion.approach(this.selectAmount, isSelected ? 1.0F : 0.0F, 18.0F, deltaSeconds);
 		this.lastRenderNanos = now;
-		float transition = 1.0F - (float) Math.exp(-12.0F * deltaSeconds);
-		this.hoverAmount += ((highlighted ? 1.0F : 0.0F) - this.hoverAmount) * transition;
-		float entrance = cubicOut(clamp01((System.nanoTime() - this.createdAtNanos) / (float) ENTRANCE_DURATION_NANOS));
-		boolean stableSwitch = this.variant == Variant.SWITCH;
-		float scale = stableSwitch ? 1.0F : 0.965F + entrance * 0.035F;
-		int lift = !stableSwitch && this.active && this.hoverAmount > 0.55F ? -1 : 0;
-		int x = this.getX();
-		int y = this.getY() + lift;
+		float flash = this.pressedAtNanos == 0L ? 0.0F : 1.0F - ZMotion.progress(this.pressedAtNanos, FLASH_NANOS);
 
-		int fill = isSelected ? UiTheme.GLASS_SELECTED : UiTheme.GLASS_LIGHT;
-		int border = isSelected ? UiTheme.ACCENT_SOFT : UiTheme.BORDER_SOFT;
-		int text = UiTheme.TEXT;
-		if (this.variant == Variant.SWITCH) {
-			fill = isSelected
-				? blend(0xF05B2586, 0xFF7C3AED, this.hoverAmount)
-				: blend(0xCF24182F, 0xE650244B, this.hoverAmount);
-			border = isSelected ? UiTheme.ACCENT_BRIGHT : 0xFFC76A92;
-			text = isSelected ? UiTheme.TEXT : 0xFFFFD8E8;
-		} else if (this.variant == Variant.PRIMARY) {
-			fill = blend(0xF07C3AED, 0xFFA855F7, this.hoverAmount);
-			border = UiTheme.ACCENT_BRIGHT;
-		} else if (this.variant == Variant.DANGER) {
-			fill = blend(0xC650244B, 0xE1692E62, this.hoverAmount);
-			border = 0xD9FF78A5;
-		} else if (highlighted || this.hoverAmount > 0.01F) {
-			fill = blend(fill, UiTheme.GLASS_HOVER, this.hoverAmount);
-			border = this.variant == Variant.TAB || this.variant == Variant.TOGGLE
-				? UiTheme.ACCENT_SOFT
-				: blend(UiTheme.BORDER, UiTheme.ACCENT_SOFT, this.hoverAmount);
+		// Geometry never moves: hover, selection and press change light, not position,
+		// so what the pointer sees is exactly what it can click.
+		int x = this.getX();
+		int y = this.getY();
+		int width = this.getWidth();
+		int height = this.getHeight();
+		int text = this.active ? ZTheme.TEXT : ZTheme.TEXT_DISABLED;
+		int fill;
+		int border;
+		int aura = ZTheme.VIOLET_BRIGHT;
+		switch (this.variant) {
+			case PRIMARY -> {
+				fill = ZTheme.mix(0xF06D28D9, 0xFF9333EA, this.hoverAmount);
+				border = ZTheme.mix(ZTheme.LILAC, ZTheme.LILAC_PALE, this.hoverAmount);
+			}
+			case DANGER -> {
+				fill = ZTheme.mix(0xD2360A1E, 0xE8581030, this.hoverAmount);
+				border = ZTheme.mix(0xC0C8193F, ZTheme.CRIMSON_BRIGHT, this.hoverAmount);
+				aura = ZTheme.CRIMSON_BRIGHT;
+			}
+			case SWITCH -> {
+				fill = ZTheme.mix(ZTheme.mix(ZTheme.SURFACE_LIGHT, ZTheme.SURFACE_HOVER, this.hoverAmount), ZTheme.SURFACE_SELECTED, this.selectAmount);
+				border = ZTheme.mix(ZTheme.mix(ZTheme.BORDER_SOFT, ZTheme.BORDER, this.hoverAmount), ZTheme.LILAC, this.selectAmount);
+			}
+			default -> {
+				fill = ZTheme.mix(ZTheme.mix(ZTheme.SURFACE_LIGHT, ZTheme.SURFACE_HOVER, this.hoverAmount), ZTheme.SURFACE_SELECTED, this.selectAmount);
+				border = ZTheme.mix(ZTheme.mix(ZTheme.BORDER_SOFT, ZTheme.BORDER_HOT, this.hoverAmount * 0.7F), ZTheme.LILAC, this.selectAmount);
+			}
 		}
 		if (!this.active) {
-			fill = 0x99211631;
-			border = UiTheme.BORDER_SOFT;
-			text = UiTheme.TEXT_DISABLED;
+			fill = 0x9A1A1224;
+			border = ZTheme.alpha(ZTheme.BORDER_SOFT, 80);
 		}
 
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(x + this.getWidth() / 2.0F, y + this.getHeight() / 2.0F);
-		graphics.pose().scale(scale, scale);
-		graphics.pose().translate(-(x + this.getWidth() / 2.0F), -(y + this.getHeight() / 2.0F));
-		if (!stableSwitch && this.active && this.hoverAmount > 0.02F) {
-			UiRender.glow(graphics, x, y, this.getWidth(), this.getHeight(), 6, (int) (34 * this.hoverAmount));
+		if (this.active && this.hoverAmount > 0.02F) {
+			ZDraw.glow(graphics, x, y, width, height, aura, Math.round(46 * this.hoverAmount));
 		}
-		UiRender.panel(graphics, x, y, this.getWidth(), this.getHeight(), 6, fill, border);
-		if (this.variant == Variant.SWITCH && this.active) {
-			int centerY = y + this.getHeight() / 2;
-			int marker = isSelected ? UiTheme.ACCENT_BRIGHT : 0xFFFF789A;
-			graphics.fill(x + 6, centerY - 4, x + 10, centerY + 4, marker);
-			graphics.fill(x + 10, centerY - 2, x + 12, centerY + 2, marker);
+		ZDraw.glass(graphics, x, y, width, height, fill, border);
+		if (this.active) {
+			this.drawAccent(graphics, x, y, width, height);
 		}
-		renderText(graphics, x, y, text);
-		graphics.pose().popMatrix();
+		if (flash > 0.0F) {
+			int flashColor = this.variant == Variant.DANGER ? ZTheme.CRIMSON_BRIGHT : ZTheme.LILAC_PALE;
+			ZDraw.chamfer(graphics, x + 1, y + 1, width - 2, height - 2, Math.max(0, ZDraw.cutFor(width, height) - 1),
+				ZTheme.alpha(flashColor, Math.round(90 * flash)));
+		}
+		if (this.variant == Variant.SWITCH) {
+			this.renderSwitch(graphics, x, y, text);
+		} else {
+			this.renderText(graphics, x, y, text);
+		}
 		this.clip.end(graphics);
+	}
+
+	/** The variant's signature light: a blade of current, a selection bar or a rune. */
+	private void drawAccent(final GuiGraphicsExtractor graphics, final int x, final int y, final int width, final int height) {
+		switch (this.variant) {
+			case PRIMARY -> {
+				graphics.fill(x + 3, y + height - 3, x + width - 3, y + height - 2, ZTheme.alpha(ZTheme.LILAC_PALE, 90));
+				if (this.hoverAmount > 0.05F) {
+					ZDraw.energyLine(graphics, x + 3, y + height - 3, width - 6,
+						ZTheme.alpha(ZTheme.LILAC_PALE, 0), ZTheme.fade(ZTheme.TEXT, this.hoverAmount), 1.1F);
+				}
+			}
+			case DANGER -> graphics.fill(x + 3, y + height - 3, x + width - 3, y + height - 2,
+				ZTheme.alpha(ZTheme.CRIMSON_BRIGHT, Math.round(60 + 110 * this.hoverAmount)));
+			case TAB, NORMAL -> {
+				// A bar on the leading edge that grows with hover and fills when selected.
+				float amount = Math.max(this.selectAmount, this.hoverAmount * 0.65F);
+				if (amount > 0.02F && height > 8) {
+					int barHeight = Math.max(2, Math.round((height - 8) * amount));
+					int top = y + (height - barHeight) / 2;
+					graphics.fill(x + 2, top, x + 4, top + barHeight, ZTheme.mix(ZTheme.VIOLET_BRIGHT, ZTheme.LILAC_PALE, this.selectAmount));
+				}
+				if (this.selectAmount > 0.5F && width > 40) {
+					ZDraw.diamond(graphics, x + width - 7, y + height / 2, 2, ZTheme.fade(ZTheme.LILAC_PALE, this.selectAmount));
+				}
+			}
+			case TOGGLE -> {
+				if (this.selectAmount > 0.02F) {
+					int lineWidth = Math.round((width - 10) * this.selectAmount);
+					int left = x + (width - lineWidth) / 2;
+					graphics.fill(left, y + height - 3, left + lineWidth, y + height - 2, ZTheme.LILAC_PALE);
+				}
+			}
+			case SWITCH -> {
+			}
+		}
+	}
+
+	/** A track and knob beside the state name, so the state reads by shape and by word. */
+	private void renderSwitch(final GuiGraphicsExtractor graphics, final int x, final int y, final int textColor) {
+		Font font = Minecraft.getInstance().font;
+		int trackWidth = 18;
+		int trackHeight = 10;
+		int gap = 5;
+		int available = Math.max(1, this.getWidth() - 12);
+		boolean showTrack = available >= trackWidth + gap + 12;
+		int labelSpace = showTrack ? available - trackWidth - gap : available;
+		Component label = truncate(font, this.getMessage(), labelSpace);
+		int groupWidth = (showTrack ? trackWidth + gap : 0) + font.width(label);
+		int left = x + (this.getWidth() - groupWidth) / 2;
+		int centerY = y + this.getHeight() / 2;
+		if (showTrack) {
+			int top = centerY - trackHeight / 2;
+			int trackFill = this.active
+				? ZTheme.mix(0xE0241634, ZTheme.VIOLET, this.selectAmount)
+				: 0xB0201828;
+			int trackBorder = this.active
+				? ZTheme.mix(ZTheme.alpha(ZTheme.BORDER_SOFT, 200), ZTheme.LILAC_PALE, this.selectAmount)
+				: ZTheme.alpha(ZTheme.BORDER_SOFT, 90);
+			ZDraw.chamfer(graphics, left, top, trackWidth, trackHeight, 2, trackBorder);
+			ZDraw.chamfer(graphics, left + 1, top + 1, trackWidth - 2, trackHeight - 2, 1, trackFill);
+			int knobSize = trackHeight - 4;
+			int knobX = left + 2 + Math.round((trackWidth - 4 - knobSize) * this.selectAmount);
+			int knob = this.active ? ZTheme.mix(ZTheme.SILVER, ZTheme.TEXT, this.selectAmount) : ZTheme.TEXT_DISABLED;
+			graphics.fill(knobX, top + 2, knobX + knobSize, top + 2 + knobSize, knob);
+			if (this.active && this.selectAmount > 0.5F) {
+				graphics.fill(knobX + 1, top + 3, knobX + knobSize - 1, top + 1 + knobSize, ZTheme.fade(ZTheme.CYAN, this.selectAmount));
+			}
+			left += trackWidth + gap;
+		}
+		graphics.text(font, label, left, centerY - 4, textColor, false);
 	}
 
 	private void renderText(final GuiGraphicsExtractor graphics, final int x, final int y, final int textColor) {
 		Font font = Minecraft.getInstance().font;
-		boolean showSubtitle = this.subtitle != null && this.getHeight() >= 30 && this.variant != Variant.SWITCH;
-		int iconSize = showSubtitle ? 16 : Math.min(14, Math.max(8, this.getHeight() - 6));
-		int textInset = this.icon == null
-			? (showSubtitle ? 23 : (this.variant == Variant.SWITCH ? 20 : 5))
-			: iconSize + 10;
+		boolean showSubtitle = this.subtitle != null && this.getHeight() >= 30;
+		int iconSize = showSubtitle || this.getHeight() >= 22 ? 16 : Math.max(8, Math.min(12, this.getHeight() - 6));
+		int textInset = this.icon == null ? (showSubtitle ? 23 : 5) : iconSize + 10;
 		int maximumTextWidth = Math.max(1, this.getWidth() - textInset - 5);
-		if (!showSubtitle && this.getHeight() >= 22 && font.width(this.getMessage()) > maximumTextWidth) {
-			// Two whole lines read better than one cut with an ellipsis.
+		if (!showSubtitle && this.getHeight() >= 22 && font.width(this.getMessage()) > maximumTextWidth
+			&& wordsFit(font, this.getMessage().getString(), maximumTextWidth)) {
+			// Two whole lines read better than one cut with an ellipsis; a word cut in
+			// half reads worse than both, so a word too long for the line truncates.
 			List<FormattedCharSequence> lines = font.split(this.getMessage(), maximumTextWidth);
 			if (lines.size() == 2) {
 				int lineWidth = Math.max(font.width(lines.get(0)), font.width(lines.get(1)));
@@ -201,13 +291,9 @@ public final class GlassButton extends Button {
 			return;
 		}
 		if (this.icon != null) {
-			this.drawIcon(graphics, x + 6, y + (this.getHeight() - iconSize) / 2, iconSize);
+			this.drawIcon(graphics, x + 7, y + (this.getHeight() - iconSize) / 2, iconSize);
 		} else {
-			int iconX = x + 7;
-			int iconY = y + this.getHeight() / 2 - 4;
-			graphics.fill(iconX, iconY + 2, iconX + 8, iconY + 6, UiTheme.ACCENT_DEEP);
-			graphics.fill(iconX + 2, iconY, iconX + 6, iconY + 8, UiTheme.ACCENT);
-			graphics.fill(iconX + 3, iconY + 1, iconX + 5, iconY + 3, UiTheme.ACCENT_BRIGHT);
+			ZDraw.diamond(graphics, x + 11, y + this.getHeight() / 2, 3, this.active ? ZTheme.VIOLET_BRIGHT : ZTheme.TEXT_DISABLED);
 		}
 		graphics.text(font, title, x + textInset, y + 6, textColor, false);
 		graphics.text(
@@ -215,14 +301,25 @@ public final class GlassButton extends Button {
 			truncate(font, this.subtitle, maximumTextWidth),
 			x + textInset,
 			y + this.getHeight() - 12,
-			UiTheme.TEXT_MUTED,
+			ZTheme.TEXT_MUTED,
 			false
 		);
 	}
 
 	private void drawIcon(final GuiGraphicsExtractor graphics, final int x, final int y, final int size) {
-		graphics.blit(RenderPipelines.GUI_TEXTURED, this.icon.texture(), x, y, 0.0F, 0.0F,
-			size, size, size, size);
+		int primary = !this.active
+			? ZTheme.TEXT_DISABLED
+			: ZTheme.mix(ZTheme.LILAC, ZTheme.LILAC_PALE, Math.max(this.hoverAmount, this.selectAmount));
+		this.icon.draw(graphics, x, y, size, primary, this.active ? 1.0F : 0.5F);
+	}
+
+	private static boolean wordsFit(final Font font, final String text, final int width) {
+		for (String word : text.split(" ")) {
+			if (font.width(word) > width) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private static Component truncate(final Font font, final Component component, final int maximumWidth) {
@@ -233,23 +330,5 @@ public final class GlassButton extends Button {
 		return Component.literal(
 			font.plainSubstrByWidth(component.getString(), Math.max(1, maximumWidth - font.width(ellipsis))) + ellipsis
 		);
-	}
-
-	private static int blend(final int from, final int to, final float amount) {
-		float t = clamp01(amount);
-		int alpha = (int) (((from >>> 24) & 0xFF) + (((to >>> 24) & 0xFF) - ((from >>> 24) & 0xFF)) * t);
-		int red = (int) (((from >>> 16) & 0xFF) + (((to >>> 16) & 0xFF) - ((from >>> 16) & 0xFF)) * t);
-		int green = (int) (((from >>> 8) & 0xFF) + (((to >>> 8) & 0xFF) - ((from >>> 8) & 0xFF)) * t);
-		int blue = (int) ((from & 0xFF) + ((to & 0xFF) - (from & 0xFF)) * t);
-		return (alpha << 24) | (red << 16) | (green << 8) | blue;
-	}
-
-	private static float cubicOut(final float value) {
-		float inverse = 1.0F - value;
-		return 1.0F - inverse * inverse * inverse;
-	}
-
-	private static float clamp01(final float value) {
-		return Math.max(0.0F, Math.min(1.0F, value));
 	}
 }

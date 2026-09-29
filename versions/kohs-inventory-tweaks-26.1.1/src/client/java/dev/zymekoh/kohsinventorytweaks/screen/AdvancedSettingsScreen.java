@@ -1,5 +1,7 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
+import dev.zymekoh.kohsinventorytweaks.ui.ZBackdrop;
+import dev.zymekoh.kohsinventorytweaks.ui.ZChrome;
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
@@ -8,13 +10,11 @@ import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
-import dev.zymekoh.kohsinventorytweaks.render.VisualPerformanceController;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.IntSupplier;
@@ -86,7 +86,7 @@ public final class AdvancedSettingsScreen extends Screen {
 	private final Screen parent;
 	private final boolean profileEntry;
 	private final boolean directEntry;
-	private final List<FloatingParticle> particles = new ArrayList<>();
+	private final ZBackdrop backdrop = new ZBackdrop();
 	private final List<Card> cards = new ArrayList<>();
 	private final List<MovingWidget> movingWidgets = new ArrayList<>();
 	private final SmoothScroll smoothScroll = new SmoothScroll();
@@ -159,7 +159,6 @@ public final class AdvancedSettingsScreen extends Screen {
 		this.movingWidgets.clear();
 		this.working = ConfigStore.get().copy();
 		this.calculateLayout();
-		this.ensureParticles();
 		int next = 0;
 		if (this.editing) {
 			next = switch (this.tab) {
@@ -185,15 +184,8 @@ public final class AdvancedSettingsScreen extends Screen {
 	}
 
 	@Override
-	public void tick() {
-		for (FloatingParticle particle : this.particles) {
-			particle.tick(this.width, this.height);
-		}
-	}
-
-	@Override
 	public void extractBackground(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
-		graphics.fillGradient(0, 0, this.width, this.height, UiTheme.BACKDROP_TOP, UiTheme.BACKDROP_BOTTOM);
+		this.backdrop.draw(graphics, this.width, this.height, mouseX, mouseY);
 	}
 
 	@Override
@@ -203,12 +195,9 @@ public final class AdvancedSettingsScreen extends Screen {
 			this.smoothScroll.update();
 			this.updateWidgetPositions();
 		}
-		for (FloatingParticle particle : this.particles) {
-			particle.draw(graphics);
-		}
 
 		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 9, UiTheme.GLASS, UiTheme.BORDER);
-		graphics.text(this.font, this.title, this.panelX + 12, this.panelY + 10, UiTheme.TEXT, false);
+		ZChrome.panelHeader(graphics, this.font, this.title, this.panelX + 12, this.panelY + 10, this.panelWidth - 24, this.tabY - 4);
 		if (this.editing) {
 			if (!this.directEntry) {
 				graphics.centeredText(
@@ -1379,22 +1368,4 @@ public final class AdvancedSettingsScreen extends Screen {
 		return Integer.toString((int) Math.round(value));
 	}
 
-	private void ensureParticles() {
-		int desired = VisualPerformanceController.particleCount(Mth.clamp(this.width * this.height / 7000, 26, 48));
-		if (this.particles.size() > desired) {
-			this.particles.subList(desired, this.particles.size()).clear();
-		}
-		Random random = new Random(0x414456414E434544L);
-		while (this.particles.size() < desired) {
-			this.particles.add(new FloatingParticle(
-				random.nextFloat() * Math.max(1, this.width),
-				random.nextFloat() * Math.max(1, this.height),
-				0.08F + random.nextFloat() * 0.24F,
-				0.12F + random.nextFloat() * 0.30F,
-				1 + random.nextInt(3),
-				72 + random.nextInt(112),
-				random.nextFloat() * 6.28F
-			));
-		}
-	}
 }

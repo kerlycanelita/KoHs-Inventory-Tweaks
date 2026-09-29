@@ -3,13 +3,13 @@ package dev.zymekoh.kohsinventorytweaks.compat;
 import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
 import dev.zymekoh.kohsinventorytweaks.screen.UiRender;
 import dev.zymekoh.kohsinventorytweaks.screen.UiTheme;
+import dev.zymekoh.kohsinventorytweaks.ui.ZIcons;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
@@ -77,7 +77,7 @@ public final class MouseConflictNotificationController {
 				: "notification.kohs_inventory_tweaks.mouse_conflict.summary",
 			names
 		);
-		int iconSize = 18;
+		int iconSize = 16;
 		int textXOffset = 10 + iconSize + 6;
 		List<FormattedCharSequence> summaryLines = font.split(summary, Math.max(40, width - textXOffset - 8));
 		int visibleLines = Math.min(2, summaryLines.size());
@@ -101,20 +101,7 @@ public final class MouseConflictNotificationController {
 			particle.draw(graphics, x, y, width, height, progress);
 		}
 		graphics.disableScissor();
-		graphics.blit(
-			RenderPipelines.GUI_TEXTURED,
-			severityTexture(primary.severity()),
-			x + 8,
-			y + 7,
-			0.0F,
-			0.0F,
-			iconSize,
-			iconSize,
-			128,
-			128,
-			128,
-			128
-		);
+		severityIcon(primary.severity()).draw(graphics, x + 8, y + 7, iconSize, severityColor(primary.severity()), progress);
 
 		graphics.drawString(
 			font,
@@ -187,16 +174,12 @@ public final class MouseConflictNotificationController {
 		};
 	}
 
-	private static net.minecraft.resources.Identifier severityTexture(final CompatibilityIssue.Severity severity) {
-		String fileName = switch (severity) {
-			case ADAPTABLE -> "severity_adapted.png";
-			case DEGRADED -> "severity_warning.png";
-			case BLOCKING -> "severity_critical.png";
+	private static ZIcons severityIcon(final CompatibilityIssue.Severity severity) {
+		return switch (severity) {
+			case ADAPTABLE -> ZIcons.SEVERITY_ADAPTED;
+			case DEGRADED -> ZIcons.SEVERITY_WARNING;
+			case BLOCKING -> ZIcons.SEVERITY_CRITICAL;
 		};
-		return net.minecraft.resources.Identifier.fromNamespaceAndPath(
-			"kohs_inventory_tweaks",
-			"textures/gui/compatibility/" + fileName
-		);
 	}
 
 	private static int severityColor(final CompatibilityIssue.Severity severity) {

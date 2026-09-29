@@ -1,23 +1,21 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
-import dev.zymekoh.kohsinventorytweaks.KoHsInventoryTweaksClient;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssue;
-import net.minecraft.resources.Identifier;
+import dev.zymekoh.kohsinventorytweaks.ui.ZIcons;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 final class CompatibilitySeverityIcons {
-	private static final Identifier ADAPTED = texture("severity_adapted.png");
-	private static final Identifier WARNING = texture("severity_warning.png");
-	private static final Identifier CRITICAL = texture("severity_critical.png");
-
 	private CompatibilitySeverityIcons() {
 	}
 
-	static Identifier textureFor(final CompatibilityIssue.Severity severity) {
-		return switch (severity) {
-			case ADAPTABLE -> ADAPTED;
-			case DEGRADED -> WARNING;
-			case BLOCKING -> CRITICAL;
+	/** Shape and colour both carry the severity, so it never rests on colour alone. */
+	static void draw(final GuiGraphicsExtractor graphics, final CompatibilityIssue.Severity severity, final int x, final int y, final int size) {
+		ZIcons icon = switch (severity) {
+			case ADAPTABLE -> ZIcons.SEVERITY_ADAPTED;
+			case DEGRADED -> ZIcons.SEVERITY_WARNING;
+			case BLOCKING -> ZIcons.SEVERITY_CRITICAL;
 		};
+		icon.draw(graphics, x, y, size, colorFor(severity), 1.0F);
 	}
 
 	static int colorFor(final CompatibilityIssue.Severity severity) {
@@ -34,12 +32,5 @@ final class CompatibilitySeverityIcons {
 			case DEGRADED -> "screen.kohs_inventory_tweaks.issues_tracker.status.degraded";
 			case BLOCKING -> "screen.kohs_inventory_tweaks.issues_tracker.status.blocking";
 		};
-	}
-
-	private static Identifier texture(final String fileName) {
-		return Identifier.fromNamespaceAndPath(
-			KoHsInventoryTweaksClient.MOD_ID,
-			"textures/gui/compatibility/" + fileName
-		);
 	}
 }

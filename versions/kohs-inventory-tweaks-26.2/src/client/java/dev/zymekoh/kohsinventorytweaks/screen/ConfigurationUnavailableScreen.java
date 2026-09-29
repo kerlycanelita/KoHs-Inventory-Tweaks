@@ -1,8 +1,7 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
-import java.util.ArrayList;
+import dev.zymekoh.kohsinventorytweaks.ui.ZBackdrop;
 import java.util.List;
-import java.util.Random;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.screens.Screen;
@@ -15,7 +14,7 @@ import net.minecraft.util.Mth;
  */
 public final class ConfigurationUnavailableScreen extends Screen {
 	private final Screen parent;
-	private final List<FloatingParticle> particles = new ArrayList<>();
+	private final ZBackdrop backdrop = new ZBackdrop();
 	private int panelX;
 	private int panelY;
 	private int panelWidth;
@@ -30,7 +29,6 @@ public final class ConfigurationUnavailableScreen extends Screen {
 
 	@Override
 	protected void init() {
-		this.ensureParticles();
 		this.calculateLayout();
 
 		int buttonWidth = Math.min(180, Math.max(96, this.panelWidth - 36));
@@ -48,21 +46,15 @@ public final class ConfigurationUnavailableScreen extends Screen {
 	@Override
 	public void tick() {
 		this.snakePhase += 0.075F;
-		for (FloatingParticle particle : this.particles) {
-			particle.tick(this.width, this.height);
-		}
 	}
 
 	@Override
 	public void extractBackground(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
-		graphics.fillGradient(0, 0, this.width, this.height, UiTheme.BACKDROP_TOP, UiTheme.BACKDROP_BOTTOM);
+		this.backdrop.draw(graphics, this.width, this.height, mouseX, mouseY);
 	}
 
 	@Override
 	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
-		for (FloatingParticle particle : this.particles) {
-			particle.draw(graphics);
-		}
 
 		UiRender.panel(
 			graphics,
@@ -185,22 +177,4 @@ public final class ConfigurationUnavailableScreen extends Screen {
 		graphics.fill(headX + headWidth / 2 + tongueLength - 2, headY + 1, headX + headWidth / 2 + tongueLength, headY + 3, 0xFFFF69C8);
 	}
 
-	private void ensureParticles() {
-		if (!this.particles.isEmpty()) {
-			return;
-		}
-		Random random = new Random(0x534E414B45L);
-		int count = Mth.clamp(this.width * this.height / 11000, 12, 28);
-		for (int index = 0; index < count; index++) {
-			this.particles.add(new FloatingParticle(
-				random.nextFloat() * Math.max(1, this.width),
-				random.nextFloat() * Math.max(1, this.height),
-				0.06F + random.nextFloat() * 0.14F,
-				0.008F + random.nextFloat() * 0.022F,
-				1 + random.nextInt(2),
-				42 + random.nextInt(72),
-				random.nextFloat() * Mth.TWO_PI
-			));
-		}
-	}
 }

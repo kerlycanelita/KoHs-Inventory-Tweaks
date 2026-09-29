@@ -1,31 +1,33 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
-import net.minecraft.resources.Identifier;
+import dev.zymekoh.kohsinventorytweaks.ui.ZIcons;
+import net.minecraft.client.gui.GuiGraphics;
 
-/** Cohesive transparent KoHs pixel icons used by feature and settings tabs. */
+/** The icons of feature and settings tabs, drawn from code by {@link ZIcons}. */
 public enum KohsTabIcon {
-	CURSOR("cursor"),
-	TWEAKS("tweaks"),
-	ISSUES("issues"),
-	CUSTOMIZATION("customization"),
-	HIGHLIGHTER("highlighter"),
-	SCALER("scaler"),
-	ACCESSIBILITY("accessibility"),
-	PERFORMANCE("performance"),
-	SAFETY("safety"),
-	INVENTORY("inventory"),
-	CHEST("chest"),
-	SHULKER("shulker"),
-	ENDER_CHEST("ender_chest"),
-	BARREL("barrel");
+	CURSOR(ZIcons.CURSOR),
+	TWEAKS(ZIcons.TWEAKS),
+	ISSUES(ZIcons.ISSUES),
+	CUSTOMIZATION(ZIcons.CUSTOMIZATION),
+	HIGHLIGHTER(ZIcons.HIGHLIGHTER),
+	SCALER(ZIcons.SCALER),
+	ACCESSIBILITY(ZIcons.VISIBILITY),
+	PERFORMANCE(ZIcons.PERFORMANCE),
+	SAFETY(ZIcons.SAFETY),
+	INVENTORY(ZIcons.INVENTORY),
+	CHEST(ZIcons.CHEST),
+	SHULKER(ZIcons.SHULKER),
+	ENDER_CHEST(ZIcons.ENDER_CHEST),
+	BARREL(ZIcons.BARREL),
+	KEYBIND(ZIcons.KEYBIND);
 
-	private final Identifier texture;
+	private final ZIcons icon;
 
-	KohsTabIcon(final String id) {
-		this.texture = Identifier.fromNamespaceAndPath("kohs_inventory_tweaks", "textures/gui/icons/" + id + ".png");
+	KohsTabIcon(final ZIcons icon) {
+		this.icon = icon;
 	}
 
-	public Identifier texture() {
-		return this.texture;
+	public void draw(final GuiGraphics graphics, final int x, final int y, final int size, final int primary, final float opacity) {
+		this.icon.draw(graphics, x, y, size, primary, opacity);
 	}
 }

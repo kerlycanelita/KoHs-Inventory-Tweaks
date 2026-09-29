@@ -104,6 +104,9 @@ RULES_26_2 = [
     (re.compile(OWNER + r"\.getMainRenderTarget\(\)"), r"\1.gameRenderer.mainRenderTarget()"),
     (re.compile(OWNER + r"\.isSingleplayer\(\)"), r"\1.hasSingleplayerServer()"),
     (re.compile(r"\.getMainCamera\(\)"), ".mainCamera()"),
+    # The HUD's hidden flag moved from Options to Hud, behind a toggle.
+    (re.compile(r"(\w+)\.options\.hideGui = (\w+);"), r"if (\1.gui.hud.isHidden() != \2) \1.gui.hud.toggle();"),
+    (re.compile(r"(\w+)\.options\.hideGui\b"), r"\1.gui.hud.isHidden()"),
     # Entity type constants moved to EntityTypes; EntityType keeps the class itself.
     (re.compile(r"\bEntityType\.([A-Z][A-Z0-9_]+)\b"), r"EntityTypes.\1"),
     (re.compile(r"^import net\.minecraft\.world\.entity\.EntityType;$", re.M),

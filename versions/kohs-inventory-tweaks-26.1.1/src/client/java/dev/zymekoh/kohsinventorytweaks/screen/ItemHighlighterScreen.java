@@ -1,16 +1,17 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
+import dev.zymekoh.kohsinventorytweaks.ui.ZBackdrop;
+import dev.zymekoh.kohsinventorytweaks.ui.ZChrome;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMotion;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.ItemHighlight;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
-import dev.zymekoh.kohsinventorytweaks.render.VisualPerformanceController;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
 import java.util.function.Consumer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
@@ -35,7 +36,7 @@ public final class ItemHighlighterScreen extends Screen {
 	private final Screen parent;
 	private final Consumer<InventoryTweaksConfig> onSave;
 	private InventoryTweaksConfig working;
-	private final List<FloatingParticle> particles = new ArrayList<>();
+	private final ZBackdrop backdrop = new ZBackdrop();
 	private final List<ItemEntry> allItems = new ArrayList<>();
 	private final List<ItemEntry> filteredItems = new ArrayList<>();
 	private final long entranceStartedAtNanos = System.nanoTime();
@@ -103,7 +104,6 @@ public final class ItemHighlighterScreen extends Screen {
 
 	@Override
 	protected void init() {
-		this.ensureParticles();
 		this.ensureItems();
 		this.calculateLayout();
 		if (this.mode == Mode.BASE) {
@@ -114,15 +114,8 @@ public final class ItemHighlighterScreen extends Screen {
 	}
 
 	@Override
-	public void tick() {
-		for (FloatingParticle particle : this.particles) {
-			particle.tick(this.width, this.height);
-		}
-	}
-
-	@Override
 	public void extractBackground(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
-		graphics.fillGradient(0, 0, this.width, this.height, UiTheme.BACKDROP_TOP, UiTheme.BACKDROP_BOTTOM);
+		this.backdrop.draw(graphics, this.width, this.height, mouseX, mouseY);
 	}
 
 	@Override
@@ -131,15 +124,6 @@ public final class ItemHighlighterScreen extends Screen {
 		this.catalogSmoothScroll.update();
 		this.selectedScrollPixels = this.selectedSmoothScroll.roundedPosition();
 		this.catalogScrollPixels = this.catalogSmoothScroll.roundedPosition();
-		float entrance = cubicProgress(this.entranceStartedAtNanos, ENTRANCE_DURATION_NANOS);
-		float entranceScale = 0.965F + entrance * 0.035F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
-		graphics.pose().scale(entranceScale, entranceScale);
-		graphics.pose().translate(-this.width / 2.0F, -this.height / 2.0F);
-		for (FloatingParticle particle : this.particles) {
-			particle.draw(graphics);
-		}
 		if (this.mode == Mode.BASE) {
 			this.drawBase(graphics, mouseX, mouseY);
 			super.extractRenderState(graphics, mouseX, mouseY, a);
@@ -148,15 +132,10 @@ public final class ItemHighlighterScreen extends Screen {
 			// do not extract base item tooltips here: Minecraft renders deferred
 			// tooltips after the dim layer, which made them pierce the editor.
 			graphics.fill(0, 0, this.width, this.height, UiTheme.MODAL_DIM);
-			float editorEntrance = cubicProgress(this.editorOpenedAtNanos, EDITOR_ENTRANCE_DURATION_NANOS);
-			float editorScale = 0.965F + editorEntrance * 0.035F;
-			graphics.pose().pushMatrix();
-			graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
-			graphics.pose().scale(editorScale, editorScale);
-			graphics.pose().translate(-this.width / 2.0F, -this.height / 2.0F);
 			this.drawEditor(graphics);
 			super.extractRenderState(graphics, mouseX, mouseY, a);
-			graphics.pose().popMatrix();
+			ZChrome.panelOpening(graphics, this.editorX, this.editorY, this.editorWidth, this.editorHeight,
+				ZMotion.progress(this.editorOpenedAtNanos, EDITOR_ENTRANCE_DURATION_NANOS));
 		}
 		if (this.mode == Mode.BASE) {
 			int selectedTop = this.selectedY + 24;
@@ -182,10 +161,7 @@ public final class ItemHighlighterScreen extends Screen {
 				this.catalogSmoothScroll.canScrollDown()
 			);
 		}
-		graphics.pose().popMatrix();
-		if (entrance < 1.0F) {
-			graphics.fill(0, 0, this.width, this.height, UiRender.withAlpha(0x120824, Math.round((1.0F - entrance) * 96.0F)));
-		}
+		ZChrome.openingVeil(graphics, this.width, this.height, ZMotion.progress(this.entranceStartedAtNanos, ENTRANCE_DURATION_NANOS));
 	}
 
 	@Override
@@ -437,7 +413,7 @@ public final class ItemHighlighterScreen extends Screen {
 
 	private void drawBase(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY) {
 		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
-		graphics.centeredText(this.font, this.title, this.panelX + this.panelWidth / 2, this.panelY + 10, UiTheme.TEXT);
+		ZChrome.screenTitle(graphics, this.font, this.title, null, this.panelX + this.panelWidth / 2, this.panelY + 10, this.panelWidth);
 		UiRender.panel(graphics, this.selectedX, this.selectedY, this.selectedWidth, this.selectedHeight, 7, UiTheme.PREVIEW_GLASS, UiTheme.ACCENT_SOFT);
 		UiRender.panel(graphics, this.catalogX, this.catalogY, this.catalogWidth, this.catalogHeight, 7, UiTheme.PREVIEW_GLASS, UiTheme.BORDER_SOFT);
 		graphics.centeredText(
@@ -659,31 +635,6 @@ public final class ItemHighlighterScreen extends Screen {
 		this.catalogSmoothScroll.setMaximum(this.catalogMaxScrollPixels);
 		this.selectedScrollPixels = this.selectedSmoothScroll.roundedPosition();
 		this.catalogScrollPixels = this.catalogSmoothScroll.roundedPosition();
-	}
-
-	private void ensureParticles() {
-		if (!this.particles.isEmpty()) {
-			return;
-		}
-		Random random = new Random(0x4954454DL);
-		int count = VisualPerformanceController.particleCount(Mth.clamp(this.width * this.height / 7600, 24, 42));
-		for (int i = 0; i < count; i++) {
-			this.particles.add(new FloatingParticle(
-				random.nextFloat() * Math.max(1, this.width),
-				random.nextFloat() * Math.max(1, this.height),
-				0.08F + random.nextFloat() * 0.18F,
-				0.008F + random.nextFloat() * 0.025F,
-				1 + random.nextInt(2),
-				72 + random.nextInt(112),
-				random.nextFloat() * 6.28318F
-			));
-		}
-	}
-
-	private static float cubicProgress(final long startedAtNanos, final long durationNanos) {
-		float linear = Mth.clamp((System.nanoTime() - startedAtNanos) / (float) durationNanos, 0.0F, 1.0F);
-		float remaining = 1.0F - linear;
-		return 1.0F - remaining * remaining * remaining;
 	}
 
 	private int selectedIndexAt(final double mouseX, final double mouseY) {

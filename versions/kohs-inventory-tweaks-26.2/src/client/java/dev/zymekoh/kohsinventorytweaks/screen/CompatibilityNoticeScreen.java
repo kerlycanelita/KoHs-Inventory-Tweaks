@@ -1,11 +1,13 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
+import dev.zymekoh.kohsinventorytweaks.ui.ZBackdrop;
+import dev.zymekoh.kohsinventorytweaks.ui.ZChrome;
+import dev.zymekoh.kohsinventorytweaks.ui.ZDraw;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMotion;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssue;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityNoticeController;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -21,7 +23,7 @@ public final class CompatibilityNoticeScreen extends Screen {
 	private static final long MOTION_NANOS = 280_000_000L;
 	private final Screen parent;
 	private final List<CompatibilityIssue> issues = CompatibilityIssueManager.issues();
-	private final List<FloatingParticle> particles = new ArrayList<>();
+	private final ZBackdrop backdrop = new ZBackdrop();
 	private final ModIconSet icons = new ModIconSet();
 	private final long openedAtNanos = System.nanoTime();
 	private long closingAtNanos;
@@ -45,7 +47,6 @@ public final class CompatibilityNoticeScreen extends Screen {
 
 	@Override
 	protected void init() {
-		this.ensureParticles();
 		int margin = Mth.clamp(this.width / 32, 4, 12);
 		this.frameX = margin;
 		this.frameY = margin;
@@ -87,9 +88,6 @@ public final class CompatibilityNoticeScreen extends Screen {
 
 	@Override
 	public void tick() {
-		for (FloatingParticle particle : this.particles) {
-			particle.tick(this.width, this.height);
-		}
 		if (this.closing && System.nanoTime() - this.closingAtNanos >= MOTION_NANOS) {
 			CompatibilityNoticeController.acknowledge();
 			this.minecraft.gui.setScreen(this.parent);
@@ -98,25 +96,18 @@ public final class CompatibilityNoticeScreen extends Screen {
 
 	@Override
 	public void extractBackground(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
-		graphics.fillGradient(0, 0, this.width, this.height, 0xB00B0612, 0xDA0B0612);
+		this.backdrop.draw(graphics, this.width, this.height, mouseX, mouseY);
 	}
 
 	@Override
 	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
 		this.smoothScroll.update();
 		this.scroll = this.smoothScroll.roundedPosition();
-		for (FloatingParticle particle : this.particles) {
-			particle.draw(graphics);
-		}
 		float progress = this.closing
-			? 1.0F - cubicProgress(this.closingAtNanos, MOTION_NANOS)
-			: cubicProgress(this.openedAtNanos, MOTION_NANOS);
-		float scale = 0.94F + progress * 0.06F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
-		graphics.pose().scale(scale, scale);
-		graphics.pose().translate(-this.width / 2.0F, -this.height / 2.0F);
-		UiRender.glow(graphics, this.frameX, this.frameY, this.frameWidth, this.frameHeight, 12, 44);
+			? 1.0F - ZMotion.progress(this.closingAtNanos, MOTION_NANOS)
+			: ZMotion.progress(this.openedAtNanos, MOTION_NANOS);
+		ZDraw.glow(graphics, this.frameX, this.frameY, this.frameWidth, this.frameHeight, UiTheme.WARNING,
+			Math.round(26 + 18 * ZMotion.pulse(2.8F)));
 		UiRender.panel(graphics, this.frameX, this.frameY, this.frameWidth, this.frameHeight, 11, 0xD0160B27, UiTheme.DANGER);
 		graphics.centeredText(this.font, this.title, this.width / 2, this.frameY + 10, UiTheme.WARNING);
 		graphics.textWithWordWrap(
@@ -129,10 +120,7 @@ public final class CompatibilityNoticeScreen extends Screen {
 		);
 		this.drawIssueList(graphics);
 		super.extractRenderState(graphics, mouseX, mouseY, a);
-		graphics.pose().popMatrix();
-		if (progress < 1.0F) {
-			graphics.fill(0, 0, this.width, this.height, UiRender.withAlpha(0x0B0612, Math.round((1.0F - progress) * 96.0F)));
-		}
+		ZChrome.openingVeil(graphics, this.width, this.height, progress);
 	}
 
 	@Override
@@ -222,30 +210,5 @@ public final class CompatibilityNoticeScreen extends Screen {
 		this.closingAtNanos = System.nanoTime();
 		this.continueButton.active = false;
 		this.modsFolderButton.active = false;
-	}
-
-	private void ensureParticles() {
-		if (!this.particles.isEmpty()) {
-			return;
-		}
-		Random random = new Random(0x434F4E464C494354L);
-		int count = Mth.clamp(this.width * this.height / 4700, 38, 72);
-		for (int i = 0; i < count; i++) {
-			this.particles.add(new FloatingParticle(
-				random.nextFloat() * Math.max(1, this.width),
-				random.nextFloat() * Math.max(1, this.height),
-				0.10F + random.nextFloat() * 0.24F,
-				0.012F + random.nextFloat() * 0.036F,
-				1 + random.nextInt(3),
-				92 + random.nextInt(132),
-				random.nextFloat() * 6.28318F
-			));
-		}
-	}
-
-	private static float cubicProgress(final long startedAt, final long duration) {
-		float linear = Mth.clamp((System.nanoTime() - startedAt) / (float) duration, 0.0F, 1.0F);
-		float remaining = 1.0F - linear;
-		return 1.0F - remaining * remaining * remaining;
 	}
 }

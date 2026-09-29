@@ -51,6 +51,7 @@ public final class MacroTestController {
 		CURSOR_WEIGHT("cursor-weight", "kohs_inventory_debug.lab.cursor_weight", "kohs_inventory_debug.lab.cursor_weight.desc", false, true),
 		UI_SHOWCASE("ui-showcase", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
 		UI_MEDIA("ui-media", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
+		UI_REVIEW("ui-review", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
 		RECORD_ALL("record-all", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
 		RECORD_FAST("record-fast", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
 		RECORD_CENTER("record-center", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
@@ -190,7 +191,7 @@ public final class MacroTestController {
 						minecraft.getWindow().getY() + (int) Math.round(originalPointer[1])
 					);
 				}
-				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && kind != MacroKind.UI_MEDIA && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT && kind != MacroKind.SLOT_SHORTCUTS) {
+				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && kind != MacroKind.UI_MEDIA && kind != MacroKind.UI_REVIEW && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT && kind != MacroKind.SLOT_SHORTCUTS) {
 					DebugCollector.info("MACRO_SUMMARY", metrics.summary());
 				}
 				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id + "; screen=" + screenName(screenSnapshot(minecraft))
@@ -264,6 +265,7 @@ public final class MacroTestController {
 			case CURSOR_WEIGHT -> CursorWeightLab.run(minecraft);
 			case UI_SHOWCASE -> UiShowcaseLab.run(minecraft);
 			case UI_MEDIA -> UiShowcaseLab.media(minecraft);
+			case UI_REVIEW -> UiShowcaseLab.review(minecraft);
 			case RECORD_ALL -> RecordingLab.run(minecraft, "all");
 			case RECORD_FAST -> RecordingLab.run(minecraft, "fast");
 			case RECORD_CENTER -> RecordingLab.run(minecraft, "center");

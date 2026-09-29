@@ -16,7 +16,7 @@
   "screen.kohs_inventory_tweaks.cursor_landing": "Posición del cursor",
   "screen.kohs_inventory_tweaks.cursor_landing.description": "Elige el punto exacto donde aparecerá el cursor en cada inventario compatible.",
   "screen.kohs_inventory_tweaks.inventory_tweaks": "Ajustes de inventario",
-  "screen.kohs_inventory_tweaks.inventory_tweaks.description": "Apertura rápida, repetición de tecla y movimiento decorativo. Los atajos siguen al cursor automáticamente.",
+  "screen.kohs_inventory_tweaks.inventory_tweaks.description": "Inventario superrápido, Centered Mouse Fix y menos movimiento visual. Los atajos siempre actúan sobre el slot bajo el puntero.",
   "screen.kohs_inventory_tweaks.issues_tracker": "Rastreador de problemas",
   "screen.kohs_inventory_tweaks.issues_tracker.description": "Muestra conflictos confirmados, hooks afectados y la adaptación de compatibilidad disponible.",
   "screen.kohs_inventory_tweaks.issues_tracker.summary": "%s problema(s) confirmado(s) detectado(s)",

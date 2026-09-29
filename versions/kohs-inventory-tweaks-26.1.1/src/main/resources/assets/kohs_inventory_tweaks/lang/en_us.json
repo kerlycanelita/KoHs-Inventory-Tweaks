@@ -14,7 +14,7 @@
   "screen.kohs_inventory_tweaks.cursor_landing": "Cursor Landing",
   "screen.kohs_inventory_tweaks.cursor_landing.description": "Choose the exact cursor landing point for each supported inventory.",
   "screen.kohs_inventory_tweaks.inventory_tweaks": "Inventory Tweaks",
-  "screen.kohs_inventory_tweaks.inventory_tweaks.description": "Fast opening, key-repeat behavior and cosmetic motion. Precise slot targeting is automatic.",
+  "screen.kohs_inventory_tweaks.inventory_tweaks.description": "Super Fast Inventory, Centered Mouse Fix and reduced inventory motion. Shortcuts always act on the slot under the pointer.",
   "screen.kohs_inventory_tweaks.issues_tracker": "Issues Tracker",
   "screen.kohs_inventory_tweaks.issues_tracker.description": "Shows confirmed mod conflicts, affected hooks, and available compatibility handling.",
   "screen.kohs_inventory_tweaks.issues_tracker.summary": "%s confirmed issue(s) detected",

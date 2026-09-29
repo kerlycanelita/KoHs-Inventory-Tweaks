@@ -2,22 +2,23 @@ package dev.zymekoh.kohsinventorytweaks.screen;
 
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssue;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
-import java.util.ArrayList;
+import dev.zymekoh.kohsinventorytweaks.ui.ZBackdrop;
+import dev.zymekoh.kohsinventorytweaks.ui.ZChrome;
+import dev.zymekoh.kohsinventorytweaks.ui.ZDraw;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMotion;
+import dev.zymekoh.kohsinventorytweaks.ui.ZTheme;
 import java.util.List;
-import java.util.Random;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Mth;
-import dev.zymekoh.kohsinventorytweaks.render.VisualPerformanceController;
 
 public final class IssuesTrackerScreen extends Screen {
 	private static final long ENTRANCE_NANOS = 280_000_000L;
 	private final Screen parent;
 	private final List<CompatibilityIssue> issues = CompatibilityIssueManager.issues();
-	private final List<FloatingParticle> particles = new ArrayList<>();
+	private final ZBackdrop backdrop = new ZBackdrop();
 	private final ModIconSet icons = new ModIconSet();
 	private final long openedAtNanos = System.nanoTime();
 	private int panelX;
@@ -37,7 +38,6 @@ public final class IssuesTrackerScreen extends Screen {
 
 	@Override
 	protected void init() {
-		this.ensureParticles();
 		int horizontalMargin = this.width < 420 ? 6 : this.width < 700 ? 16 : 42;
 		int verticalMargin = this.height < 280 ? 6 : 18;
 		this.panelWidth = Math.min(760, Math.max(1, this.width - horizontalMargin * 2));
@@ -65,38 +65,23 @@ public final class IssuesTrackerScreen extends Screen {
 	}
 
 	@Override
-	public void tick() {
-		for (FloatingParticle particle : this.particles) {
-			particle.tick(this.width, this.height);
-		}
-	}
-
-	@Override
 	public void renderBackground(final GuiGraphics graphics, final int mouseX, final int mouseY, final float a) {
-		graphics.fillGradient(0, 0, this.width, this.height, UiTheme.BACKDROP_TOP, UiTheme.BACKDROP_BOTTOM);
+		this.backdrop.draw(graphics, this.width, this.height, mouseX, mouseY);
 	}
 
 	@Override
 	public void render(final GuiGraphics graphics, final int mouseX, final int mouseY, final float a) {
 		this.smoothScroll.update();
 		this.scroll = this.smoothScroll.roundedPosition();
-		for (FloatingParticle particle : this.particles) {
-			particle.draw(graphics);
-		}
-		float progress = cubicProgress(this.openedAtNanos, ENTRANCE_NANOS);
-		float scale = 0.965F + progress * 0.035F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
-		graphics.pose().scale(scale, scale);
-		graphics.pose().translate(-this.width / 2.0F, -this.height / 2.0F);
 		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
-		graphics.drawCenteredString(this.font, this.title, this.width / 2, this.panelY + 11, UiTheme.TEXT);
-		graphics.drawCenteredString(
+		ZChrome.screenTitle(
+			graphics,
 			this.font,
+			this.title,
 			Component.translatable("screen.kohs_inventory_tweaks.issues_tracker.summary", this.issues.size()),
 			this.width / 2,
-			this.panelY + 23,
-			UiTheme.TEXT_MUTED
+			this.panelY + 9,
+			this.panelWidth
 		);
 		if (this.issues.isEmpty()) {
 			this.drawEmptyState(graphics);
@@ -104,7 +89,7 @@ public final class IssuesTrackerScreen extends Screen {
 			this.drawIssues(graphics);
 		}
 		super.render(graphics, mouseX, mouseY, a);
-		graphics.pose().popMatrix();
+		ZChrome.openingVeil(graphics, this.width, this.height, ZMotion.progress(this.openedAtNanos, ENTRANCE_NANOS));
 	}
 
 	@Override
@@ -129,10 +114,9 @@ public final class IssuesTrackerScreen extends Screen {
 	private void drawEmptyState(final GuiGraphics graphics) {
 		int centerX = this.width / 2;
 		int centerY = (this.bodyTop + this.bodyBottom) / 2;
-		UiRender.glow(graphics, centerX - 17, centerY - 31, 34, 34, 10, 40);
-		UiRender.panel(graphics, centerX - 15, centerY - 29, 30, 30, 8, UiTheme.GLASS_SELECTED, UiTheme.ACCENT_SOFT);
-		graphics.fill(centerX - 7, centerY - 15, centerX - 2, centerY - 10, UiTheme.ACCENT_BRIGHT);
-		graphics.fill(centerX - 3, centerY - 11, centerX + 8, centerY - 6, UiTheme.ACCENT_BRIGHT);
+		ZDraw.glow(graphics, centerX - 17, centerY - 33, 34, 34, UiTheme.ACCENT, Math.round(28 + 22 * ZMotion.pulse(2.6F)));
+		UiRender.panel(graphics, centerX - 17, centerY - 33, 34, 34, 8, UiTheme.GLASS_SELECTED, UiTheme.ACCENT_SOFT);
+		CompatibilitySeverityIcons.draw(graphics, CompatibilityIssue.Severity.ADAPTABLE, centerX - 16, centerY - 32, 32);
 		graphics.drawCenteredString(
 			this.font,
 			Component.translatable("screen.kohs_inventory_tweaks.issues_tracker.none"),
@@ -179,8 +163,10 @@ public final class IssuesTrackerScreen extends Screen {
 			height,
 			8,
 			UiTheme.GLASS_LIGHT,
-			severityColor
+			ZTheme.fade(severityColor, 0.75F)
 		);
+		// The severity also runs down the card's edge, next to its name and shape.
+		graphics.fill(x + 2, y + 6, x + 4, y + height - 6, severityColor);
 		int iconSize = width < 300 ? 30 : 40;
 		Identifier icon = this.icons.load(issue.modId());
 		if (icon != null) {
@@ -193,25 +179,12 @@ public final class IssuesTrackerScreen extends Screen {
 		int textWidth = Math.max(48, width - iconSize - 28);
 		Component status = Component.translatable(CompatibilitySeverityIcons.statusKey(issue.severity()));
 		int statusWidth = this.font.width(status);
-		int severityIconSize = 14;
+		int severityIconSize = 16;
 		int severityIconX = x + width - 8 - severityIconSize;
 		int statusX = severityIconX - 4 - statusWidth;
 		String displayName = this.font.plainSubstrByWidth(issue.modName(), Math.max(12, statusX - textX - 5));
 		graphics.drawString(this.font, Component.literal(displayName), textX, y + 9, UiTheme.TEXT, false);
-		graphics.blit(
-			RenderPipelines.GUI_TEXTURED,
-			CompatibilitySeverityIcons.textureFor(issue.severity()),
-			severityIconX,
-			y + 6,
-			0.0F,
-			0.0F,
-			severityIconSize,
-			severityIconSize,
-			128,
-			128,
-			128,
-			128
-		);
+		CompatibilitySeverityIcons.draw(graphics, issue.severity(), severityIconX, y + 5, severityIconSize);
 		graphics.drawString(
 			this.font,
 			status,
@@ -273,36 +246,9 @@ public final class IssuesTrackerScreen extends Screen {
 		if (this.maxScroll <= 0) {
 			return;
 		}
-		int height = this.bodyBottom - this.bodyTop;
-		int thumbHeight = Math.max(14, height * height / (height + this.maxScroll));
-		int travel = Math.max(1, height - thumbHeight);
-		int y = this.bodyTop + this.scroll * travel / this.maxScroll;
-		graphics.fill(this.panelX + this.panelWidth - 7, this.bodyTop, this.panelX + this.panelWidth - 5, this.bodyBottom, UiTheme.SCROLL_TRACK);
-		graphics.fill(this.panelX + this.panelWidth - 8, y, this.panelX + this.panelWidth - 4, y + thumbHeight, UiTheme.ACCENT);
-	}
-
-	private void ensureParticles() {
-		if (!this.particles.isEmpty()) {
-			return;
-		}
-		Random random = new Random(0x495353554553L);
-		int count = VisualPerformanceController.particleCount(Mth.clamp(this.width * this.height / 6800, 28, 50));
-		for (int i = 0; i < count; i++) {
-			this.particles.add(new FloatingParticle(
-				random.nextFloat() * Math.max(1, this.width),
-				random.nextFloat() * Math.max(1, this.height),
-				0.09F + random.nextFloat() * 0.20F,
-				0.010F + random.nextFloat() * 0.030F,
-				1 + random.nextInt(2),
-				78 + random.nextInt(118),
-				random.nextFloat() * 6.28318F
-			));
-		}
-	}
-
-	private static float cubicProgress(final long startedAt, final long duration) {
-		float linear = Mth.clamp((System.nanoTime() - startedAt) / (float) duration, 0.0F, 1.0F);
-		float remaining = 1.0F - linear;
-		return 1.0F - remaining * remaining * remaining;
+		ZDraw.scrollbar(graphics, this.panelX + this.panelWidth - 8, this.bodyTop, this.bodyBottom - this.bodyTop,
+			this.scroll, this.maxScroll);
+		UiRender.scrollFade(graphics, this.panelX + 8, this.bodyTop, this.panelWidth - 16, this.bodyBottom - this.bodyTop,
+			this.scroll > 0, this.scroll < this.maxScroll);
 	}
 }

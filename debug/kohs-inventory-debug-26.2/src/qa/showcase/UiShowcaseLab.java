@@ -89,10 +89,16 @@ public final class UiShowcaseLab {
         if (!MacroTestController.isSafeLocalWorld(mc)) throw new IllegalStateException("Singleplayer only");
         InventoryTweaksConfig saved = ConfigStore.get().copy();
         int gui = mc.options.guiScale().get();
+        boolean hudHidden = hudHidden(mc);
         try {
             stage(mc);
             glow(mc);
-            mc.executeBlocking(() -> mc.gui.hud.getChat().clearMessages(false));
+            // Golden hour and no HUD: the world behind the glass reads as a scene.
+            command(mc, "time set 12600");
+            mc.executeBlocking(() -> {
+                mc.gui.hud.getChat().clearMessages(false);
+                setHudHidden(mc, true);
+            });
             guiScale(mc, 3);
             open(mc, new InventoryScreen(mc.player));
             parkPointer(mc);
@@ -130,8 +136,147 @@ public final class UiShowcaseLab {
         } catch (Exception error) {
             throw new IllegalStateException(error);
         } finally {
+            mc.executeBlocking(() -> setHudHidden(mc, hudHidden));
             restore(mc, saved, gui);
         }
+    }
+
+    /**
+     * Design review: the main menu at GUI scales 2, 3 and 4, a hovered card, the
+     * opening frame, every page, a warning, the Issues tracker and reduced motion.
+     * The pointer only moves through the move callback; the player's is untouched.
+     */
+    public static void review(final Minecraft mc) {
+        if (!MacroTestController.isSafeLocalWorld(mc)) throw new IllegalStateException("Singleplayer only");
+        InventoryTweaksConfig saved = ConfigStore.get().copy();
+        int gui = mc.options.guiScale().get();
+        try {
+            stage(mc);
+            mc.executeBlocking(() -> mc.gui.hud.getChat().clearMessages(false));
+            for (int scale = 2; scale <= 4; scale++) {
+                guiScale(mc, scale);
+                open(mc, new InventoryTweaksScreen(null));
+                parkPointer(mc);
+                screenshot(mc, "review-main-gui" + scale);
+                press(mc, "screen.kohs_inventory_tweaks.inventory_tweaks", true);
+                parkPointer(mc);
+                screenshot(mc, "review-tweaks-gui" + scale);
+                open(mc, null);
+            }
+            guiScale(mc, 3);
+            mc.executeBlocking(() -> mc.gui.setScreen(new InventoryTweaksScreen(null)));
+            screenshotAfter(mc, "review-main-opening", 110);
+            Thread.sleep(400);
+            hover(mc, "screen.kohs_inventory_tweaks.inventory_tweaks");
+            screenshot(mc, "review-main-hover");
+            String[][] pages = {
+                {"cursor", "screen.kohs_inventory_tweaks.cursor_landing"},
+                {"customization", "screen.kohs_inventory_tweaks.customization"},
+                {"highlighter", "screen.kohs_inventory_tweaks.item_highlighter"},
+                {"scaler", "screen.kohs_inventory_tweaks.gui_scaler"},
+            };
+            for (String[] page : pages) {
+                open(mc, new InventoryTweaksScreen(null));
+                press(mc, page[1], true);
+                parkPointer(mc);
+                screenshot(mc, "review-" + page[0]);
+                if (page[0].equals("cursor")) {
+                    press(mc, "screen.kohs_inventory_tweaks.target.chest", true);
+                    parkPointer(mc);
+                    screenshot(mc, "review-cursor-chest");
+                } else if (page[0].equals("customization") || page[0].equals("scaler")) {
+                    boolean accepted = press(mc, page[0].equals("scaler")
+                        ? "screen.kohs_inventory_tweaks.gui_scaler.warning.accept"
+                        : "screen.kohs_inventory_tweaks.customization.warning.continue", false);
+                    if (accepted) {
+                        parkPointer(mc);
+                        screenshot(mc, "review-" + page[0] + "-page");
+                    }
+                }
+            }
+            open(mc, new InventoryTweaksScreen(null));
+            press(mc, "screen.kohs_inventory_tweaks.inventory_tweaks", true);
+            if (pressLast(mc, "screen.kohs_inventory_tweaks.disabled")) {
+                parkPointer(mc);
+                screenshot(mc, "review-warning");
+            }
+            open(mc, new dev.zymekoh.kohsinventorytweaks.screen.IssuesTrackerScreen(null));
+            parkPointer(mc);
+            screenshot(mc, "review-issues");
+            mc.executeBlocking(() -> ConfigStore.get().reduceInventoryMotion = true);
+            open(mc, new InventoryTweaksScreen(null));
+            parkPointer(mc);
+            screenshot(mc, "review-main-reduced-motion");
+            mc.executeBlocking(() -> ConfigStore.get().reduceInventoryMotion = saved.reduceInventoryMotion);
+            guiScale(mc, 2);
+            open(mc, AdvancedSettingsScreen.playerGlow(null));
+            parkPointer(mc);
+            screenshot(mc, "review-player-visibility");
+            DebugCollector.info("UI_REVIEW_SUMMARY", "done");
+        } catch (Exception error) {
+            throw new IllegalStateException(error);
+        } finally {
+            restore(mc, saved, gui);
+        }
+    }
+
+    static void screenshotAfter(final Minecraft mc, final String name, final long delayMillis) throws Exception {
+        Thread.sleep(delayMillis);
+        CompletableFuture<Void> saved = new CompletableFuture<>();
+        mc.executeBlocking(() -> Screenshot.grab(mc.gameDirectory, name + ".png", mc.gameRenderer.mainRenderTarget(), 1,
+            message -> saved.complete(null)));
+        saved.get(10, TimeUnit.SECONDS);
+        DebugCollector.info("UI_SHOWCASE_CAPTURE", name + ".png");
+    }
+
+    /** Moves the GUI pointer over the widget with this label through the move callback. */
+    private static void hover(final Minecraft mc, final String key) throws Exception {
+        String label = net.minecraft.network.chat.Component.translatable(key).getString();
+        mc.executeBlocking(() -> {
+            for (var child : mc.gui.screen().children()) {
+                if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget
+                    && widget.getMessage().getString().equals(label)) {
+                    var window = mc.getWindow();
+                    double x = (widget.getX() + widget.getWidth() / 2.0) * window.getScreenWidth() / window.getGuiScaledWidth();
+                    double y = (widget.getY() + widget.getHeight() / 2.0) * window.getScreenHeight() / window.getGuiScaledHeight();
+                    ((dev.zymekoh.kohsinventorydebug.mixin.MouseHandlerDebugInvoker) mc.mouseHandler)
+                        .kohsInventoryDebug$invokeMove(window.handle(), x, y);
+                    return;
+                }
+            }
+        });
+        Thread.sleep(500);
+    }
+
+    /** Presses the last widget with this label; the Tweaks switches share theirs. */
+    private static boolean pressLast(final Minecraft mc, final String key) throws Exception {
+        String label = net.minecraft.network.chat.Component.translatable(key).getString();
+        boolean[] found = new boolean[1];
+        mc.executeBlocking(() -> {
+            net.minecraft.client.gui.components.AbstractWidget last = null;
+            for (var child : mc.gui.screen().children()) {
+                if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget
+                    && widget.getMessage().getString().equals(label)) {
+                    last = widget;
+                }
+            }
+            if (last != null) {
+                last.onClick(new net.minecraft.client.input.MouseButtonEvent(last.getX() + 2, last.getY() + 2,
+                    new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                found[0] = true;
+            }
+        });
+        Thread.sleep(500);
+        return found[0];
+    }
+
+    private static boolean hudHidden(final Minecraft mc) {
+        return mc.gui.hud.isHidden();
+    }
+
+    /** Hides or shows the HUD, so a capture shows the screen over the world alone. */
+    private static void setHudHidden(final Minecraft mc, final boolean hidden) {
+        if (mc.gui.hud.isHidden() != hidden) mc.gui.hud.toggle();
     }
 
     /** A flat stage, a wall, one mannequin in the open and one behind the wall. */

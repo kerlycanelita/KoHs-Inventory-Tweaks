@@ -17,15 +17,19 @@ import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.CropSettings;
 import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.PreparedMedia;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
-import dev.zymekoh.kohsinventorytweaks.render.VisualPerformanceController;
 import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
+import dev.zymekoh.kohsinventorytweaks.ui.ZBackdrop;
+import dev.zymekoh.kohsinventorytweaks.ui.ZChrome;
+import dev.zymekoh.kohsinventorytweaks.ui.ZDraw;
+import dev.zymekoh.kohsinventorytweaks.ui.ZIcons;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMotion;
+import dev.zymekoh.kohsinventorytweaks.ui.ZTheme;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -51,13 +55,12 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 public final class InventoryTweaksScreen extends Screen {
-	private static final Identifier CONTAINER_TEXTURE = Identifier.withDefaultNamespace("textures/gui/container/generic_54.png");
 	private static final Identifier CROP_PREVIEW_TEXTURE = Identifier.fromNamespaceAndPath(
 		"kohs_inventory_tweaks",
 		"dynamic/background_crop_preview"
 	);
-	private static final int INVENTORY_WIDTH = 176;
-	private static final int INVENTORY_HEIGHT = 166;
+	private static final int INVENTORY_WIDTH = InventoryPreviewRenderer.INVENTORY_WIDTH;
+	private static final int INVENTORY_HEIGHT = InventoryPreviewRenderer.INVENTORY_HEIGHT;
 	private static final int SCREEN_MARGIN = 8;
 	private static final long ENTRANCE_DURATION_NANOS = 320_000_000L;
 	private static final long MODAL_ENTRANCE_DURATION_NANOS = 240_000_000L;
@@ -73,7 +76,7 @@ public final class InventoryTweaksScreen extends Screen {
 	private static final CustomizationPreview[] CUSTOMIZATION_PREVIEWS = CustomizationPreview.values();
 
 	private final Screen parent;
-	private final List<FloatingParticle> particles = new ArrayList<>();
+	private final ZBackdrop backdrop = new ZBackdrop();
 	private final List<AbstractWidget> mainLeftScrollingWidgets = new ArrayList<>();
 	private final List<AbstractWidget> mainRightScrollingWidgets = new ArrayList<>();
 	private final List<AbstractWidget> customizationScrollingWidgets = new ArrayList<>();
@@ -254,7 +257,6 @@ public final class InventoryTweaksScreen extends Screen {
 		this.mainRightScrollingWidgets.clear();
 		this.customizationScrollingWidgets.clear();
 		this.tweakScrollingWidgets.clear();
-		this.ensureParticles();
 		this.calculateMainLayout();
 		this.calculateModalLayout();
 		Modal visibleModal = this.modal == Modal.TWEAK_WARNING ? Modal.TWEAKS : this.modal;
@@ -277,40 +279,19 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	@Override
-	public void tick() {
-		for (FloatingParticle particle : this.particles) {
-			particle.tick(this.width, this.height);
-		}
-	}
-
-	@Override
 	public void renderBackground(final GuiGraphics graphics, final int mouseX, final int mouseY, final float a) {
-		graphics.fillGradient(0, 0, this.width, this.height, UiTheme.BACKDROP_TOP, UiTheme.BACKDROP_BOTTOM);
+		this.backdrop.draw(graphics, this.width, this.height, mouseX, mouseY);
 	}
 
 	@Override
 	public void render(final GuiGraphics graphics, final int mouseX, final int mouseY, final float a) {
 		this.updateSmoothWidgetPositions();
-		float entrance = this.entranceProgress();
-		float entranceScale = 0.965F + entrance * 0.035F;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
-		graphics.pose().scale(entranceScale, entranceScale);
-		graphics.pose().translate(-this.width / 2.0F, -this.height / 2.0F);
-
-		for (FloatingParticle particle : this.particles) {
-			particle.draw(graphics);
-		}
+		// Nothing interactive is ever transformed: the openings below are light laid
+		// over fixed controls, so every hitbox matches what is drawn from frame one.
 		this.drawMainScreen(graphics, mouseX, mouseY);
 
 		if (this.modal != Modal.NONE) {
 			graphics.fill(0, 0, this.width, this.height, UiTheme.MODAL_DIM);
-			float modalEntrance = this.modalEntranceProgress();
-			float modalScale = 0.965F + modalEntrance * 0.035F;
-			graphics.pose().pushMatrix();
-			graphics.pose().translate(this.width / 2.0F, this.height / 2.0F);
-			graphics.pose().scale(modalScale, modalScale);
-			graphics.pose().translate(-this.width / 2.0F, -this.height / 2.0F);
 			Modal visibleModal = this.modal == Modal.WARNING
 				? this.warningReturnModal
 				: this.modal == Modal.TWEAK_WARNING ? Modal.TWEAKS : this.modal;
@@ -325,24 +306,35 @@ public final class InventoryTweaksScreen extends Screen {
 			} else if (visibleModal == Modal.GUI_SCALER) {
 				this.drawGuiScalerModal(graphics, mouseX, mouseY);
 			}
+			boolean warning = true;
 			if (this.modal == Modal.WARNING) {
 				graphics.fill(0, 0, this.width, this.height, 0x70000000);
-				this.drawWarning(graphics);
+				this.drawWarningPanel(graphics, Component.translatable("screen.kohs_inventory_tweaks.unsaved.title"),
+					Component.translatable("screen.kohs_inventory_tweaks.unsaved.description"));
 			} else if (this.modal == Modal.GUI_SCALER_WARNING) {
-				this.drawGuiScalerWarning(graphics);
+				this.drawWarningPanel(graphics, Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.warning.title"),
+					Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.warning.description"));
 			} else if (this.modal == Modal.CUSTOMIZATION_WARNING) {
-				this.drawCustomizationWarning(graphics);
+				this.drawWarningPanel(graphics, Component.translatable("screen.kohs_inventory_tweaks.customization.warning.title"),
+					Component.translatable("screen.kohs_inventory_tweaks.customization.warning.description"));
 			} else if (this.modal == Modal.TWEAK_WARNING) {
-				this.drawTweakWarning(graphics);
+				this.drawWarningPanel(graphics, Component.translatable(this.tweakWarning.key + ".warning.title"),
+					Component.translatable(this.tweakWarning.key + ".warning.description"));
+			} else {
+				warning = false;
 			}
 			super.render(graphics, mouseX, mouseY, a);
 			this.drawActiveScrollFades(graphics);
-			graphics.pose().popMatrix();
+			float opening = this.modalEntranceProgress();
+			if (warning) {
+				ZChrome.panelOpening(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, opening);
+			} else {
+				ZChrome.panelOpening(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, opening);
+			}
 		} else {
 			super.render(graphics, mouseX, mouseY, a);
 			this.drawActiveScrollFades(graphics);
 		}
-		graphics.pose().popMatrix();
 
 		InventoryTweakOption hoveredTweak = this.modal == Modal.TWEAKS ? this.tweakCardAt(mouseX, mouseY) : null;
 		if (this.tweakHover.settled(hoveredTweak) && hoveredTweak != null) {
@@ -352,19 +344,7 @@ public final class InventoryTweaksScreen extends Screen {
 			graphics.setTooltipForNextFrame(lines, mouseX, mouseY);
 		}
 
-		if (entrance < 1.0F) {
-			int veilAlpha = Math.round((1.0F - entrance) * 112.0F);
-			graphics.fill(0, 0, this.width, this.height, UiRender.withAlpha(0x120824, veilAlpha));
-			int glowAlpha = Math.round((1.0F - entrance) * 96.0F);
-			int glowWidth = Math.max(1, Math.round(this.width * entrance));
-			graphics.fill(
-				(this.width - glowWidth) / 2,
-				0,
-				(this.width + glowWidth) / 2,
-				2,
-				UiRender.withAlpha(UiTheme.ACCENT, glowAlpha)
-			);
-		}
+		ZChrome.openingVeil(graphics, this.width, this.height, this.entranceProgress());
 	}
 
 	@Override
@@ -774,7 +754,7 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private int tweakToggleWidth() {
-		return Mth.clamp(this.tweakOptionsWidth / 3, 72, 120);
+		return Mth.clamp(this.tweakOptionsWidth / 3, 96, 132);
 	}
 
 	private Component tweakStateLabel(final InventoryTweakOption option) {
@@ -1348,14 +1328,15 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void drawMainScreen(final GuiGraphics graphics, final int mouseX, final int mouseY) {
-		graphics.drawCenteredString(this.font, this.title, this.width / 2, 10, UiTheme.TEXT);
-		if (!this.compactMain && this.height >= 230) {
-			graphics.drawCenteredString(
+		if (this.modal == Modal.NONE) {
+			ZChrome.screenTitle(
+				graphics,
 				this.font,
-				Component.translatable("screen.kohs_inventory_tweaks.subtitle"),
+				this.title,
+				!this.compactMain && this.height >= 230 ? Component.translatable("screen.kohs_inventory_tweaks.subtitle") : null,
 				this.width / 2,
-				23,
-				UiTheme.TEXT_MUTED
+				9,
+				this.width - 16
 			);
 		}
 		this.drawMainRail(
@@ -1379,27 +1360,11 @@ public final class InventoryTweaksScreen extends Screen {
 			this.mainRightMaxScroll
 		);
 
-		// Keep the preview backing transparent. An opaque glass panel here made a
-		// correctly transparent frame/slot layer look filled when the menu opened.
-		UiRender.glow(
-			graphics,
-			this.mainPreviewX - 5,
-			this.mainPreviewY - 5,
-			this.mainPreviewWidth + 10,
-			this.mainPreviewHeight + 10,
-			8,
-			22
-		);
-		graphics.renderOutline(
-			this.mainPreviewX - 5,
-			this.mainPreviewY - 5,
-			this.mainPreviewWidth + 10,
-			this.mainPreviewHeight + 10,
-			UiTheme.BORDER_SOFT
-		);
+		this.drawPreviewFrame(graphics, this.mainPreviewX, this.mainPreviewY, this.mainPreviewWidth, this.mainPreviewHeight);
 
-		this.drawPlayerInventory(
+		InventoryPreviewRenderer.drawPlayerInventory(
 			graphics,
+			this.font,
 			this.mainPreviewX,
 			this.mainPreviewY,
 			this.mainPreviewScale,
@@ -1408,9 +1373,13 @@ public final class InventoryTweaksScreen extends Screen {
 			true,
 			this.working
 		);
+		String label = Component.translatable("screen.kohs_inventory_tweaks.texture_source").getString();
+		if (this.font.width(label) > this.textureSelectorWidth) {
+			label = this.font.plainSubstrByWidth(label, Math.max(1, this.textureSelectorWidth - this.font.width("\u2026"))) + "\u2026";
+		}
 		graphics.drawCenteredString(
 			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.texture_source"),
+			label,
 			this.textureSelectorX + this.textureSelectorWidth / 2,
 			this.textureSelectorY - 11,
 			UiTheme.TEXT_MUTED
@@ -1427,18 +1396,26 @@ public final class InventoryTweaksScreen extends Screen {
 		final int scroll,
 		final int maxScroll
 	) {
-		graphics.drawCenteredString(this.font, title, x + width / 2, y + 5, UiTheme.TEXT_MUTED);
-		int accentWidth = Math.min(32, Math.max(8, width / 3));
-		graphics.fill(x + (width - accentWidth) / 2, y + 17, x + (width + accentWidth) / 2, y + 18, UiTheme.ACCENT_SOFT);
-		if (maxScroll > 0) {
-			int trackTop = y + 24;
-			int trackHeight = Math.max(8, height - 31);
-			int thumbHeight = Math.max(12, trackHeight * trackHeight / (trackHeight + maxScroll));
-			int travel = Math.max(1, trackHeight - thumbHeight);
-			int thumbY = trackTop + scroll * travel / maxScroll;
-			graphics.fill(x + width - 4, trackTop, x + width - 2, trackTop + trackHeight, UiTheme.SCROLL_TRACK);
-			graphics.fill(x + width - 5, thumbY, x + width - 1, thumbY + thumbHeight, UiTheme.ACCENT);
-		}
+		UiRender.panel(graphics, x, y, width, height, 8, ZTheme.alpha(ZTheme.SURFACE, 150), UiTheme.BORDER_SOFT);
+		ZChrome.sectionTitle(graphics, this.font, title, x + width / 2, y + 5, width);
+		ZDraw.scrollbar(graphics, x + width - 4, y + 24, Math.max(8, height - 31), scroll, maxScroll);
+	}
+
+	/**
+	 * The preview's frame: a halo that leaves the inside untouched, viewfinder corners
+	 * and a line of current along the top. The backing stays transparent, because an
+	 * opaque panel here made a correctly transparent frame or slot layer look filled.
+	 */
+	private void drawPreviewFrame(final GuiGraphics graphics, final int x, final int y, final int width, final int height) {
+		int frameX = x - 6;
+		int frameY = y - 6;
+		int frameWidth = width + 12;
+		int frameHeight = height + 12;
+		ZDraw.halo(graphics, frameX, frameY, frameWidth, frameHeight, ZTheme.VIOLET_BRIGHT, Math.round(34 + 18 * ZMotion.pulse(4.2F)));
+		graphics.renderOutline(frameX, frameY, frameWidth, frameHeight, UiTheme.BORDER_SOFT);
+		ZDraw.brackets(graphics, frameX - 2, frameY - 2, frameWidth + 4, frameHeight + 4, 12, ZTheme.LILAC);
+		ZDraw.energyLine(graphics, frameX + 12, frameY, Math.max(0, frameWidth - 24),
+			ZTheme.alpha(ZTheme.BORDER_SOFT, 0), ZTheme.fade(ZTheme.CYAN, 0.9F), 5.0F);
 	}
 
 	private void drawActiveScrollFades(final GuiGraphics graphics) {
@@ -1475,14 +1452,7 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void drawCursorModal(final GuiGraphics graphics) {
-		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
-		graphics.drawString(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.cursor_landing"),
-			this.panelX + this.panelPadding,
-			this.panelY + 10,
-			UiTheme.TEXT
-		);
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.cursor_landing"));
 
 		UiRender.panel(
 			graphics,
@@ -1495,9 +1465,9 @@ public final class InventoryTweaksScreen extends Screen {
 			UiTheme.BORDER_SOFT
 		);
 		if (this.selectedTarget == CursorTarget.INVENTORY) {
-			this.drawPlayerInventory(graphics, this.previewX, this.previewY, this.previewScale, -1000, -1000, false, this.working);
+			InventoryPreviewRenderer.drawPlayerInventory(graphics, this.font, this.previewX, this.previewY, this.previewScale, -1000, -1000, false, this.working);
 		} else {
-			this.drawContainerPreview(graphics, this.previewX, this.previewY, this.previewScale, this.selectedTarget, this.working);
+			InventoryPreviewRenderer.drawContainerPreview(graphics, this.font, this.previewX, this.previewY, this.previewScale, this.selectedTarget, this.working);
 		}
 
 		boolean cursorEnabled = this.isSelectedCursorEnabled();
@@ -1519,18 +1489,15 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void drawTweaksModal(final GuiGraphics graphics) {
-		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
-		graphics.drawString(this.font, Component.translatable("screen.kohs_inventory_tweaks.inventory_tweaks"),
-			this.panelX + this.panelPadding, this.panelY + 10, UiTheme.TEXT);
-		int textWidth = Math.max(36, this.tweakOptionsWidth - this.tweakToggleWidth() - 32);
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.inventory_tweaks"));
+		int textWidth = Math.max(36, this.tweakOptionsWidth - this.tweakToggleWidth() - 52);
 		graphics.enableScissor(this.tweakOptionsX, this.tweakViewportTop,
 			this.tweakOptionsX + this.tweakOptionsWidth, this.tweakViewportBottom);
 		for (int index = 0; index < this.visibleTweaks.size(); index++) {
 			var option = this.visibleTweaks.get(index);
 			int y = this.tweakFirstCardY + index * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
 			if (y + this.tweakCardHeight <= this.tweakViewportTop || y >= this.tweakViewportBottom) continue;
-			this.drawTweakCard(graphics, this.tweakOptionsX, y, this.tweakOptionsWidth,
-				this.tweakCardHeight, textWidth, option.key, option.key + ".summary");
+			this.drawTweakCard(graphics, this.tweakOptionsX, y, this.tweakOptionsWidth, this.tweakCardHeight, textWidth, option);
 		}
 		graphics.disableScissor();
 		this.drawPixelScrollbar(graphics, this.tweakOptionsX + this.tweakOptionsWidth + 3,
@@ -1548,10 +1515,10 @@ public final class InventoryTweaksScreen extends Screen {
 		}
 		if (SuperFastInventoryController.lastOpenWasImmediate()) {
 			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.immediate");
-			color = UiTheme.ACCENT_BRIGHT;
+			color = UiTheme.SPEED;
 		} else if (SuperFastInventoryController.lastPressSettledAPair()) {
 			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.settled_pair");
-			color = UiTheme.ACCENT_BRIGHT;
+			color = UiTheme.SPEED;
 		} else if (SuperFastInventoryController.lastOpenHadInputConflict()) {
 			List<String> mappings = SuperFastInventoryController.lastConflictMappings();
 			MutableComponent names = Component.empty();
@@ -1622,16 +1589,26 @@ public final class InventoryTweaksScreen extends Screen {
 		final int width,
 		final int height,
 		final int textWidth,
-		final String titleKey,
-		final String descriptionKey
+		final InventoryTweakOption option
 	) {
-		UiRender.panel(graphics, x, y, width, height, 8, UiTheme.GLASS_LIGHT, UiTheme.BORDER_SOFT);
+		boolean enabled = option.enabled(this.working);
+		// Speed and precision wear cyan; the calm option keeps the violet of the house.
+		int accent = option == InventoryTweakOption.ANIMATIONS ? ZTheme.VIOLET_BRIGHT : ZTheme.CYAN;
+		UiRender.panel(graphics, x, y, width, height, 8, UiTheme.GLASS_LIGHT,
+			enabled ? ZTheme.fade(accent, 0.6F) : UiTheme.BORDER_SOFT);
+		graphics.fill(x + 3, y + 6, x + 5, y + height - 6, enabled ? accent : ZTheme.alpha(accent, 60));
+		ZIcons icon = switch (option) {
+			case FAST -> ZIcons.PERFORMANCE;
+			case CENTER -> ZIcons.CURSOR;
+			case ANIMATIONS -> ZIcons.VISIBILITY;
+		};
+		icon.draw(graphics, x + 10, y + (height - 16) / 2, 16, enabled ? ZTheme.LILAC_PALE : ZTheme.LILAC, 1.0F);
 		// The whole title, on two lines when it needs them. The description is the hover.
-		List<FormattedCharSequence> titleLines = this.font.split(Component.translatable(titleKey), textWidth);
+		List<FormattedCharSequence> titleLines = this.font.split(Component.translatable(option.key), textWidth);
 		int drawnTitleLines = Math.min(titleLines.size(), Math.max(1, Math.min(2, (height - 6) / 10)));
 		int titleY = y + (height - drawnTitleLines * 10 + 2) / 2;
 		for (int index = 0; index < drawnTitleLines; index++) {
-			graphics.drawString(this.font, titleLines.get(index), x + 10, titleY + index * 10, UiTheme.TEXT);
+			graphics.drawString(this.font, titleLines.get(index), x + 32, titleY + index * 10, UiTheme.TEXT);
 		}
 	}
 
@@ -1640,14 +1617,7 @@ public final class InventoryTweaksScreen extends Screen {
 		final int mouseX,
 		final int mouseY
 	) {
-		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
-		graphics.drawString(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.gui_scaler"),
-			this.panelX + this.panelPadding,
-			this.panelY + 10,
-			UiTheme.TEXT
-		);
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.gui_scaler"));
 		if (!this.compactModal) {
 			graphics.drawWordWrap(
 				this.font,
@@ -1669,8 +1639,9 @@ public final class InventoryTweaksScreen extends Screen {
 			UiTheme.PREVIEW_GLASS,
 			this.working.inventoryGuiScalerEnabled ? UiTheme.ACCENT_SOFT : UiTheme.BORDER_SOFT
 		);
-		this.drawPlayerInventory(
+		InventoryPreviewRenderer.drawPlayerInventory(
 			graphics,
+			this.font,
 			this.guiScalerPreviewX,
 			this.guiScalerPreviewY,
 			this.guiScalerPreviewScale,
@@ -1698,72 +1669,8 @@ public final class InventoryTweaksScreen extends Screen {
 		);
 	}
 
-	private void drawGuiScalerWarning(final GuiGraphics graphics) {
-		UiRender.panel(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, 10, UiTheme.GLASS, UiTheme.WARNING);
-		graphics.drawCenteredString(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.warning.title"),
-			this.warningX + this.warningWidth / 2,
-			this.warningY + 14,
-			UiTheme.WARNING
-		);
-		graphics.drawWordWrap(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.warning.description"),
-			this.warningX + 14,
-			this.warningY + 34,
-			this.warningWidth - 28,
-			UiTheme.TEXT
-		);
-	}
-
-	private void drawCustomizationWarning(final GuiGraphics graphics) {
-		UiRender.panel(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, 10, UiTheme.GLASS, UiTheme.WARNING);
-		graphics.drawCenteredString(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.customization.warning.title"),
-			this.warningX + this.warningWidth / 2,
-			this.warningY + 14,
-			UiTheme.WARNING
-		);
-		graphics.drawWordWrap(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.customization.warning.description"),
-			this.warningX + 14,
-			this.warningY + 34,
-			this.warningWidth - 28,
-			UiTheme.TEXT
-		);
-	}
-
-	private void drawTweakWarning(final GuiGraphics graphics) {
-		UiRender.panel(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, 10, UiTheme.GLASS, UiTheme.WARNING);
-		graphics.drawCenteredString(
-			this.font,
-			Component.translatable(this.tweakWarning.key + ".warning.title"),
-			this.warningX + this.warningWidth / 2,
-			this.warningY + 14,
-			UiTheme.WARNING
-		);
-		graphics.drawWordWrap(
-			this.font,
-			Component.translatable(this.tweakWarning.key + ".warning.description"),
-			this.warningX + 14,
-			this.warningY + 34,
-			this.warningWidth - 28,
-			UiTheme.TEXT
-		);
-	}
-
 	private void drawCustomizationModal(final GuiGraphics graphics, final int mouseX, final int mouseY) {
-		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
-		graphics.drawString(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.customization"),
-			this.panelX + this.panelPadding,
-			this.panelY + 10,
-			UiTheme.TEXT
-		);
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.customization"));
 
 		this.drawCustomizationRail(
 			graphics,
@@ -1793,8 +1700,9 @@ public final class InventoryTweaksScreen extends Screen {
 				this.customizationPreviewHeight
 			);
 			switch (this.customizationPreviewTarget.kind()) {
-				case PLAYER -> this.drawPlayerInventory(
+				case PLAYER -> InventoryPreviewRenderer.drawPlayerInventory(
 					graphics,
+					this.font,
 					this.customizationPreviewX,
 					this.customizationPreviewY,
 					this.customizationPreviewScale,
@@ -1803,24 +1711,27 @@ public final class InventoryTweaksScreen extends Screen {
 					true,
 					this.working
 				);
-				case GENERIC -> this.drawContainerPreview(
+				case GENERIC -> InventoryPreviewRenderer.drawContainerPreview(
 					graphics,
+					this.font,
 					this.customizationPreviewX,
 					this.customizationPreviewY,
 					this.customizationPreviewScale,
 					this.customizationPreviewTarget,
 					this.working
 				);
-				case SURFACE -> this.drawSurfacePreview(
+				case SURFACE -> InventoryPreviewRenderer.drawSurfacePreview(
 					graphics,
+					this.font,
 					this.customizationPreviewX,
 					this.customizationPreviewY,
 					this.customizationPreviewScale,
 					this.customizationPreviewTarget,
 					this.working
 				);
-				case BUNDLE -> this.drawBundlePreview(
+				case BUNDLE -> InventoryPreviewRenderer.drawBundlePreview(
 					graphics,
+					this.font,
 					this.customizationPreviewX,
 					this.customizationPreviewY,
 					this.customizationPreviewScale,
@@ -1893,14 +1804,7 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private void drawCropModal(final GuiGraphics graphics) {
-		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
-		graphics.drawString(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.crop.title"),
-			this.panelX + this.panelPadding,
-			this.panelY + 10,
-			UiTheme.TEXT
-		);
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.crop.title"));
 		graphics.drawString(
 			this.font,
 			Component.translatable("screen.kohs_inventory_tweaks.crop.ratio"),
@@ -2117,8 +2021,7 @@ public final class InventoryTweaksScreen extends Screen {
 		final Component title
 	) {
 		UiRender.panel(graphics, x, y, width, height, 8, UiTheme.PREVIEW_GLASS, UiTheme.BORDER_SOFT);
-		graphics.drawCenteredString(this.font, title, x + width / 2, y + 7, UiTheme.TEXT_MUTED);
-		graphics.fill(x + 7, y + 18, x + width - 7, y + 19, UiTheme.ACCENT_SOFT);
+		ZChrome.sectionTitle(graphics, this.font, title, x + width / 2, y + 6, width);
 	}
 
 	private void drawPixelScrollbar(
@@ -2133,266 +2036,35 @@ public final class InventoryTweaksScreen extends Screen {
 		if (maximum <= 0 || bottom <= top) {
 			return;
 		}
-		int height = bottom - top;
-		int thumbHeight = Math.max(14, height * height / Math.max(height, contentHeight));
-		int thumbY = top + scroll * Math.max(1, height - thumbHeight) / maximum;
-		graphics.fill(x, top, x + 2, bottom, UiTheme.SCROLL_TRACK);
-		graphics.fill(x - 1, thumbY, x + 3, thumbY + thumbHeight, UiTheme.ACCENT_SOFT);
+		ZDraw.scrollbar(graphics, x - 1, top, bottom - top, scroll, maximum);
 	}
 
-	private void drawWarning(final GuiGraphics graphics) {
+	/** The modal panel with its header and the line that sets the footer apart. */
+	private void drawModalFrame(final GuiGraphics graphics, final Component title) {
+		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
+		int inner = this.panelWidth - this.panelPadding * 2;
+		ZChrome.panelHeader(graphics, this.font, title, this.panelX + this.panelPadding, this.panelY + 10, inner,
+			this.panelY + this.headerHeight - 3);
+		int footerLine = this.panelY + this.panelHeight - this.footerHeight + 1;
+		graphics.fill(this.panelX + this.panelPadding, footerLine, this.panelX + this.panelWidth - this.panelPadding,
+			footerLine + 1, ZTheme.alpha(ZTheme.BORDER_SOFT, 90));
+	}
+
+	/**
+	 * A warning: a slow magenta pulse, the warning rune beside the title, and the
+	 * explanation. The pulse breathes; it never flashes.
+	 */
+	private void drawWarningPanel(final GuiGraphics graphics, final Component title, final Component description) {
+		ZDraw.glow(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, UiTheme.WARNING,
+			Math.round(22 + 20 * ZMotion.pulse(2.4F)));
 		UiRender.panel(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, 10, UiTheme.GLASS, UiTheme.WARNING);
-		graphics.drawCenteredString(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.unsaved.title"),
-			this.warningX + this.warningWidth / 2,
-			this.warningY + 14,
-			UiTheme.WARNING
-		);
-		graphics.drawWordWrap(
-			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.unsaved.description"),
-			this.warningX + 14,
-			this.warningY + 34,
-			this.warningWidth - 28,
-			UiTheme.TEXT
-		);
-	}
-
-	private void drawPlayerInventory(
-		final GuiGraphics graphics,
-		final int x,
-		final int y,
-		final float scale,
-		final int mouseX,
-		final int mouseY,
-		final boolean followMouse,
-		final InventoryTweaksConfig visualConfig
-	) {
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(x, y);
-		graphics.pose().scale(scale, scale);
-		graphics.blit(
-			RenderPipelines.GUI_TEXTURED,
-			InventoryTextureManager.textureFor(visualConfig),
-			0,
-			0,
-			0.0F,
-			0.0F,
-			INVENTORY_WIDTH,
-			INVENTORY_HEIGHT,
-			256,
-			256
-		);
-		if (this.minecraft.player != null) {
-			int entityX0 = x + Math.round(26 * scale);
-			int entityY0 = y + Math.round(8 * scale);
-			int entityX1 = x + Math.round(75 * scale);
-			int entityY1 = y + Math.round(78 * scale);
-			float entityMouseX = followMouse ? mouseX : (entityX0 + entityX1) * 0.5F;
-			float entityMouseY = followMouse ? mouseY : (entityY0 + entityY1) * 0.5F;
-			InventoryScreen.renderEntityInInventoryFollowsMouse(
-				graphics,
-				entityX0,
-				entityY0,
-				entityX1,
-				entityY1,
-				Math.max(1, Math.round(30 * scale)),
-				0.0625F,
-				entityMouseX,
-				entityMouseY,
-				this.minecraft.player
-			);
-			String hoveredDynamicItem = null;
-			Slot hoveredPreviewSlot = null;
-			if (followMouse && scale > 0.0F) {
-				double localMouseX = (mouseX - x) / scale;
-				double localMouseY = (mouseY - y) / scale;
-				for (Slot slot : this.minecraft.player.inventoryMenu.slots) {
-					if (slot.isActive()
-						&& localMouseX >= slot.x
-						&& localMouseX < slot.x + 16
-						&& localMouseY >= slot.y
-						&& localMouseY < slot.y + 16) {
-						InventoryTweaksConfig.ItemHighlight hoveredHighlight = visualConfig.findItemHighlight(
-							BuiltInRegistries.ITEM.getKey(slot.getItem().getItem()).toString()
-						);
-						if (hoveredHighlight != null && hoveredHighlight.dynamicHighlight) {
-							hoveredDynamicItem = hoveredHighlight.itemId;
-						}
-						hoveredPreviewSlot = slot;
-						break;
-					}
-				}
-			}
-			for (Slot slot : this.minecraft.player.inventoryMenu.slots) {
-				if (slot.isActive() && !slot.getItem().isEmpty()) {
-					InventoryTweaksConfig.ItemHighlight highlight = ItemHighlighterController.highlightFor(visualConfig, slot.getItem());
-					boolean renderHighlight = highlight != null
-						&& (!highlight.dynamicHighlight || highlight.itemId.equals(hoveredDynamicItem));
-					if (renderHighlight) {
-						ItemHighlighterController.drawHighlightLayer(graphics, slot.x - 1, slot.y - 1, 18, highlight, false);
-					}
-					graphics.renderItem(slot.getItem(), slot.x, slot.y, slot.x + slot.y * INVENTORY_WIDTH);
-					graphics.renderItemDecorations(this.font, slot.getItem(), slot.x, slot.y);
-					if (renderHighlight) {
-						ItemHighlighterController.drawHighlightLayer(graphics, slot.x - 1, slot.y - 1, 18, highlight, true);
-					}
-					if (slot == hoveredPreviewSlot) {
-						AccessibilityRenderController.drawPreviewFocus(graphics, slot.x, slot.y, visualConfig);
-					}
-				}
-			}
-		}
-		graphics.pose().popMatrix();
-	}
-
-	private void drawContainerPreview(
-		final GuiGraphics graphics,
-		final int x,
-		final int y,
-		final float scale,
-		final CursorTarget target,
-		final InventoryTweaksConfig visualConfig
-	) {
-		if (target == CursorTarget.SHULKER) {
-			this.drawSurfacePreview(
-				graphics,
-				x,
-				y,
-				scale,
-				CustomizationPreview.SHULKER_BOX,
-				visualConfig
-			);
-			return;
-		}
-		this.drawGenericContainerPreview(
-			graphics,
-			x,
-			y,
-			scale,
-			target.containerRows(),
-			target.translationKey(),
-			visualConfig
-		);
-	}
-
-	private void drawContainerPreview(
-		final GuiGraphics graphics,
-		final int x,
-		final int y,
-		final float scale,
-		final CustomizationPreview target,
-		final InventoryTweaksConfig visualConfig
-	) {
-		this.drawGenericContainerPreview(
-			graphics,
-			x,
-			y,
-			scale,
-			target.containerRows(),
-			target.translationKey(),
-			visualConfig
-		);
-	}
-
-	private void drawGenericContainerPreview(
-		final GuiGraphics graphics,
-		final int x,
-		final int y,
-		final float scale,
-		final int rows,
-		final String translationKey,
-		final InventoryTweaksConfig visualConfig
-	) {
-		int topHeight = rows * 18 + 17;
-		int imageHeight = 114 + rows * 18;
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(x, y);
-		graphics.pose().scale(scale, scale);
-		Identifier texture = InventoryTextureManager.containerTextureFor(visualConfig, CONTAINER_TEXTURE, imageHeight);
-		graphics.blit(RenderPipelines.GUI_TEXTURED, texture, 0, 0, 0.0F, 0.0F, 176, topHeight, 256, 256);
-		graphics.blit(RenderPipelines.GUI_TEXTURED, texture, 0, topHeight, 0.0F, 126.0F, 176, 96, 256, 256);
-		graphics.drawString(this.font, Component.translatable(translationKey), 8, 6, 0xFF404040, false);
-		graphics.drawString(this.font, Component.translatable("container.inventory"), 8, imageHeight - 94, 0xFF404040, false);
-		graphics.pose().popMatrix();
-	}
-
-	private void drawSurfacePreview(
-		final GuiGraphics graphics,
-		final int x,
-		final int y,
-		final float scale,
-		final CustomizationPreview target,
-		final InventoryTweaksConfig visualConfig
-	) {
-		Identifier texture = InventoryTextureManager.previewTextureFor(
-			visualConfig,
-			target.texture(),
-			target.previewWidth(),
-			target.previewHeight(),
-			target.textureWidth(),
-			target.textureHeight(),
-			target.slots()
-		);
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(x, y);
-		graphics.pose().scale(scale, scale);
-		graphics.blit(
-			RenderPipelines.GUI_TEXTURED,
-			texture,
-			0,
-			0,
-			0.0F,
-			0.0F,
-			target.previewWidth(),
-			target.previewHeight(),
-			target.textureWidth(),
-			target.textureHeight()
-		);
-		graphics.pose().popMatrix();
-	}
-
-	private void drawBundlePreview(
-		final GuiGraphics graphics,
-		final int x,
-		final int y,
-		final float scale,
-		final InventoryTweaksConfig visualConfig
-	) {
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(x, y);
-		graphics.pose().scale(scale, scale);
-		graphics.fill(0, 0, 104, 88, previewTint(0xFF2B183C, visualConfig.frameColor, visualConfig.frameOpacity));
-		for (int row = 0; row < 3; row++) {
-			for (int column = 0; column < 4; column++) {
-				int slotX = 5 + column * 25;
-				int slotY = 7 + row * 25;
-				graphics.fill(
-					slotX,
-					slotY,
-					slotX + 23,
-					slotY + 23,
-					previewTint(0xFF6B477F, visualConfig.frameColor, visualConfig.frameOpacity)
-				);
-				graphics.fill(
-					slotX + 3,
-					slotY + 3,
-					slotX + 20,
-					slotY + 20,
-					previewTint(0xFF17101F, visualConfig.slotColor, visualConfig.slotOpacity)
-				);
-			}
-		}
-		graphics.pose().popMatrix();
-	}
-
-	private static int previewTint(final int base, final int tint, final int opacity) {
-		int alpha = (base >>> 24) * Mth.clamp(opacity, 0, 255) / 255;
-		int red = (base >> 16 & 0xFF) * (tint >> 16 & 0xFF) / 255;
-		int green = (base >> 8 & 0xFF) * (tint >> 8 & 0xFF) / 255;
-		int blue = (base & 0xFF) * (tint & 0xFF) / 255;
-		return alpha << 24 | red << 16 | green << 8 | blue;
+		int titleWidth = Math.min(this.font.width(title), Math.max(1, this.warningWidth - 50));
+		int left = this.warningX + (this.warningWidth - titleWidth - 22) / 2;
+		ZIcons.SEVERITY_WARNING.draw(graphics, left, this.warningY + 10, 16, UiTheme.WARNING, 1.0F);
+		graphics.drawString(this.font, title, left + 22, this.warningY + 14, UiTheme.TEXT);
+		ZDraw.blade(graphics, this.warningX + this.warningWidth / 2, this.warningY + 30,
+			Math.min(64, this.warningWidth / 4), ZTheme.alpha(UiTheme.WARNING, 190));
+		graphics.drawWordWrap(this.font, description, this.warningX + 14, this.warningY + 37, this.warningWidth - 28, UiTheme.TEXT);
 	}
 
 	private void calculateMainLayout() {
@@ -2400,7 +2072,8 @@ public final class InventoryTweaksScreen extends Screen {
 		int margin = this.width < 360 ? 4 : 8;
 		int gap = this.compactMain ? 5 : 12;
 		int titleSpace = this.height >= 230 ? 38 : 27;
-		int footerSpace = this.height >= 120 ? 34 : 24;
+		// Room for the texture selector and its label under the rails.
+		int footerSpace = this.height >= 120 ? 46 : 24;
 		int absoluteMaxRail = Math.max(1, (this.width - margin * 2 - gap * 2 - 48) / 2);
 		int minimumRail = Math.min(this.compactMain ? 68 : 108, absoluteMaxRail);
 		int maximumRail = Math.max(minimumRail, Math.min(this.compactMain ? 126 : 184, absoluteMaxRail));
@@ -2409,6 +2082,9 @@ public final class InventoryTweaksScreen extends Screen {
 			: INVENTORY_WIDTH;
 		int preferredRail = (this.width - margin * 2 - gap * 2 - preferredPreviewWidth) / 2;
 		int railWidth = Mth.clamp(preferredRail, minimumRail, maximumRail);
+		// A card title may wrap between words, never inside one: the rails take the
+		// width the longest word needs, and the preview, which is decoration, gives it up.
+		railWidth = Math.max(railWidth, Math.min(absoluteMaxRail, this.longestCardWordWidth() + 44));
 
 		this.mainLeftRailX = margin;
 		this.mainLeftRailY = titleSpace;
@@ -2434,11 +2110,10 @@ public final class InventoryTweaksScreen extends Screen {
 		int previewBottom = this.height - margin - 3;
 		int availableHeight = Math.max(24, previewBottom - previewTop);
 		int availableWidth = Math.max(24, centerWidth - 10);
-		this.mainPreviewScale = Math.min(1.0F, Math.min(
+		this.mainPreviewScale = this.crispScale(Math.min(
 			availableHeight / (float) INVENTORY_HEIGHT,
 			availableWidth / (float) INVENTORY_WIDTH
-		));
-		this.mainPreviewScale = Math.max(0.18F, this.mainPreviewScale);
+		), 2.0F, 0.18F);
 		this.mainPreviewWidth = Math.round(INVENTORY_WIDTH * this.mainPreviewScale);
 		this.mainPreviewHeight = Math.round(INVENTORY_HEIGHT * this.mainPreviewScale);
 		this.mainPreviewX = centerLeft + (centerWidth - this.mainPreviewWidth) / 2;
@@ -2449,15 +2124,15 @@ public final class InventoryTweaksScreen extends Screen {
 		int cardGap = this.compactMain ? 5 : 7;
 		int leftRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
 		int rightRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
-		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 27);
+		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 30);
 		this.mainLeftMaxScroll = Math.max(0, leftRailContentHeight - railVisibleHeight);
 		this.mainRightMaxScroll = Math.max(0, rightRailContentHeight - railVisibleHeight);
 		this.mainLeftSmoothScroll.setMaximum(this.mainLeftMaxScroll);
 		this.mainRightSmoothScroll.setMaximum(this.mainRightMaxScroll);
 		this.mainLeftScroll = this.mainLeftSmoothScroll.roundedPosition();
 		this.mainRightScroll = this.mainRightSmoothScroll.roundedPosition();
-		int railContentTop = this.mainLeftRailY + 22
-			+ Math.max(0, (railVisibleHeight - Math.max(leftRailContentHeight, rightRailContentHeight)) / 2);
+		// Cards start under the section title, like a navigation column.
+		int railContentTop = this.mainLeftRailY + 25;
 		this.cursorCardX = this.mainLeftRailX + 5;
 		this.cursorCardY = railContentTop - this.mainLeftScroll;
 		this.tweakCardX = this.cursorCardX;
@@ -2470,6 +2145,36 @@ public final class InventoryTweaksScreen extends Screen {
 		this.itemHighlighterCardY = this.customizationCardY + this.mainCardHeight + cardGap;
 		this.guiScalerCardX = this.customizationCardX;
 		this.guiScalerCardY = this.itemHighlighterCardY + this.mainCardHeight + cardGap;
+	}
+
+	/**
+	 * The largest scale up to {@code limit} that puts a whole number of screen pixels
+	 * under every texture pixel, so the pixel art stays sharp. When not even one fits,
+	 * the plain fit, never under {@code minimum}.
+	 */
+	private float crispScale(final float fit, final float limit, final float minimum) {
+		double gui = this.minecraft.getWindow().getGuiScale();
+		int pixels = (int) Math.floor(Math.min(fit, limit) * gui + 1.0E-4);
+		return pixels >= 1 ? (float) (pixels / gui) : Math.max(minimum, fit);
+	}
+
+	/** The widest single word among the main menu's card titles. */
+	private int longestCardWordWidth() {
+		String[] keys = {
+			"screen.kohs_inventory_tweaks.cursor_landing",
+			"screen.kohs_inventory_tweaks.inventory_tweaks",
+			"screen.kohs_inventory_tweaks.issues_tracker",
+			"screen.kohs_inventory_tweaks.customization",
+			"screen.kohs_inventory_tweaks.item_highlighter",
+			"screen.kohs_inventory_tweaks.gui_scaler",
+		};
+		int widest = 0;
+		for (String key : keys) {
+			for (String word : Component.translatable(key).getString().split(" ")) {
+				widest = Math.max(widest, this.font.width(word));
+			}
+		}
+		return widest;
 	}
 
 	private boolean isInsideMainRail(final double x, final double y, final boolean left) {
@@ -2511,11 +2216,11 @@ public final class InventoryTweaksScreen extends Screen {
 		int nativeHeight = this.selectedTarget.previewHeight();
 		int toggleSpace = this.selectedTarget == CursorTarget.INVENTORY ? 0 : (this.compactModal ? 22 : 25);
 		int coordinateSpace = this.compactModal ? 0 : 17;
-		this.previewScale = Math.min(1.0F, Math.min(
+		// Larger is more precise to click on, and whole pixels keep it sharp.
+		this.previewScale = this.crispScale(Math.min(
 			(previewAreaWidth - 10) / (float) nativeWidth,
 			(contentHeight - toggleSpace - coordinateSpace - 10) / (float) nativeHeight
-		));
-		this.previewScale = Math.max(0.28F, this.previewScale);
+		), 2.0F, 0.28F);
 		this.previewWidth = Math.round(nativeWidth * this.previewScale);
 		this.previewHeight = Math.round(nativeHeight * this.previewScale);
 		this.previewX = previewAreaX + (previewAreaWidth - this.previewWidth) / 2;
@@ -2655,43 +2360,12 @@ public final class InventoryTweaksScreen extends Screen {
 		this.clampCropFocus();
 	}
 
-	private void ensureParticles() {
-		if (!this.particles.isEmpty()) {
-			return;
-		}
-		Random random = new Random(0x4B4F4853L);
-		int count = VisualPerformanceController.particleCount(Mth.clamp(this.width * this.height / 7600, 24, 42));
-		for (int i = 0; i < count; i++) {
-			this.particles.add(new FloatingParticle(
-				random.nextFloat() * Math.max(1, this.width),
-				random.nextFloat() * Math.max(1, this.height),
-				0.08F + random.nextFloat() * 0.18F,
-				0.008F + random.nextFloat() * 0.025F,
-				1 + random.nextInt(2),
-				72 + random.nextInt(112),
-				random.nextFloat() * 6.28318F
-			));
-		}
-	}
-
 	private float entranceProgress() {
-		float linear = Mth.clamp(
-			(System.nanoTime() - this.entranceStartedAtNanos) / (float) ENTRANCE_DURATION_NANOS,
-			0.0F,
-			1.0F
-		);
-		float remaining = 1.0F - linear;
-		return 1.0F - remaining * remaining * remaining;
+		return ZMotion.progress(this.entranceStartedAtNanos, ENTRANCE_DURATION_NANOS);
 	}
 
 	private float modalEntranceProgress() {
-		float linear = Mth.clamp(
-			(System.nanoTime() - this.modalOpenedAtNanos) / (float) MODAL_ENTRANCE_DURATION_NANOS,
-			0.0F,
-			1.0F
-		);
-		float remaining = 1.0F - linear;
-		return 1.0F - remaining * remaining * remaining;
+		return ZMotion.progress(this.modalOpenedAtNanos, MODAL_ENTRANCE_DURATION_NANOS);
 	}
 
 	private void updateSmoothWidgetPositions() {
