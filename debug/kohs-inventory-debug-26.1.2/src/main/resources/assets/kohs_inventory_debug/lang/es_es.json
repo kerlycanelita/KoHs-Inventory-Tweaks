@@ -50,6 +50,8 @@
   "kohs_inventory_debug.lab.aggressive.desc": "Ejecuta toda la batería agresiva reducida y genera un resumen.",
   "kohs_inventory_debug.lab.pvp_input": "Regresión de entrada PvP",
   "kohs_inventory_debug.lab.pvp_input.desc": "Prueba pulsaciones, casillas bajo el cursor y el menú en el mundo local.",
+  "kohs_inventory_debug.lab.slot_shortcuts": "Atajos de slot",
+  "kohs_inventory_debug.lab.slot_shortcuts.desc": "Mueve el puntero a un slot y pulsa F, 1-9, Q, Ctrl+Q o hace clic en el mismo sondeo de entrada, con varias escalas, el escalador y el recetario, y compara cada resultado con el servidor integrado.",
   "kohs_inventory_debug.lab.immediate": "Aperturas inmediatas",
   "kohs_inventory_debug.lab.immediate.desc": "Exige que cada pulsacion normal abra antes del tick, leyendo la decision que tomo KoHs y no solo si aparecio una pantalla.",
   "kohs_inventory_debug.lab.bounce": "Rebote de contacto",

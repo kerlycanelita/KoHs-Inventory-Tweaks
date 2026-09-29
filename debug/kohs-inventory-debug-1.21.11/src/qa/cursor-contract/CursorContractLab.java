@@ -83,6 +83,25 @@ public final class CursorContractLab {
         }
     }
 
+    /**
+     * A pointer the player moved, one poll later: Minecraft must follow the real
+     * pointer exactly, and the pointer must still be where it was moved. Once the
+     * desktop has delivered the move, its position can differ from the requested one
+     * by the pixel conversion of the window (seen on 1.21.11's GLFW), so the
+     * requested point allows three pixels; anything KoHs moved would be far more and
+     * is counted separately by the warp checks.
+     */
+    private static void checkSettled(Minecraft mc, double x, double y, String stage) {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            DoubleBuffer px = stack.mallocDouble(1), py = stack.mallocDouble(1);
+            GLFW.glfwGetCursorPos(mc.getWindow().handle(), px, py);
+            check(Math.abs(px.get(0) - x) <= 3 && Math.abs(py.get(0) - y) <= 3
+                && Math.abs(mc.mouseHandler.xpos() - px.get(0)) <= 1 && Math.abs(mc.mouseHandler.ypos() - py.get(0)) <= 1,
+                stage + "; expected=" + x + "," + y + "; native=" + px.get(0) + "," + py.get(0)
+                    + "; internal=" + mc.mouseHandler.xpos() + "," + mc.mouseHandler.ypos());
+        }
+    }
+
     private static void tap(Minecraft mc) {
         var key = ((KeyMappingDebugAccessor) mc.options.keyInventory).kohsInventoryDebug$getKey();
         if (key.getType() != com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM) throw new IllegalStateException("Keyboard lab only");
@@ -141,16 +160,17 @@ public final class CursorContractLab {
                     int n = sample;
                     CloseHotbarRegressionLab.atPoll(mc, () -> {
                         if (!(mc.screen instanceof InventoryScreen)) throw new IllegalStateException("Opening timed out");
-                        double x = mc.getWindow().getScreenWidth() * (n % 2 == 0 ? 0.12 : 0.85);
-                        double y = mc.getWindow().getScreenHeight() * (n % 2 == 0 ? 0.84 : 0.17);
+                        // Whole pixels: the desktop pointer has no fractions to land on.
+                        double x = Math.round(mc.getWindow().getScreenWidth() * (n % 2 == 0 ? 0.12 : 0.85));
+                        double y = Math.round(mc.getWindow().getScreenHeight() * (n % 2 == 0 ? 0.84 : 0.17));
                         move(mc, x, y);
                         checkPosition(mc, x, y, "same-callback free motion " + n);
                         check(CursorLandingController.overrideReleasePosition(mc) == null, "late release must not request another custom landing");
                     });
                     Thread.sleep(20);
                     CloseHotbarRegressionLab.atPoll(mc, () -> {
-                        checkPosition(mc, mc.getWindow().getScreenWidth() * (n % 2 == 0 ? 0.12 : 0.85),
-                            mc.getWindow().getScreenHeight() * (n % 2 == 0 ? 0.84 : 0.17), "later-poll free motion " + n);
+                        checkSettled(mc, Math.round(mc.getWindow().getScreenWidth() * (n % 2 == 0 ? 0.12 : 0.85)),
+                            Math.round(mc.getWindow().getScreenHeight() * (n % 2 == 0 ? 0.84 : 0.17)), "later-poll free motion " + n);
                         check(warps == (mode != 3 ? 1 : 0), "no extra finalization");
                     });
                 }

@@ -47,7 +47,9 @@ dependencies {
 	def inventoryTweaksJar = file("../../versions/kohs-inventory-tweaks-1.21.11/build/libs/kohs-inventory-tweaks-${inventoryTweaksProperties.mod_version}.jar")
 	def inventoryTweaksDevJar = file("../../versions/kohs-inventory-tweaks-1.21.11/build/devlibs/kohs-inventory-tweaks-${inventoryTweaksProperties.mod_version}-dev.jar")
 	// -PinventoryTweaksJar=<path> runs the labs against another build (A/B); they still compile against this tree.
-	clientRuntimeOnly files(project.hasProperty('inventoryTweaksJar') ? file(project.property('inventoryTweaksJar')) : inventoryTweaksJar)
+	// The release jar uses intermediary names; as a mod dependency Loom remaps it to this
+	// named development runtime, which a plain runtime file never is.
+	modRuntimeOnly files(project.hasProperty('inventoryTweaksJar') ? file(project.property('inventoryTweaksJar')) : inventoryTweaksJar)
 	clientCompileOnly files(inventoryTweaksDevJar)
 }
 
@@ -99,7 +101,7 @@ tasks.named('sourcesJar').configure {
 tasks.named('runClient').configure {
 	if (project.hasProperty('debugMacro')) {
 		jvmArgs "-Dkohs.inventory.debug.autorun=${project.property('debugMacro')}"
-		if (project.property('debugMacro') in ['cursor-contract', 'cursor-weight', 'pvp-input', 'ui-showcase', 'ui-media', 'record-all', 'record-fast', 'record-center', 'record-animations']) {
+		if (project.property('debugMacro') in ['cursor-contract', 'cursor-weight', 'pvp-input', 'slot-shortcuts', 'ui-showcase', 'ui-media', 'record-all', 'record-fast', 'record-center', 'record-animations']) {
 			args '--width', '1440', '--height', '1000'
 		}
 	}

@@ -211,10 +211,13 @@ public final class ContainerScaleRegressionLab {
 			case VILLAGER -> new MerchantScreen(new MerchantMenu(0, inv), inv, title);
 			case HORSE -> {
 				var horse = EntityTypes.HORSE.create(mc.level, EntitySpawnReason.LOAD);
+				// A preview entity is never added to the level; 26.2 renders only entities with an id.
+				horse.setId(Integer.MIN_VALUE + 1);
 				yield new HorseInventoryScreen(new HorseInventoryMenu(0, inv, new SimpleContainer(2), horse, 0), inv, horse, 0);
 			}
 			case NAUTILUS -> {
 				var nautilus = EntityTypes.NAUTILUS.create(mc.level, EntitySpawnReason.LOAD);
+				nautilus.setId(Integer.MIN_VALUE + 2);
 				yield new NautilusInventoryScreen(new NautilusInventoryMenu(0, inv, new SimpleContainer(2), nautilus, 0), inv, nautilus, 0);
 			}
 		};

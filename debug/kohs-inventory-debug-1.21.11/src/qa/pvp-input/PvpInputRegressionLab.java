@@ -147,6 +147,32 @@ public final class PvpInputRegressionLab {
 				while (mc.options.keyInventory.consumeClick()) { }
 				mouse(mc, 0, GLFW.GLFW_RELEASE);
 				close(mc);
+				// An attack or use clicked in an earlier poll of the same tick is still queued when
+				// the key arrives. Vanilla runs it in that tick's handleKeybinds, after opening; an
+				// early opening would leave it queued until the screen closed, and it would fire
+				// then: a swing, a thrown pearl. Those openings wait for the tick.
+				for (KeyMapping queued : new KeyMapping[]{mc.options.keyAttack, mc.options.keyUse}) {
+					java.util.concurrent.locks.LockSupport.parkNanos(30_000_000L);
+					// Whatever the mapping is bound to: a development profile may move use off the mouse.
+					var bound = ((KeyMappingDebugAccessor) queued).kohsInventoryDebug$getKey();
+					if (bound.getType() == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE) {
+						mouse(mc, bound.getValue(), GLFW.GLFW_PRESS);
+						mouse(mc, bound.getValue(), GLFW.GLFW_RELEASE);
+					} else {
+						tap(mc, bound.getValue());
+					}
+					SuperFastInventoryController.afterInputPoll(mc);
+					int pending = ((KeyMappingDebugAccessor) queued).kohsInventoryDebug$getClickCount();
+					tap(mc, inventory);
+					SuperFastInventoryController.afterInputPoll(mc);
+					check(pending > 0, "earlier-poll " + queued.getName() + " click queued");
+					check(mc.screen == null, "earlier-poll " + queued.getName() + " keeps the opening on the tick");
+					check(((KeyMappingDebugAccessor) queued).kohsInventoryDebug$getClickCount() == pending,
+						"earlier-poll " + queued.getName() + " left for Vanilla");
+					while (queued.consumeClick()) { }
+					while (mc.options.keyInventory.consumeClick()) { }
+					close(mc);
+				}
 				// keyDrop is plain: the tick-time opening zeroes its click, so Vanilla never drops
 				// on that tick either and the press no longer holds the opening back.
 				java.util.concurrent.locks.LockSupport.parkNanos(30_000_000L);

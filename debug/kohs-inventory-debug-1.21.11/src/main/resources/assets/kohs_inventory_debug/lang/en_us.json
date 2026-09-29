@@ -50,6 +50,8 @@
   "kohs_inventory_debug.lab.aggressive.desc": "Runs every shortened aggressive battery and produces one summary.",
   "kohs_inventory_debug.lab.pvp_input": "PvP input regression",
   "kohs_inventory_debug.lab.pvp_input.desc": "Tests fresh presses, pointer targeting and menu layout in the local world.",
+  "kohs_inventory_debug.lab.slot_shortcuts": "Slot shortcuts",
+  "kohs_inventory_debug.lab.slot_shortcuts.desc": "Flicks to a slot and presses F, 1-9, Q, Ctrl+Q or clicks inside the same input poll, across GUI scales, the scaler and the recipe book, and checks every result against the integrated server.",
   "kohs_inventory_debug.lab.immediate": "Immediate openings",
   "kohs_inventory_debug.lab.immediate.desc": "Requires every ordinary press to open before the client tick, reading the decision KoHs made rather than only whether a screen appeared.",
   "kohs_inventory_debug.lab.bounce": "Contact bounce",

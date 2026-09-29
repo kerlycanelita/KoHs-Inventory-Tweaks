@@ -56,6 +56,7 @@ public final class MacroTestController {
 		RECORD_CENTER("record-center", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
 		RECORD_ANIMATIONS("record-animations", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
 		PVP_INPUT("pvp-input", "kohs_inventory_debug.lab.pvp_input", "kohs_inventory_debug.lab.pvp_input.desc", false, true),
+		SLOT_SHORTCUTS("slot-shortcuts", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		LATENCY_SWEEP("latency-sweep", "kohs_inventory_debug.lab.latency", "kohs_inventory_debug.lab.latency.desc", false, true),
 		EXTREME_OPEN_CLOSE("extreme-open-close", "kohs_inventory_debug.lab.extreme", "kohs_inventory_debug.lab.extreme.desc", false, true),
 		FRAME_JITTER("frame-jitter", "kohs_inventory_debug.lab.jitter", "kohs_inventory_debug.lab.jitter.desc", false, true),
@@ -189,7 +190,7 @@ public final class MacroTestController {
 						minecraft.getWindow().getY() + (int) Math.round(originalPointer[1])
 					);
 				}
-				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && kind != MacroKind.UI_MEDIA && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT) {
+				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && kind != MacroKind.UI_MEDIA && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT && kind != MacroKind.SLOT_SHORTCUTS) {
 					DebugCollector.info("MACRO_SUMMARY", metrics.summary());
 				}
 				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id + "; screen=" + screenName(screenSnapshot(minecraft))
@@ -268,6 +269,7 @@ public final class MacroTestController {
 			case RECORD_CENTER -> RecordingLab.run(minecraft, "center");
 			case RECORD_ANIMATIONS -> RecordingLab.run(minecraft, "animations");
 			case PVP_INPUT -> PvpInputRegressionLab.run(minecraft);
+			case SLOT_SHORTCUTS -> SlotShortcutLab.run(minecraft);
 			case FULL_STRESS -> {
 				fastOpenClose(input, minecraft, inventory, 12, metrics);
 				inventoryOffhand(input, minecraft, inventory, offhand, false, 10, metrics);

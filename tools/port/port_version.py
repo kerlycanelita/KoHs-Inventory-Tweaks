@@ -33,10 +33,11 @@ DEBUG_PKG = "src/client/java/dev/zymekoh/kohsinventorydebug"
 LABS = ("cursor-contract", "pvp-input", "showcase")
 TARGETS = ("26.1", "26.1.1", "26.2", "1.21.11")
 
-# Files only the target itself can provide, relative to its mixin package.
+# Files only the target itself can provide, relative to its package root: mixins
+# whose target moved, and the key order read from that version's own jar.
 KEEP = {
-    "26.2": ("GuiScreenMixin.java", "HudMixin.java"),
-    "1.21.11": ("WindowMixin.java",),
+    "26.2": ("mixin/GuiScreenMixin.java", "mixin/HudMixin.java", "inventory/VanillaKeyOrder.java"),
+    "1.21.11": ("mixin/WindowMixin.java", "inventory/VanillaKeyOrder.java"),
 }
 DEBUG_KEEP = {"26.2": ("GuiTraceMixin.java",)}
 
@@ -151,12 +152,13 @@ RULES_1_21_11 += [
 def port_tree(version: str) -> None:
     target = REPO / f"versions/kohs-inventory-tweaks-{version}"
     mixins = target / PKG / "mixin"
-    kept = {name: (mixins / name).read_bytes() for name in KEEP.get(version, ())}
+    kept = {name: (target / PKG / name).read_bytes() for name in KEEP.get(version, ())}
     for part in ("src/client", "src/main"):
         shutil.rmtree(target / part)
         shutil.copytree(REPO / part, target / part)
     for name, data in kept.items():
-        (mixins / name).write_bytes(data)
+        (target / PKG / name).write_bytes(data)
+    kept = {Path(name).name for name in kept}
     edit(target / "src/main/resources/fabric.mod.json", [('"minecraft": "26.1.2"', f'"minecraft": "{version}"')])
     mixin_config = target / "src/main/resources/kohs_inventory_tweaks.client.mixins.json"
 
@@ -201,9 +203,6 @@ def port_tree(version: str) -> None:
         ])
         edit(target / "src/main/resources/fabric.mod.json", [('"java": ">=25"', '"java": ">=21"')])
         edit(target / PKG / "inventory/SuperFastInventoryController.java", [
-            ("(26.1.2 bytecode order)", "(1.21.11 bytecode order)"),
-            ("\t\tappendQueued(result, minecraft.options.keyToggleGui);\n", ""),
-            ("\t\tappendQueued(result, minecraft.options.keyToggleSpectatorShaderEffects);\n", ""),
             ("!minecraft.isWindowActive() || !minecraft.getWindow().isFocused() || ", "!minecraft.isWindowActive() || "),
         ])
         edit(target / PKG / "cursor/CursorLandingController.java", [
