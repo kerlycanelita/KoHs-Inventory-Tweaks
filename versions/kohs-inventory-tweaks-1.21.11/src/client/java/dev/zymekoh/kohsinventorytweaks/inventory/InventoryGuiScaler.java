@@ -143,7 +143,27 @@ public final class InventoryGuiScaler {
 		if (config == null) {
 			return 1.0;
 		}
-		return Math.min(clampConfiguredScale(config.inventoryGuiScale), maximumScaleFor(screenWidth, screenHeight));
+		return fit(clampConfiguredScale(config.inventoryGuiScale), maximumScaleFor(screenWidth, screenHeight), config);
+	}
+
+	/**
+	 * The physical scale actually drawn: {@code requested} kept inside {@code maximum}
+	 * and, with Pixel-perfect scale on, moved to the nearest whole number of screen
+	 * pixels per GUI pixel.
+	 *
+	 * <p>100% draws every GUI pixel two screen pixels wide at any Vanilla GUI scale, so
+	 * {@code n / 2} draws it {@code n} wide. Between those steps some GUI pixels come
+	 * out one screen pixel wider than their neighbours: slot borders thicken unevenly
+	 * and item art loses its edges.</p>
+	 */
+	private static double fit(final double requested, final double maximum, final InventoryTweaksConfig config) {
+		double physical = Math.min(requested, maximum);
+		if (config == null || !config.pixelPerfectScale || maximum * PHYSICAL_REFERENCE_GUI_SCALE < 1.0) {
+			return physical;
+		}
+		double pixels = Math.max(1L, Math.round(physical * PHYSICAL_REFERENCE_GUI_SCALE));
+		double fitting = Math.floor(maximum * PHYSICAL_REFERENCE_GUI_SCALE + SCALE_EPSILON);
+		return Math.min(pixels, fitting) / PHYSICAL_REFERENCE_GUI_SCALE;
 	}
 
 	public static double configuredContainerPhysicalScale(
@@ -162,9 +182,10 @@ public final class InventoryGuiScaler {
 		double requestedScale = config.containerProfilesEnabled
 			? config.containerScale(target)
 			: config.inventoryGuiScale;
-		return Math.min(
+		return fit(
 			clampConfiguredScale(requestedScale),
-			maximumScaleFor(screenWidth, screenHeight, target.previewWidth(), target.previewHeight())
+			maximumScaleFor(screenWidth, screenHeight, target.previewWidth(), target.previewHeight()),
+			config
 		);
 	}
 
@@ -208,8 +229,10 @@ public final class InventoryGuiScaler {
 		double scale = configuredContainerScale(screenWidth, screenHeight, config, target);
 		if (config.inventoryGuiScalerEnabled && screen instanceof AbstractRecipeBookScreen<?> recipeScreen
 			&& recipeBookOpen(recipeScreen) && (!config.containerProfilesEnabled || config.isContainerScaleEnabled(target))) {
-			scale = Math.min(scale, toSurfaceScale(maximumScaleFor(screenWidth, screenHeight,
-				INVENTORY_WITH_RECIPE_BOOK_WIDTH, target.previewHeight())));
+			scale = Math.min(scale, toSurfaceScale(fit(
+				configuredContainerPhysicalScale(screenWidth, screenHeight, config, target),
+				maximumScaleFor(screenWidth, screenHeight, INVENTORY_WITH_RECIPE_BOOK_WIDTH, target.previewHeight()),
+				config)));
 		}
 		return scale;
 	}
@@ -258,7 +281,7 @@ public final class InventoryGuiScaler {
 				recipeBookFit * currentGuiScale() / PHYSICAL_REFERENCE_GUI_SCALE
 			));
 		}
-		return toSurfaceScale(Math.min(clampConfiguredScale(config.inventoryGuiScale), maximum));
+		return toSurfaceScale(fit(clampConfiguredScale(config.inventoryGuiScale), maximum, config));
 	}
 
 	/**
@@ -287,6 +310,29 @@ public final class InventoryGuiScaler {
 		}
 		double center = screenSize * 0.5;
 		return center + (coordinate - center) / scale;
+	}
+
+	/**
+	 * The surface pixel a render pass hovers, from the whole GUI pixel it was handed.
+	 *
+	 * <p>Vanilla truncates the exact pointer to whole GUI pixels before it renders, and
+	 * every slot edge sits on a whole pixel, so the slot it highlights is always the
+	 * slot a click or a key at that pointer acts on. A scaled surface keeps that only
+	 * if it converts the exact pointer first and truncates afterwards. Rounding the
+	 * already truncated pixel highlighted a neighbour of the slot that then took the
+	 * click, within a pixel of every slot edge.</p>
+	 *
+	 * <p>A pass rendered with a coordinate of its own, not the live pointer's, keeps
+	 * the old conversion: only the pixel the pointer truncates to is refined.</p>
+	 */
+	public static int toInventoryPixel(
+		final int rendered,
+		final double pointer,
+		final int screenSize,
+		final double scale
+	) {
+		double exact = (int) pointer == rendered ? pointer : rendered;
+		return (int) Math.floor(toInventoryCoordinate(exact, screenSize, scale));
 	}
 
 	public static MouseButtonEvent toInventoryEvent(

@@ -16,6 +16,7 @@
     "KeyboardHandlerTraceMixin",
     "KoHsCursorTraceMixin",
     "KoHsFastInventoryTraceMixin",
+    "KoHsSlotOverlayTimingMixin",
     "MinecraftTraceMixin",
     "MouseHandlerDebugInvoker",
     "MouseHandlerTraceMixin"

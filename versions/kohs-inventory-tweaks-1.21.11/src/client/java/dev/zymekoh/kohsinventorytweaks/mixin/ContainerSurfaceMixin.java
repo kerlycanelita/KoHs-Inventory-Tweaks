@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,11 +26,13 @@ public abstract class ContainerSurfaceMixin {
 			original.call(screen, graphics, mouseX, mouseY, delta);
 			return;
 		}
+		Minecraft minecraft = Minecraft.getInstance();
 		InventoryGuiScaler.beginScaledSurface(graphics, screen.width * 0.5F, screen.height * 0.5F, (float) scale);
 		try {
 			original.call(screen, graphics,
-				(int) Math.round(InventoryGuiScaler.toInventoryCoordinate(mouseX, screen.width, scale)),
-				(int) Math.round(InventoryGuiScaler.toInventoryCoordinate(mouseY, screen.height, scale)), delta);
+				InventoryGuiScaler.toInventoryPixel(mouseX, minecraft.mouseHandler.getScaledXPos(minecraft.getWindow()), screen.width, scale),
+				InventoryGuiScaler.toInventoryPixel(mouseY, minecraft.mouseHandler.getScaledYPos(minecraft.getWindow()), screen.height, scale),
+				delta);
 		} finally {
 			InventoryGuiScaler.endScaledSurface(graphics);
 		}

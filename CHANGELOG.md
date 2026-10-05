@@ -1,5 +1,65 @@
 # Changelog
 
+## 1.2.0 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
+
+Fixes:
+
+- With the GUI Scaler on, the highlighted slot is again the slot a click or a
+  key acts on. The scaled inventory rounded a pointer Minecraft had already cut
+  to whole pixels, so within a pixel of every slot edge it highlighted one slot
+  while the click, F, 1-9 or Q went to its neighbour. The new hover-agreement
+  lab found it at 63 of 560 edge positions on 1.1.1, at every scale tested
+  including 150%; 1.2.0 has none on any of the five versions.
+- Center Mouse Fix places the pointer in a single move before the inventory
+  exists, instead of reading it back afterwards and correcting it. Nothing
+  rewrites the pointer once the screen is open, so a hand that already moved is
+  never pulled back, whatever thread delivers the input.
+- Player Visibility no longer casts line-of-sight rays every frame for a
+  backdrop at 0%, which hides nothing; with a backdrop, the rays stop once the
+  nearest visible players are found.
+
+New options in Inventory Tweaks (default in brackets):
+
+- **Shortcuts follow the pointer** (on): the switch for the targeting 1.1.0
+  added. Off, number keys, the offhand key and the drop keys act on the slot
+  highlighted in the last frame, as in Vanilla.
+- **Pixel-perfect scale** (on): the GUI Scaler moves to the nearest whole number
+  of screen pixels per inventory pixel, so every slot has the same size and
+  sharp edges. At GUI scale 3, 180% becomes 200%.
+- **Steady tooltips** (off): a tooltip waits 0.15 s after the pointer reaches
+  its slot, so a flick across the inventory is not covered by tooltips.
+- **Recipe book lock** (off): a closed recipe book loses its button, so a missed
+  click cannot open it and shift every slot. An open book keeps it.
+- **Totem protection** (off): the offhand key never takes a totem out of the
+  offhand, a number key over the offhand slot leaves it there, and the drop
+  keys never throw a totem. It only declines the key; nothing is clicked or
+  sent in its place.
+- **Empty-slot swap warning** (on): with a totem in the offhand, an empty slot
+  under the pointer turns crimson, because the offhand key would move the totem
+  there; violet when Totem protection will block it.
+- **Held slot marker** (on): brackets the hotbar slot in hand inside every
+  inventory.
+- **Key hints** (off): the key of each hotbar slot, and the offhand key, as
+  small keycaps on their slots.
+- **Durability readout** (off): the durability left on damaged items, in
+  percent; crimson at 20% or less.
+- **Inventory totals** (off): item tooltips add how many of that item you carry.
+- **Slot change flash** (on): a slot glints for 0.18 s when its item changes,
+  so swaps, refills and server corrections show. Reduce inventory visual motion
+  turns it off.
+
+The PvP profile turns on Totem protection, Steady tooltips and Recipe book
+lock; the Vanilla profile turns every new option off. Reset on the Inventory
+Tweaks page now restores every option on the page to its default.
+
+Code:
+
+- New debug-companion labs: `hover-agreement` (also runs against older builds
+  with `-PinventoryTweaksJar`), `features` (61-63 checks, totem protection
+  confirmed against the integrated server) and `overlay-perf`. In the 26.2
+  development client every overlay on costs about 26 µs of render-thread time
+  per frame; the frame rate moved within its own noise.
+
 ## 1.1.1 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
 
 - New mod icon. Nothing else changes from 1.1.0.

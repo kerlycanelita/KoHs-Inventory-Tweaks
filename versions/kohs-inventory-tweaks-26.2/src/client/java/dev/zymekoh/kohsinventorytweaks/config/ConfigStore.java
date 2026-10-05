@@ -191,6 +191,17 @@ public final class ConfigStore {
 		sanitized.centerMouseFix = candidate.centerMouseFix;
 		sanitized.superFastInventory = candidate.superFastInventory;
 		sanitized.reduceInventoryMotion = candidate.reduceInventoryMotion;
+		sanitized.shortcutsFollowPointer = candidate.shortcutsFollowPointer;
+		sanitized.pixelPerfectScale = candidate.pixelPerfectScale;
+		sanitized.steadyTooltips = candidate.steadyTooltips;
+		sanitized.recipeBookLock = candidate.recipeBookLock;
+		sanitized.totemGuard = candidate.totemGuard;
+		sanitized.swapWarning = candidate.swapWarning;
+		sanitized.heldSlotMarker = candidate.heldSlotMarker;
+		sanitized.keyHints = candidate.keyHints;
+		sanitized.durabilityReadout = candidate.durabilityReadout;
+		sanitized.itemTotals = candidate.itemTotals;
+		sanitized.slotFlash = candidate.slotFlash;
 		// Removed profiles are migrated to their inert compatibility values.
 		sanitized.activeProfile = InventoryTweaksConfig.ProfilePreset.CUSTOM;
 		sanitized.autoProfileSwitch = false;

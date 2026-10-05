@@ -28,6 +28,17 @@ public abstract class MouseHandlerMixin {
 	@Shadow
 	private double ypos;
 
+	@Inject(
+		method = "releaseMouse",
+		at = @At(
+			value = "INVOKE",
+			target = "Lcom/mojang/blaze3d/platform/InputConstants;grabOrReleaseMouse(Lcom/mojang/blaze3d/platform/Window;IDD)V"
+		)
+	)
+	private void kohsInventoryTweaks$showPointerBeforeLanding(final CallbackInfo callbackInfo) {
+		CursorLandingController.beforeMouseRelease(this.minecraft);
+	}
+
 	@ModifyArgs(
 		method = "releaseMouse",
 		at = @At(

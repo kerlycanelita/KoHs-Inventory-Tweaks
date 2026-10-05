@@ -96,7 +96,7 @@ tasks.named('sourcesJar').configure {
 tasks.named('runClient').configure {
 	if (project.hasProperty('debugMacro')) {
 		jvmArgs "-Dkohs.inventory.debug.autorun=${project.property('debugMacro')}"
-		if (project.property('debugMacro') in ['cursor-contract', 'cursor-weight', 'pvp-input', 'slot-shortcuts', 'ui-showcase', 'ui-media', 'ui-review', 'record-all', 'record-fast', 'record-center', 'record-animations']) {
+		if (project.property('debugMacro') in ['cursor-contract', 'cursor-weight', 'pvp-input', 'slot-shortcuts', 'features', 'hover-agreement', 'overlay-perf', 'ui-showcase', 'ui-media', 'ui-review', 'record-all', 'record-fast', 'record-center', 'record-animations']) {
 			args '--width', '1440', '--height', '1000'
 		}
 	}

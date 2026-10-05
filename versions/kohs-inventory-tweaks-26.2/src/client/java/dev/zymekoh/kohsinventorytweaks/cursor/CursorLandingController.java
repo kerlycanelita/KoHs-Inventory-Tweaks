@@ -55,29 +55,38 @@ public final class CursorLandingController {
 	}
 
 	/**
-	 * Runs inside {@code releaseMouse}, right after GLFW leaves disabled-cursor mode.
+	 * Runs inside {@code releaseMouse}, just before Vanilla positions the pointer and
+	 * leaves disabled-cursor mode.
 	 *
-	 * <p>Leaving that mode puts the pointer back where GLFW saved it when the mouse
-	 * was grabbed, which is not always where Minecraft just asked for it: a window
-	 * resized while grabbed has a new centre. Checked here, microseconds after the
-	 * switch, that difference is found before the player's hand has had time to move
-	 * anything. The same check used to run after {@code Screen#init}, where movement
-	 * made during initialization looked exactly like that difference and was pulled
-	 * back to the target -- the weight players felt at the start of every move
-	 * toward an item with Center Mouse Fix on.</p>
+	 * <p>Vanilla asks for its position while the cursor is still disabled, and GLFW
+	 * then puts the pointer back where it saved it when the mouse was grabbed, which
+	 * is not always where Minecraft asked: a window resized while grabbed has a new
+	 * centre. Leaving disabled mode first turns Vanilla's own request into a real
+	 * pointer move, so the landing is a single write made before the screen exists.
+	 * Nothing reads the pointer back and corrects it afterwards, so nothing can pull
+	 * back a hand that already moved, even when an input thread such as Ixeris's runs
+	 * the GLFW calls a moment later. Wayland cannot place a free pointer, so there the
+	 * release stays Vanilla's.</p>
 	 */
+	public static void beforeMouseRelease(final Minecraft minecraft) {
+		if (!placesThisRelease(minecraft) || GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_WAYLAND) {
+			return;
+		}
+		GLFW.glfwSetInputMode(minecraft.getWindow().handle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
+	}
+
+	/** Runs inside {@code releaseMouse}, after Vanilla placed the pointer; records where. */
 	public static void afterMouseRelease(final Minecraft minecraft, final double x, final double y) {
+		if (placesThisRelease(minecraft)) {
+			releasedPosition = new double[] {x, y};
+		}
+	}
+
+	private static boolean placesThisRelease(final Minecraft minecraft) {
 		Screen screen = minecraft == null ? null : minecraft.gui.screen();
-		if (screen == null || screen != openingScreen || !canPositionCursor(minecraft)) {
-			return;
-		}
 		CursorTarget target = openingTarget;
-		if (target == null || !CursorPlacement.shouldPlace(target)) {
-			return;
-		}
-		double[] requested = {x, y};
-		warp(minecraft, requested);
-		releasedPosition = requested;
+		return screen != null && screen == openingScreen && canPositionCursor(minecraft)
+			&& target != null && CursorPlacement.shouldPlace(target);
 	}
 
 	/**

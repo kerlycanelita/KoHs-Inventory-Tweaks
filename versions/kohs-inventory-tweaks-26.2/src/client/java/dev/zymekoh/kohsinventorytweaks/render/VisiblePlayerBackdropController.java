@@ -34,6 +34,11 @@ public final class VisiblePlayerBackdropController {
 		final int topAlpha,
 		final int bottomAlpha
 	) {
+		// A transparent backdrop hides nothing, so there is nothing to reveal either:
+		// skip the line-of-sight checks that would run every frame for no pixel.
+		if (topAlpha <= 0 && bottomAlpha <= 0) {
+			return;
+		}
 		List<Reveal> reveals = collectReveals(screen, config);
 		int depthIntensity = clamp(config.visiblePlayerDepthIntensity, 0, 255);
 		if (reveals.isEmpty() || depthIntensity == 0) {
@@ -104,13 +109,15 @@ public final class VisiblePlayerBackdropController {
 			.stream()
 			.filter(player -> player != localPlayer && player.isAlive() && !player.isInvisible() && !player.isSpectator())
 			.filter(player -> player.distanceToSqr(localPlayer) <= maximumDistanceSq)
+			// Nearest first, so the ray casts stop once MAX_REVEALS players are visible
+			// instead of running for every player in range on every frame.
+			.sorted(Comparator.comparingDouble(player -> player.distanceToSqr(localPlayer)))
 			.filter(player -> localPlayer.hasLineOfSight(
 				player,
 				ClipContext.Block.VISUAL,
 				ClipContext.Fluid.NONE,
 				player.getEyeY()
 			))
-			.sorted(Comparator.comparingDouble(player -> player.distanceToSqr(localPlayer)))
 			.limit(MAX_REVEALS)
 			.map(player -> project(screen, player, cameraPosition, forward, leftVector, up, focal))
 			.filter(java.util.Objects::nonNull)

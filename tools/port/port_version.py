@@ -126,6 +126,7 @@ RENAMES_1_21_11 = {
     "extractContents": "renderContents",
     "extractTransparentBackground": "renderTransparentBackground",
     "extractSnapbackItem": "renderSnapbackItem",
+    "extractTooltip": "renderTooltip",
     "extractScrollingStringOverContents": "renderScrollingStringOverContents",
     "extractItemHotbar": "renderItemHotbar",
     "LightCoordsUtil": "LightTexture",

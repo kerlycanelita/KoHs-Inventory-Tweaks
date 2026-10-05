@@ -58,6 +58,9 @@ public final class MacroTestController {
 		RECORD_ANIMATIONS("record-animations", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
 		PVP_INPUT("pvp-input", "kohs_inventory_debug.lab.pvp_input", "kohs_inventory_debug.lab.pvp_input.desc", false, true),
 		SLOT_SHORTCUTS("slot-shortcuts", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
+		FEATURES("features", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
+		HOVER_AGREEMENT("hover-agreement", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
+		OVERLAY_PERF("overlay-perf", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
 		LATENCY_SWEEP("latency-sweep", "kohs_inventory_debug.lab.latency", "kohs_inventory_debug.lab.latency.desc", false, true),
 		EXTREME_OPEN_CLOSE("extreme-open-close", "kohs_inventory_debug.lab.extreme", "kohs_inventory_debug.lab.extreme.desc", false, true),
 		FRAME_JITTER("frame-jitter", "kohs_inventory_debug.lab.jitter", "kohs_inventory_debug.lab.jitter.desc", false, true),
@@ -230,7 +233,41 @@ public final class MacroTestController {
 		}
 		autorunAttempted = true;
 		DebugCollector.info("MACRO_AUTORUN", "Starting requested development macro=" + requested.id);
+		if (requested == MacroKind.FEATURES || requested == MacroKind.HOVER_AGREEMENT || requested == MacroKind.OVERLAY_PERF) {
+			startObserverLab(minecraft, requested);
+			return;
+		}
 		start(minecraft, requested, null);
+	}
+
+	/**
+	 * Labs that drive the game through its own handlers and never send native input,
+	 * so they run without window focus: a player can keep working while one runs.
+	 */
+	private static void startObserverLab(final Minecraft minecraft, final MacroKind kind) {
+		if (!RUNNING.compareAndSet(false, true)) {
+			return;
+		}
+		current = kind.id;
+		Thread.ofPlatform().daemon(true).name("KoHs Inventory Debug lab").start(() -> {
+			try {
+				Thread.sleep(1_500);
+				switch (kind) {
+					case FEATURES -> FeatureLab.run(minecraft);
+					case OVERLAY_PERF -> FeatureLab.perf(minecraft);
+					default -> HoverAgreementLab.run(minecraft);
+				}
+				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id);
+			} catch (Throwable throwable) {
+				DebugCollector.issue("MACRO_ABORT", "macro=" + kind.id + "; " + throwable.getClass().getSimpleName() + ": " + throwable.getMessage());
+			} finally {
+				current = "idle";
+				RUNNING.set(false);
+				if (Boolean.getBoolean(EXIT_AFTER_MACRO_PROPERTY)) {
+					minecraft.execute(minecraft::stop);
+				}
+			}
+		});
 	}
 
 	private static void run(
@@ -272,6 +309,9 @@ public final class MacroTestController {
 			case RECORD_ANIMATIONS -> RecordingLab.run(minecraft, "animations");
 			case PVP_INPUT -> PvpInputRegressionLab.run(minecraft);
 			case SLOT_SHORTCUTS -> SlotShortcutLab.run(minecraft);
+			case FEATURES -> FeatureLab.run(minecraft);
+			case HOVER_AGREEMENT -> HoverAgreementLab.run(minecraft);
+			case OVERLAY_PERF -> FeatureLab.perf(minecraft);
 			case FULL_STRESS -> {
 				fastOpenClose(input, minecraft, inventory, 12, metrics);
 				inventoryOffhand(input, minecraft, inventory, offhand, false, 10, metrics);

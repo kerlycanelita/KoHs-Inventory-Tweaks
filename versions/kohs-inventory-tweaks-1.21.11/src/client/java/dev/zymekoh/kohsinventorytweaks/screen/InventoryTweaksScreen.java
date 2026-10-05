@@ -728,7 +728,7 @@ public final class InventoryTweaksScreen extends Screen {
 	private void addTweaksModalButtons() {
 		int toggleWidth = this.tweakToggleWidth();
 		for (var option : this.visibleTweaks) {
-			boolean available = CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
+			boolean available = CompatibilityIssueManager.isFeatureAvailable(option.feature());
 			Component state = this.tweakStateLabel(option);
 			GlassButton button = new GlassButton(this.tweakOptionsX + this.tweakOptionsWidth - toggleWidth - 10,
 				0, toggleWidth, 24, state, pressed -> {
@@ -766,7 +766,7 @@ public final class InventoryTweaksScreen extends Screen {
 		for (int index = 0; index < this.tweakScrollingWidgets.size(); index++) {
 			var option = this.visibleTweaks.get(index);
 			var button = this.tweakScrollingWidgets.get(index);
-			button.active = CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
+			button.active = CompatibilityIssueManager.isFeatureAvailable(option.feature());
 			button.setMessage(this.tweakStateLabel(option));
 		}
 	}
@@ -1264,10 +1264,10 @@ public final class InventoryTweaksScreen extends Screen {
 				switch (modalType) {
 					case CURSOR -> this.working.resetCursorPositions();
 					case TWEAKS -> {
-						this.working.superFastInventory = true;
-						this.working.centerMouseFix = true;
-						this.working.activeProfile = InventoryTweaksConfig.ProfilePreset.CUSTOM;
-						this.working.reduceInventoryMotion = false;
+						InventoryTweaksConfig defaults = new InventoryTweaksConfig();
+						for (var option : InventoryTweakOption.values()) {
+							option.set(this.working, option.enabled(defaults));
+						}
 					}
 					case CUSTOMIZATION -> {
 						this.working.resetCustomization();
@@ -1577,7 +1577,7 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private Component tweakDescription(final InventoryTweakOption option) {
-		boolean compatible = CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
+		boolean compatible = CompatibilityIssueManager.isFeatureAvailable(option.feature());
 		return Component.translatable(!compatible ? "screen.kohs_inventory_tweaks.compatibility.feature_disabled"
 			: option.key + ".description");
 	}
@@ -1592,14 +1592,29 @@ public final class InventoryTweaksScreen extends Screen {
 		final InventoryTweakOption option
 	) {
 		boolean enabled = option.enabled(this.working);
-		// Speed and precision wear cyan; the calm option keeps the violet of the house.
-		int accent = option == InventoryTweakOption.ANIMATIONS ? ZTheme.VIOLET_BRIGHT : ZTheme.CYAN;
+		// Speed and precision wear cyan, protection crimson; what you see keeps the violet of the house.
+		int accent = switch (option) {
+			case FAST, CENTER, POINTER, PIXEL, STEADY, RECIPE -> ZTheme.CYAN;
+			case TOTEM, SWAP -> ZTheme.CRIMSON_BRIGHT;
+			default -> ZTheme.VIOLET_BRIGHT;
+		};
 		UiRender.panel(graphics, x, y, width, height, 8, UiTheme.GLASS_LIGHT,
 			enabled ? ZTheme.fade(accent, 0.6F) : UiTheme.BORDER_SOFT);
 		graphics.fill(x + 3, y + 6, x + 5, y + height - 6, enabled ? accent : ZTheme.alpha(accent, 60));
 		ZIcons icon = switch (option) {
 			case FAST -> ZIcons.PERFORMANCE;
 			case CENTER -> ZIcons.CURSOR;
+			case POINTER -> ZIcons.TARGET;
+			case PIXEL -> ZIcons.SCALER;
+			case STEADY -> ZIcons.TOOLTIP;
+			case RECIPE -> ZIcons.BOOK;
+			case TOTEM -> ZIcons.TOTEM;
+			case SWAP -> ZIcons.SEVERITY_WARNING;
+			case HELD -> ZIcons.HOTBAR;
+			case KEYS -> ZIcons.KEYBIND;
+			case DURABILITY -> ZIcons.DURABILITY;
+			case TOTALS -> ZIcons.TOTALS;
+			case FLASH -> ZIcons.FLASH;
 			case ANIMATIONS -> ZIcons.VISIBILITY;
 		};
 		icon.draw(graphics, x + 10, y + (height - 16) / 2, 16, enabled ? ZTheme.LILAC_PALE : ZTheme.LILAC, 1.0F);
