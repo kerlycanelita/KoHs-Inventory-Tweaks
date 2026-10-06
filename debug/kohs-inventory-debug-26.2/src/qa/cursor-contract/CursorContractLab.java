@@ -22,6 +22,8 @@ import org.lwjgl.system.MemoryStack;
 /** QA fixture compiled only into the disposable 26.1.2 debugger, never the mod. */
 public final class CursorContractLab {
     private static boolean observing;
+    /** Whether this opening captured the mouse before it, so releaseMouse ran. */
+    private static boolean fromGrabbed;
     private static int checks, failures, openings, warps, mode;
     private static String label;
     private static double vanillaX, vanillaY;
@@ -46,7 +48,11 @@ public final class CursorContractLab {
                 * mc.getWindow().getScreenHeight() / screen.height;
         }
         checkPosition(mc, x, y, "synchronous landing");
-        check(warps == (mode != 3 ? 1 : 0), "one finalizer; warps=" + warps);
+        // Since 1.2.0 the release itself lands the pointer: Center Mouse Fix leaves disabled
+        // mode first, so the position Vanilla asks for is a real move and no KoHs write follows.
+        // An opening from another screen has no release, so the finalizer still places it once.
+        int expected = fromGrabbed ? 0 : mode != 3 ? 1 : 0;
+        check(warps == expected, "one landing write at most; warps=" + warps + "; expected=" + expected);
         if (mode != 3) check(delta(mc, "accumulatedDX") == 0 && delta(mc, "accumulatedDY") == 0, "old camera deltas cleared");
     }
 
@@ -142,6 +148,7 @@ public final class CursorContractLab {
                         + "; gui=" + guiScale + "; actualGui=" + mc.getWindow().getGuiScale()
                         + "; book=" + (index >= 24) + "; scale=" + config.inventoryGuiScale;
                     warps = 0;
+                    fromGrabbed = true;
                     vanillaX = mc.getWindow().getScreenWidth() / 2;
                     vanillaY = mc.getWindow().getScreenHeight() / 2;
                     observing = true;
@@ -171,7 +178,7 @@ public final class CursorContractLab {
                     CloseHotbarRegressionLab.atPoll(mc, () -> {
                         checkSettled(mc, Math.round(mc.getWindow().getScreenWidth() * (n % 2 == 0 ? 0.12 : 0.85)),
                             Math.round(mc.getWindow().getScreenHeight() * (n % 2 == 0 ? 0.84 : 0.17)), "later-poll free motion " + n);
-                        check(warps == (mode != 3 ? 1 : 0), "no extra finalization");
+                        check(warps == 0, "no write after the release; warps=" + warps);
                     });
                 }
                 CloseHotbarRegressionLab.atPoll(mc, () -> {
@@ -198,6 +205,7 @@ public final class CursorContractLab {
                     vanillaY = index < 4 ? 113 : 157;
                     label = "released transition; mode=" + mode + "; layoutWriter=" + (index >= 4);
                     warps = 0;
+                    fromGrabbed = false;
                     observing = true;
                     var screen = new InventoryScreen(mc.player) {
                         @Override protected void init() {

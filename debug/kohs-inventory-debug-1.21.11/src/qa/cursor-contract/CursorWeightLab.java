@@ -27,6 +27,8 @@ import org.lwjgl.system.MemoryStack;
  * Compiled only into the disposable debugger, never the mod.</p>
  */
 public final class CursorWeightLab {
+    /** A hand that does not move: it writes nothing, and the pointer stays where the opening put it. */
+    private static final double[] STILL = new double[0];
     private static volatile double[] handOffset;
     private static double[] handTarget;
     private static boolean observing;
@@ -40,12 +42,19 @@ public final class CursorWeightLab {
         double[] offset = handOffset;
         if (!observing || offset == null) return;
         handOffset = null;
+        writesAfterHand = 0;
+        moved++;
+        if (offset[0] == 0 && offset[1] == 0) {
+            // Writing back a position read right after a landing can restore the pre-move
+            // position Windows still reports for a moment: that is the lab moving the
+            // pointer, not a hand. A hand at rest writes nothing.
+            handTarget = STILL;
+            return;
+        }
         double[] now = nativePointer(mc);
         handTarget = new double[] {now[0] + offset[0], now[1] + offset[1]};
         // In NORMAL cursor mode this moves the desktop pointer, the way a hand does.
         GLFW.glfwSetCursorPos(mc.getWindow().handle(), handTarget[0], handTarget[1]);
-        writesAfterHand = 0;
-        moved++;
     }
 
     /** From the cursor trace at every KoHs pointer write. */
@@ -77,7 +86,7 @@ public final class CursorWeightLab {
     }
 
     private static String fmt(final double[] p) {
-        return p == null ? "none" : Math.round(p[0]) + "," + Math.round(p[1]);
+        return p == null ? "none" : p.length < 2 ? "still" : Math.round(p[0]) + "," + Math.round(p[1]);
     }
 
     private static void check(final boolean passed, final String reason) {
@@ -159,11 +168,14 @@ public final class CursorWeightLab {
                 CloseHotbarRegressionLab.atPoll(mc, () -> {
                     if (handTarget != null) {
                         double[] now = nativePointer(mc);
-                        check(close(now, handTarget), "later poll keeps the hand's position; native=" + fmt(now));
-                        check(Math.abs(mc.mouseHandler.xpos() - handTarget[0]) <= 1.0
-                                && Math.abs(mc.mouseHandler.ypos() - handTarget[1]) <= 1.0,
+                        double[] expected = handTarget == STILL ? now : handTarget;
+                        if (handTarget != STILL) {
+                            check(close(now, handTarget), "later poll keeps the hand's position; native=" + fmt(now));
+                        }
+                        check(Math.abs(mc.mouseHandler.xpos() - expected[0]) <= 1.0
+                                && Math.abs(mc.mouseHandler.ypos() - expected[1]) <= 1.0,
                             "Minecraft follows the hand; internal=" + Math.round(mc.mouseHandler.xpos())
-                                + "," + Math.round(mc.mouseHandler.ypos()));
+                                + "," + Math.round(mc.mouseHandler.ypos()) + "; native=" + fmt(now));
                     } else {
                         check(false, "the probe never ran inside InventoryScreen#init");
                     }

@@ -417,6 +417,10 @@ public final class SlotShortcutLab {
 		var playerId = mc.player.getUUID();
 		server.submit(() -> {
 			var player = server.getPlayerList().getPlayer(playerId);
+			// Stacks the drop checks threw are picked up again once their delay ends; one
+			// landing in an emptied slot after the fixture was set made the sync time out.
+			player.level().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+				player.getBoundingBox().inflate(24.0)).forEach(net.minecraft.world.entity.Entity::discard);
 			var inventory = player.getInventory();
 			for (int index = 0; index < inventory.getContainerSize(); index++) inventory.setItem(index, ItemStack.EMPTY);
 			for (int index = 0; index < 6; index++) inventory.setItem(index, new ItemStack(ITEMS[index], 2));

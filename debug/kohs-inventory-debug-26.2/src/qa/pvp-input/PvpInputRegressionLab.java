@@ -458,7 +458,8 @@ public final class PvpInputRegressionLab {
 				mc.gui.screen().mouseScrolled(x, top + 10, 0, -20);
 				check(field(mc.gui.screen(), "tweakScroll").equals(field(mc.gui.screen(), "tweakMaxScroll")), "wheel reaches bottom");
 				var buttons = (java.util.List<?>) field(mc.gui.screen(), "tweakScrollingWidgets");
-				check(buttons.size() == 3, "three options on the page");
+				check(buttons.size() == ((java.util.List<?>) field(mc.gui.screen(), "visibleTweaks")).size() && buttons.size() == 14,
+					"every option on the page has its switch; switches=" + buttons.size());
 				for (var value : buttons) {
 					var widget = (AbstractWidget) value;
 					check(!widget.isMouseOver(widget.getX() + 1, top - 1), "clipped switch rejects outside input");
@@ -478,7 +479,10 @@ public final class PvpInputRegressionLab {
 				check(ConfigStore.get().centerMouseFix, "center fix enabled from the page");
 				ConfigStore.load();
 				check(ConfigStore.get().centerMouseFix, "center fix survives reload");
-				clickTweak(mc.gui.screen(), 2);
+				// Reduce inventory visual motion is the last option since 1.2.0: scroll to it first.
+				var switches = (java.util.List<?>) field(mc.gui.screen(), "tweakScrollingWidgets");
+				mc.gui.screen().mouseScrolled((int) field(mc.gui.screen(), "tweakOptionsX") + 10, (int) field(mc.gui.screen(), "tweakViewportTop") + 10, 0, -20);
+				clickTweak(mc.gui.screen(), switches.size() - 1);
 				check(field(mc.gui.screen(), "modal").toString().equals("TWEAK_WARNING"), "visual warning is shown");
 			});
 			screenshot(mc, "pvp-tweaks-visual-warning-gui" + scale);
