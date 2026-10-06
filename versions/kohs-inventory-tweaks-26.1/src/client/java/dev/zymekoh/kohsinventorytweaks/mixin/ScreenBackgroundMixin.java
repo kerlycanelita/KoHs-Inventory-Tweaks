@@ -5,6 +5,7 @@ import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
 import dev.zymekoh.kohsinventorytweaks.render.VisiblePlayerBackdropController;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMascot;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -30,6 +31,21 @@ public abstract class ScreenBackgroundMixin {
 		final CallbackInfo callbackInfo
 	) {
 		InventoryGuiScaler.resetScaledSurface();
+	}
+
+	// After the window and before its deferred tooltips: the mascot stands over the
+	// window's controls, and every tooltip, its own included, stays on top of it.
+	@Inject(method = "extractRenderStateWithTooltipAndSubtitles", at = @At(value = "INVOKE",
+		target = "Lnet/minecraft/client/gui/screens/Screen;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
+		shift = At.Shift.AFTER))
+	private void kohsInventoryTweaks$drawMascot(
+		final GuiGraphicsExtractor graphics,
+		final int mouseX,
+		final int mouseY,
+		final float a,
+		final CallbackInfo callbackInfo
+	) {
+		ZMascot.extract((Screen) (Object) this, graphics, mouseX, mouseY);
 	}
 
 	@Inject(method = "extractTransparentBackground", at = @At("HEAD"), cancellable = true)

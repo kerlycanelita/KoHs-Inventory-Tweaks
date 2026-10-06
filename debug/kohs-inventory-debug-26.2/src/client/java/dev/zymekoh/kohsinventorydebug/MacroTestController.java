@@ -60,7 +60,9 @@ public final class MacroTestController {
 		SLOT_SHORTCUTS("slot-shortcuts", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		FEATURES("features", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
 		HOVER_AGREEMENT("hover-agreement", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
-		OVERLAY_PERF("overlay-perf", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
+		MASCOT("mascot", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
+		MASCOT_BODY("mascot-body", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
+		TRAILER("trailer", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
 		LATENCY_SWEEP("latency-sweep", "kohs_inventory_debug.lab.latency", "kohs_inventory_debug.lab.latency.desc", false, true),
 		EXTREME_OPEN_CLOSE("extreme-open-close", "kohs_inventory_debug.lab.extreme", "kohs_inventory_debug.lab.extreme.desc", false, true),
 		FRAME_JITTER("frame-jitter", "kohs_inventory_debug.lab.jitter", "kohs_inventory_debug.lab.jitter.desc", false, true),
@@ -233,7 +235,8 @@ public final class MacroTestController {
 		}
 		autorunAttempted = true;
 		DebugCollector.info("MACRO_AUTORUN", "Starting requested development macro=" + requested.id);
-		if (requested == MacroKind.FEATURES || requested == MacroKind.HOVER_AGREEMENT || requested == MacroKind.OVERLAY_PERF) {
+		if (requested == MacroKind.FEATURES || requested == MacroKind.HOVER_AGREEMENT || requested == MacroKind.MASCOT
+			|| requested == MacroKind.MASCOT_BODY || requested == MacroKind.TRAILER) {
 			startObserverLab(minecraft, requested);
 			return;
 		}
@@ -254,7 +257,9 @@ public final class MacroTestController {
 				Thread.sleep(1_500);
 				switch (kind) {
 					case FEATURES -> FeatureLab.run(minecraft);
-					case OVERLAY_PERF -> FeatureLab.perf(minecraft);
+					case MASCOT -> MascotLab.run(minecraft);
+					case MASCOT_BODY -> MascotLab.runBody(minecraft);
+					case TRAILER -> TrailerLab.run(minecraft);
 					default -> HoverAgreementLab.run(minecraft);
 				}
 				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id);
@@ -311,7 +316,9 @@ public final class MacroTestController {
 			case SLOT_SHORTCUTS -> SlotShortcutLab.run(minecraft);
 			case FEATURES -> FeatureLab.run(minecraft);
 			case HOVER_AGREEMENT -> HoverAgreementLab.run(minecraft);
-			case OVERLAY_PERF -> FeatureLab.perf(minecraft);
+			case MASCOT -> MascotLab.run(minecraft);
+			case MASCOT_BODY -> MascotLab.runBody(minecraft);
+			case TRAILER -> TrailerLab.run(minecraft);
 			case FULL_STRESS -> {
 				fastOpenClose(input, minecraft, inventory, 12, metrics);
 				inventoryOffhand(input, minecraft, inventory, offhand, false, 10, metrics);

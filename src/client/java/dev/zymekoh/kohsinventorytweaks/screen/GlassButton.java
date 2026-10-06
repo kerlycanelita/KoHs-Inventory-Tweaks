@@ -307,10 +307,7 @@ public final class GlassButton extends Button {
 	}
 
 	private void drawIcon(final GuiGraphicsExtractor graphics, final int x, final int y, final int size) {
-		int primary = !this.active
-			? ZTheme.TEXT_DISABLED
-			: ZTheme.mix(ZTheme.LILAC, ZTheme.LILAC_PALE, Math.max(this.hoverAmount, this.selectAmount));
-		this.icon.draw(graphics, x, y, size, primary, this.active ? 1.0F : 0.5F);
+		this.icon.draw(graphics, x, y, size, Math.max(this.hoverAmount, this.selectAmount), this.active);
 	}
 
 	private static boolean wordsFit(final Font font, final String text, final int width) {

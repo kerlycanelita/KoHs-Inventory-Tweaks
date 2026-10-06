@@ -1,33 +1,39 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
-import dev.zymekoh.kohsinventorytweaks.ui.ZIcons;
+import dev.zymekoh.kohsinventorytweaks.ui.ZScene;
+import dev.zymekoh.kohsinventorytweaks.ui.ZTheme;
 import net.minecraft.client.gui.GuiGraphics;
 
-/** The icons of feature and settings tabs, drawn from code by {@link ZIcons}. */
+/** The icons of feature and settings tabs: small animated scenes of Minecraft items, by {@link ZScene}. */
 public enum KohsTabIcon {
-	CURSOR(ZIcons.CURSOR),
-	TWEAKS(ZIcons.TWEAKS),
-	ISSUES(ZIcons.ISSUES),
-	CUSTOMIZATION(ZIcons.CUSTOMIZATION),
-	HIGHLIGHTER(ZIcons.HIGHLIGHTER),
-	SCALER(ZIcons.SCALER),
-	ACCESSIBILITY(ZIcons.VISIBILITY),
-	PERFORMANCE(ZIcons.PERFORMANCE),
-	SAFETY(ZIcons.SAFETY),
-	INVENTORY(ZIcons.INVENTORY),
-	CHEST(ZIcons.CHEST),
-	SHULKER(ZIcons.SHULKER),
-	ENDER_CHEST(ZIcons.ENDER_CHEST),
-	BARREL(ZIcons.BARREL),
-	KEYBIND(ZIcons.KEYBIND);
+	CURSOR(ZScene.CURSOR),
+	TWEAKS(ZScene.TWEAKS),
+	ISSUES(ZScene.ISSUES),
+	CUSTOMIZATION(ZScene.CUSTOMIZATION),
+	HIGHLIGHTER(ZScene.HIGHLIGHTER),
+	SCALER(ZScene.SCALER),
+	ACCESSIBILITY(ZScene.VISIBILITY),
+	PERFORMANCE(ZScene.PERFORMANCE),
+	SAFETY(ZScene.SAFETY),
+	INVENTORY(ZScene.INVENTORY),
+	CHEST(ZScene.CHEST),
+	SHULKER(ZScene.SHULKER),
+	ENDER_CHEST(ZScene.ENDER_CHEST),
+	BARREL(ZScene.BARREL),
+	KEYBIND(ZScene.KEYBIND),
+	KOHS(ZScene.KOHS);
 
-	private final ZIcons icon;
+	private final ZScene scene;
 
-	KohsTabIcon(final ZIcons icon) {
-		this.icon = icon;
+	KohsTabIcon(final ZScene scene) {
+		this.scene = scene;
 	}
 
-	public void draw(final GuiGraphics graphics, final int x, final int y, final int size, final int primary, final float opacity) {
-		this.icon.draw(graphics, x, y, size, primary, opacity);
+	/** {@code energy} is 0 at rest and 1 hovered or selected; an inactive tab rests under a veil of its own glass. */
+	public void draw(final GuiGraphics graphics, final int x, final int y, final int size, final float energy, final boolean active) {
+		this.scene.draw(graphics, x, y, size, active ? energy : 0.0F);
+		if (!active) {
+			graphics.fill(x, y, x + size, y + size, ZTheme.alpha(ZTheme.SURFACE, 150));
+		}
 	}
 }

@@ -458,14 +458,15 @@ public final class PvpInputRegressionLab {
 				mc.gui.screen().mouseScrolled(x, top + 10, 0, -20);
 				check(field(mc.gui.screen(), "tweakScroll").equals(field(mc.gui.screen(), "tweakMaxScroll")), "wheel reaches bottom");
 				var buttons = (java.util.List<?>) field(mc.gui.screen(), "tweakScrollingWidgets");
-				check(buttons.size() == ((java.util.List<?>) field(mc.gui.screen(), "visibleTweaks")).size() && buttons.size() == 14,
+				check(buttons.size() == ((java.util.List<?>) field(mc.gui.screen(), "visibleTweaks")).size() && buttons.size() == 5,
 					"every option on the page has its switch; switches=" + buttons.size());
 				for (var value : buttons) {
 					var widget = (AbstractWidget) value;
 					check(!widget.isMouseOver(widget.getX() + 1, top - 1), "clipped switch rejects outside input");
 				}
 				mc.gui.screen().mouseScrolled(x, top + 10, 0, 20);
-				clickTweak(mc.gui.screen(), 1);
+				// The page is a tree since 1.2.0: Super Fast Inventory, its sub-option, then Center Mouse Fix.
+				clickTweak(mc.gui.screen(), 2);
 				check(field(mc.gui.screen(), "modal").toString().equals("TWEAK_WARNING"), "center warning describes remembered-position conflict");
 				check(!ConfigStore.get().centerMouseFix, "center fix unchanged before warning accepted");
 			});
@@ -474,15 +475,13 @@ public final class PvpInputRegressionLab {
 				mc.gui.screen().keyPressed(new KeyEvent(GLFW.GLFW_KEY_ESCAPE, 0, 0));
 				check(field(mc.gui.screen(), "modal").toString().equals("TWEAKS"), "Escape cancels warning");
 				check(!ConfigStore.get().centerMouseFix, "cancel retains setting");
-				clickTweak(mc.gui.screen(), 1);
+				clickTweak(mc.gui.screen(), 2);
 				clickLabel(mc.gui.screen(), "screen.kohs_inventory_tweaks.remove_animations.warning.enable");
 				check(ConfigStore.get().centerMouseFix, "center fix enabled from the page");
 				ConfigStore.load();
 				check(ConfigStore.get().centerMouseFix, "center fix survives reload");
-				// Reduce inventory visual motion is the last option since 1.2.0: scroll to it first.
-				var switches = (java.util.List<?>) field(mc.gui.screen(), "tweakScrollingWidgets");
-				mc.gui.screen().mouseScrolled((int) field(mc.gui.screen(), "tweakOptionsX") + 10, (int) field(mc.gui.screen(), "tweakViewportTop") + 10, 0, -20);
-				clickTweak(mc.gui.screen(), switches.size() - 1);
+				// Reduce inventory visual motion follows Center Mouse Fix.
+				clickTweak(mc.gui.screen(), 3);
 				check(field(mc.gui.screen(), "modal").toString().equals("TWEAK_WARNING"), "visual warning is shown");
 			});
 			screenshot(mc, "pvp-tweaks-visual-warning-gui" + scale);

@@ -1,24 +1,22 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMascot;
+import org.jspecify.annotations.Nullable;
 
-/** Shared option metadata for rendering, narration, state changes and warnings. */
+/**
+ * The Inventory Tweaks page as a tree, in page order: a sub-option follows its parent
+ * and only works while the parent is on. Shared metadata for rendering, narration,
+ * state changes and warnings.
+ */
 enum InventoryTweakOption {
 	FAST("screen.kohs_inventory_tweaks.super_fast_inventory"),
-	CENTER("screen.kohs_inventory_tweaks.center_mouse_fix"),
 	POINTER("screen.kohs_inventory_tweaks.shortcuts_follow_pointer"),
-	PIXEL("screen.kohs_inventory_tweaks.pixel_perfect_scale"),
-	STEADY("screen.kohs_inventory_tweaks.steady_tooltips"),
-	RECIPE("screen.kohs_inventory_tweaks.recipe_book_lock"),
-	TOTEM("screen.kohs_inventory_tweaks.totem_guard"),
-	SWAP("screen.kohs_inventory_tweaks.swap_warning"),
-	HELD("screen.kohs_inventory_tweaks.held_slot_marker"),
-	KEYS("screen.kohs_inventory_tweaks.key_hints"),
-	DURABILITY("screen.kohs_inventory_tweaks.durability_readout"),
-	TOTALS("screen.kohs_inventory_tweaks.item_totals"),
-	FLASH("screen.kohs_inventory_tweaks.slot_flash"),
-	ANIMATIONS("screen.kohs_inventory_tweaks.remove_animations");
+	CENTER("screen.kohs_inventory_tweaks.center_mouse_fix"),
+	ANIMATIONS("screen.kohs_inventory_tweaks.remove_animations"),
+	MASCOT("screen.kohs_inventory_tweaks.mascot");
 
 	final String key;
 
@@ -26,41 +24,36 @@ enum InventoryTweakOption {
 		this.key = key;
 	}
 
+	/** The option this one refines, or null for a top-level option. */
+	@Nullable InventoryTweakOption parent() {
+		return this == POINTER ? FAST : null;
+	}
+
 	boolean enabled(final InventoryTweaksConfig config) {
 		return switch (this) {
 			case FAST -> config.superFastInventory;
-			case CENTER -> config.centerMouseFix;
 			case POINTER -> config.shortcutsFollowPointer;
-			case PIXEL -> config.pixelPerfectScale;
-			case STEADY -> config.steadyTooltips;
-			case RECIPE -> config.recipeBookLock;
-			case TOTEM -> config.totemGuard;
-			case SWAP -> config.swapWarning;
-			case HELD -> config.heldSlotMarker;
-			case KEYS -> config.keyHints;
-			case DURABILITY -> config.durabilityReadout;
-			case TOTALS -> config.itemTotals;
-			case FLASH -> config.slotFlash;
+			case CENTER -> config.centerMouseFix;
 			case ANIMATIONS -> config.reduceInventoryMotion;
+			// The mascot keeps its own file: it is never part of a profile or a working copy.
+			case MASCOT -> ZMascot.prefs().enabled;
 		};
 	}
 
 	void set(final InventoryTweaksConfig config, final boolean enabled) {
+		if (this == MASCOT) {
+			if (enabled != ZMascot.prefs().enabled) {
+				ZMascot.setEnabled(enabled);
+			}
+			return;
+		}
 		switch (this) {
 			case FAST -> config.superFastInventory = enabled;
-			case CENTER -> config.centerMouseFix = enabled;
 			case POINTER -> config.shortcutsFollowPointer = enabled;
-			case PIXEL -> config.pixelPerfectScale = enabled;
-			case STEADY -> config.steadyTooltips = enabled;
-			case RECIPE -> config.recipeBookLock = enabled;
-			case TOTEM -> config.totemGuard = enabled;
-			case SWAP -> config.swapWarning = enabled;
-			case HELD -> config.heldSlotMarker = enabled;
-			case KEYS -> config.keyHints = enabled;
-			case DURABILITY -> config.durabilityReadout = enabled;
-			case TOTALS -> config.itemTotals = enabled;
-			case FLASH -> config.slotFlash = enabled;
+			case CENTER -> config.centerMouseFix = enabled;
 			case ANIMATIONS -> config.reduceInventoryMotion = enabled;
+			default -> {
+			}
 		}
 		config.activeProfile = InventoryTweaksConfig.ProfilePreset.CUSTOM;
 	}
@@ -69,8 +62,14 @@ enum InventoryTweakOption {
 		return this == CENTER || this == ANIMATIONS;
 	}
 
-	/** The feature domain whose compatibility state decides whether the switch works. */
-	CompatibilityFeature feature() {
-		return this == PIXEL ? CompatibilityFeature.GUI_SCALER : CompatibilityFeature.INVENTORY_TWEAKS;
+	/** Whether the inventory tweaks are compatible here; the mascot never depends on it. */
+	boolean available() {
+		return this == MASCOT || CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
+	}
+
+	/** Whether its switch works now: available, and its parent, if it has one, on. */
+	boolean usable(final InventoryTweaksConfig config) {
+		InventoryTweakOption parent = this.parent();
+		return this.available() && (parent == null || parent.enabled(config));
 	}
 }

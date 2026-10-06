@@ -1,21 +1,24 @@
 package dev.zymekoh.kohsinventorytweaks.screen;
 
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssue;
-import dev.zymekoh.kohsinventorytweaks.ui.ZIcons;
+import dev.zymekoh.kohsinventorytweaks.ui.ZScene;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 final class CompatibilitySeverityIcons {
 	private CompatibilitySeverityIcons() {
 	}
 
-	/** Shape and colour both carry the severity, so it never rests on colour alone. */
+	/** An emerald, a redstone torch or a barrier: the item and its light both carry the severity, never colour alone. */
 	static void draw(final GuiGraphicsExtractor graphics, final CompatibilityIssue.Severity severity, final int x, final int y, final int size) {
-		ZIcons icon = switch (severity) {
-			case ADAPTABLE -> ZIcons.SEVERITY_ADAPTED;
-			case DEGRADED -> ZIcons.SEVERITY_WARNING;
-			case BLOCKING -> ZIcons.SEVERITY_CRITICAL;
+		scene(severity).draw(graphics, x, y, size, 0.4F);
+	}
+
+	static ZScene scene(final CompatibilityIssue.Severity severity) {
+		return switch (severity) {
+			case ADAPTABLE -> ZScene.ADAPTED;
+			case DEGRADED -> ZScene.WARNING;
+			case BLOCKING -> ZScene.CRITICAL;
 		};
-		icon.draw(graphics, x, y, size, colorFor(severity), 1.0F);
 	}
 
 	static int colorFor(final CompatibilityIssue.Severity severity) {

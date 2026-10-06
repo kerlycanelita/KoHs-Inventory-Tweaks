@@ -79,6 +79,11 @@ def sources(*roots_and_kept) -> list[Path]:
     return [path for root in roots for path in root.rglob("*.java") if path.name not in kept]
 
 
+def camel(name: str) -> str:
+    head, *rest = name.lower().split("_")
+    return head + "".join(part.capitalize() for part in rest)
+
+
 def apply_rules(files, rules) -> int:
     changed = 0
     for java in files:
@@ -111,6 +116,9 @@ RULES_26_2 = [
     (re.compile(r"\bEntityType\.([A-Z][A-Z0-9_]+)\b"), r"EntityTypes.\1"),
     (re.compile(r"^import net\.minecraft\.world\.entity\.EntityType;$", re.M),
      "import net.minecraft.world.entity.EntityType;\nimport net.minecraft.world.entity.EntityTypes;"),
+    # Coloured items became ColorCollections: Items.PURPLE_DYE is Items.DYE.purple().
+    (re.compile(r"\bItems\.([A-Z_]+?)_(DYE|SHULKER_BOX)\b"),
+     lambda m: f"Items.{'DYE' if m.group(2) == 'DYE' else 'DYED_SHULKER_BOX'}.{camel(m.group(1))}()"),
 ]
 
 # 1.21.11 is the last render-era version: GuiGraphics and render*/draw* names.

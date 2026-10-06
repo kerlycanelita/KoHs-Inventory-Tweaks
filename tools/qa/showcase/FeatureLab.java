@@ -9,64 +9,42 @@ import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
 import dev.zymekoh.kohsinventorytweaks.inventory.SlotTargeting;
 import dev.zymekoh.kohsinventorytweaks.mixin.AbstractContainerScreenAccessor;
-import dev.zymekoh.kohsinventorytweaks.render.SlotOverlays;
+import dev.zymekoh.kohsinventorytweaks.screen.GuiScalerScreen;
 import dev.zymekoh.kohsinventorytweaks.screen.InventoryTweaksScreen;
-import java.util.concurrent.TimeUnit;
+import dev.zymekoh.kohsinventorytweaks.screen.KohsScreen;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMascot;
+import java.util.List;
 import java.util.function.Function;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.ImageButton;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.RecipeBookType;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * The 1.2.0 inventory features, checked in a real inventory and captured for review.
- *
- * <p>Totem protection is checked against the integrated server: a declined swap or
- * drop must leave the totem where it was there too, and the same press with the
- * protection off must go through, so the check cannot pass by doing nothing. The
- * rest checks pixel-perfect scaling, the recipe book lock, steady tooltips, inventory
- * totals, key labels and the shortcut target switch, then captures the overlays. Keys
- * go through the ordinary keyboard handler and the pointer through the ordinary move
- * callback; the player's real pointer is untouched. Singleplayer lab world only.</p>
+ * The 1.2.0 options, checked in a real inventory and captured for review: the
+ * pixel-perfect sizes of the GUI Scaler, the shortcut target and the Super Fast
+ * Inventory it belongs to, the Inventory Tweaks page as a tree whose sub-option
+ * sleeps with its parent, and the KoHs tab, where Zymekoh gets cross when the mascot
+ * is carried to her face. Keys go through the ordinary keyboard handler and the
+ * pointer through the ordinary move callback; the player's real pointer is untouched.
+ * Singleplayer lab world only.
  */
 public final class FeatureLab {
-	/** Menu slots of the player inventory: main grid starts at 9, hotbar at 36, offhand 45. */
-	private static final int EMPTY_SLOT = 11;
+	/** Menu slots of the player inventory: the main grid starts at 9. */
 	private static final int TOTEM_SLOT = 9;
-	private static final int TOTALS_SLOT = 13;
-	private static final int OFFHAND_SLOT = 45;
+	private static final int TARGET_SLOT = 13;
 	private static final long FRAME_MILLIS = 110L;
 	private static int checks;
 	private static int failures;
-	// Written by the timing mixin on the render thread, read by the lab after each block.
-	private static volatile long overlayNanos;
-	private static volatile long overlayFrames;
-	private static long overlayStarted;
 
 	private FeatureLab() {
-	}
-
-	public static void overlayStart() {
-		overlayStarted = System.nanoTime();
-	}
-
-	public static void overlayEnd() {
-		overlayNanos += System.nanoTime() - overlayStarted;
-	}
-
-	public static void overlayFrame() {
-		overlayFrames++;
 	}
 
 	public static void run(final Minecraft mc) {
@@ -83,43 +61,24 @@ public final class FeatureLab {
 		if (!MacroTestController.isSafeLocalWorld(mc)) throw new IllegalStateException("Singleplayer only");
 		InventoryTweaksConfig saved = ConfigStore.get().copy();
 		int gui = mc.options.guiScale().get();
-		boolean book = mc.player.getRecipeBook().isOpen(RecipeBookType.CRAFTING);
 		checks = 0;
 		failures = 0;
 		try {
 			stage(mc);
-			labels();
 			pixelPerfect(mc);
 			configure(mc, config -> {
 				config.inventoryGuiScalerEnabled = true;
 				config.inventoryGuiScale = 1.799152933573374;
 				config.pixelPerfectScale = true;
+				config.superFastInventory = true;
 				config.shortcutsFollowPointer = true;
-				config.swapWarning = true;
-				config.heldSlotMarker = true;
-				config.keyHints = true;
-				config.durabilityReadout = true;
-				config.itemTotals = true;
-				config.slotFlash = true;
-				config.steadyTooltips = true;
-				config.recipeBookLock = true;
-				config.totemGuard = false;
 				config.reduceInventoryMotion = false;
 				return null;
 			}, 3);
-			recipeBookLock(mc);
 			openInventory(mc);
-			hover(mc, EMPTY_SLOT);
-			UiShowcaseLab.screenshot(mc, "features-overlays");
-			configure(mc, config -> config.totemGuard = true, 0);
-			hover(mc, EMPTY_SLOT);
-			UiShowcaseLab.screenshot(mc, "features-swap-guarded");
-			totemGuard(mc);
-			steadyTooltips(mc);
-			totals(mc);
 			shortcutTarget(mc);
-			flash(mc);
-			tweaksList(mc);
+			tree(mc);
+			kohsTab(mc);
 			DebugCollector.info("FEATURE_LAB_SUMMARY", "checks=" + checks + "; failures=" + failures);
 			if (failures > 0) throw new IllegalStateException("Feature lab failures=" + failures);
 		} finally {
@@ -128,94 +87,20 @@ public final class FeatureLab {
 				ConfigStore.replaceAndSave(saved);
 				mc.options.guiScale().set(gui);
 				mc.resizeGui();
-				mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, book);
 			});
 		}
 	}
 
-	/**
-	 * Frame rate with the slot overlays on against off, in an open inventory with the
-	 * frame cap and the AFK limit lifted, and the render-thread time the overlays take
-	 * per frame, measured around every call. Rounds alternate so drift hits both sides.
-	 */
-	public static void perf(final Minecraft mc) {
-		InventoryTweaksConfig saved = ConfigStore.get().copy();
-		int limit = mc.options.framerateLimit().get();
-		var inactivity = mc.options.inactivityFpsLimit().get();
-		boolean vsync = mc.options.enableVsync().get();
-		try {
-			stage(mc);
-			mc.executeBlocking(() -> {
-				mc.options.framerateLimit().set(260);
-				mc.options.inactivityFpsLimit().set(net.minecraft.client.InactivityFpsLimit.MINIMIZED);
-				mc.options.enableVsync().set(false);
-			});
-			openInventory(mc);
-			hover(mc, EMPTY_SLOT);
-			StringBuilder report = new StringBuilder();
-			for (int round = 0; round < 3; round++) {
-				for (boolean on : new boolean[] {false, true}) {
-					configure(mc, config -> {
-						config.keyHints = on;
-						config.durabilityReadout = on;
-						config.heldSlotMarker = on;
-						config.swapWarning = on;
-						config.slotFlash = on;
-						config.itemTotals = on;
-						config.steadyTooltips = on;
-						return null;
-					}, 3);
-					Thread.sleep(1500);
-					overlayNanos = 0L;
-					overlayFrames = 0L;
-					int total = 0;
-					for (int second = 0; second < 4; second++) {
-						Thread.sleep(1000);
-						int[] fps = new int[1];
-						mc.executeBlocking(() -> fps[0] = mc.getFps());
-						total += fps[0];
-					}
-					report.append(on ? " on=" : " off=").append(total / 4).append("fps/")
-						.append(overlayFrames == 0 ? 0 : overlayNanos / overlayFrames / 1000).append("us");
-				}
-			}
-			DebugCollector.info("OVERLAY_PERF", report.toString().trim());
-		} catch (Exception error) {
-			throw new IllegalStateException(error);
-		} finally {
-			mc.executeBlocking(() -> {
-				if (mc.screen != null) mc.setScreen(null);
-				ConfigStore.replaceAndSave(saved);
-				mc.options.framerateLimit().set(limit);
-				mc.options.inactivityFpsLimit().set(inactivity);
-				mc.options.enableVsync().set(vsync);
-			});
-		}
-	}
-
-	/** Totems, damaged gear, empty slots in the top row and the third hotbar slot in hand. */
+	/** Totems in two top-row slots, so a shortcut target is easy to tell apart. */
 	private static void stage(final Minecraft mc) throws Exception {
 		command(mc, "gamemode survival");
 		command(mc, "clear @s");
 		command(mc, "item replace entity @s weapon.offhand with minecraft:totem_of_undying");
-		command(mc, "item replace entity @s hotbar.0 with minecraft:netherite_sword[damage=1800]");
+		command(mc, "item replace entity @s hotbar.0 with minecraft:netherite_sword");
 		command(mc, "item replace entity @s hotbar.1 with minecraft:end_crystal 64");
 		command(mc, "item replace entity @s hotbar.2 with minecraft:totem_of_undying");
-		command(mc, "item replace entity @s hotbar.3 with minecraft:golden_apple 32");
-		command(mc, "item replace entity @s hotbar.4 with minecraft:ender_pearl 16");
-		command(mc, "item replace entity @s hotbar.5 with minecraft:obsidian 64");
-		command(mc, "item replace entity @s hotbar.6 with minecraft:respawn_anchor 16");
-		command(mc, "item replace entity @s hotbar.7 with minecraft:glowstone 64");
-		command(mc, "item replace entity @s hotbar.8 with minecraft:totem_of_undying");
 		command(mc, "item replace entity @s inventory.0 with minecraft:totem_of_undying");
-		command(mc, "item replace entity @s inventory.1 with minecraft:totem_of_undying");
 		command(mc, "item replace entity @s inventory.4 with minecraft:totem_of_undying");
-		command(mc, "item replace entity @s inventory.5 with minecraft:ender_pearl 16");
-		command(mc, "item replace entity @s inventory.9 with minecraft:netherite_pickaxe[damage=700]");
-		command(mc, "item replace entity @s armor.head with minecraft:netherite_helmet[damage=200]");
-		command(mc, "item replace entity @s armor.chest with minecraft:netherite_chestplate[damage=300]");
-		command(mc, "item replace entity @s armor.legs with minecraft:netherite_leggings");
-		command(mc, "item replace entity @s armor.feet with minecraft:netherite_boots[damage=400]");
 		// The hotbar key goes through the world keybind pass, as a player's would.
 		mc.executeBlocking(() -> {
 			if (mc.screen != null) mc.setScreen(null);
@@ -228,13 +113,6 @@ public final class FeatureLab {
 			mc.getToastManager().clear();
 		});
 		check(mc.player.getInventory().getSelectedSlot() == 2, "the third hotbar slot is held");
-	}
-
-	private static void labels() {
-		check(SlotOverlays.shortLabel("R").equals("R"), "a one-letter key stays itself");
-		check(SlotOverlays.shortLabel("Left Shift").equals("LS"), "Left Shift reads LS");
-		check(SlotOverlays.shortLabel("Button 4").equals("B4"), "a mouse button keeps its number");
-		check(SlotOverlays.shortLabel("Keypad 7").equals("K7"), "keypad keys keep their number");
 	}
 
 	/** Whole screen pixels per GUI pixel with the switch on, the requested scale with it off. */
@@ -265,139 +143,198 @@ public final class FeatureLab {
 		}
 	}
 
-	private static void recipeBookLock(final Minecraft mc) throws Exception {
-		mc.executeBlocking(() -> mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, false));
-		openInventory(mc);
-		check(recipeButtons(mc) == 0, "a closed book loses its button with the lock on");
-		UiShowcaseLab.screenshot(mc, "features-recipe-lock");
-		configure(mc, config -> config.recipeBookLock = false, 0);
-		openInventory(mc);
-		check(recipeButtons(mc) == 1, "the button is back with the lock off");
-		mc.executeBlocking(() -> mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, true));
-		configure(mc, config -> config.recipeBookLock = true, 0);
-		openInventory(mc);
-		check(recipeButtons(mc) == 1, "an open book keeps its button so it can be closed");
-		mc.executeBlocking(() -> mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, false));
-	}
-
-	private static void totemGuard(final Minecraft mc) throws Exception {
-		configure(mc, config -> config.totemGuard = true, 0);
-		openInventory(mc);
-		hover(mc, EMPTY_SLOT);
-		tap(mc, mc.options.keySwapOffhand);
-		check(serverOffhandIsTotem(mc), "the offhand key over an empty slot keeps the offhand totem");
-		hover(mc, TOTEM_SLOT);
-		tap(mc, mc.options.keyDrop);
-		check(serverSlotIsTotem(mc, TOTEM_SLOT), "the drop key never throws a totem");
-		hover(mc, OFFHAND_SLOT);
-		tap(mc, mc.options.keyHotbarSlots[0]);
-		check(serverOffhandIsTotem(mc), "a hotbar key over the offhand slot keeps the totem there");
-		// The same swap with the protection off must go through, or the checks above prove nothing.
-		configure(mc, config -> config.totemGuard = false, 0);
-		hover(mc, EMPTY_SLOT);
-		tap(mc, mc.options.keySwapOffhand);
-		check(!serverOffhandIsTotem(mc) && serverSlotIsTotem(mc, EMPTY_SLOT), "with protection off the swap moves the totem");
-		hover(mc, EMPTY_SLOT);
-		tap(mc, mc.options.keySwapOffhand);
-		check(serverOffhandIsTotem(mc), "the totem goes back to the offhand");
-		configure(mc, config -> config.totemGuard = true, 0);
-	}
-
-	private static void steadyTooltips(final Minecraft mc) throws Exception {
-		openInventory(mc);
-		hover(mc, OFFHAND_SLOT);
-		Thread.sleep(300);
-		moveTo(mc, TOTALS_SLOT);
-		boolean held = false;
-		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(140);
-		while (System.nanoTime() < deadline && !held) {
-			boolean[] state = new boolean[1];
-			mc.executeBlocking(() -> state[0] = hoveredIndex(mc) == TOTALS_SLOT && SlotOverlays.holdsTooltip());
-			held = state[0];
-			Thread.sleep(5);
-		}
-		check(held, "a tooltip waits right after the pointer reaches a slot");
-		Thread.sleep(250);
-		boolean[] released = new boolean[1];
-		mc.executeBlocking(() -> released[0] = !SlotOverlays.holdsTooltip());
-		check(released[0], "the tooltip shows once the pointer rests");
-	}
-
-	private static void totals(final Minecraft mc) throws Exception {
-		int[] expected = new int[1];
-		String[] line = new String[1];
-		mc.executeBlocking(() -> {
-			Inventory inventory = mc.player.getInventory();
-			for (int index = 0; index < inventory.getContainerSize(); index++) {
-				if (inventory.getItem(index).is(Items.TOTEM_OF_UNDYING)) expected[0] += inventory.getItem(index).getCount();
-			}
-			Component total = SlotOverlays.inventoryTotal(new ItemStack(Items.TOTEM_OF_UNDYING));
-			line[0] = total == null ? "" : total.getString();
-		});
-		check(line[0].contains(Integer.toString(expected[0])), "inventory totals count every totem carried; line=" + line[0] + "; expected=" + expected[0]);
-		hover(mc, TOTALS_SLOT);
-		Thread.sleep(300);
-		UiShowcaseLab.screenshot(mc, "features-totals-tooltip");
-	}
-
-	/** Off: shortcuts keep the slot the last frame highlighted. On: they follow the pointer. */
+	/**
+	 * The slot the shortcuts take right after a flick: under the pointer only while both
+	 * the option and Super Fast Inventory, its parent, are on; otherwise the slot the last
+	 * frame highlighted, as in Vanilla.
+	 */
 	private static void shortcutTarget(final Minecraft mc) throws Exception {
 		if (!mc.isWindowActive()) {
 			DebugCollector.info("FEATURE_LAB_SKIP", "shortcut target needs a focused window");
 			return;
 		}
-		for (boolean follow : new boolean[] {false, true}) {
-			configure(mc, config -> config.shortcutsFollowPointer = follow, 0);
+		boolean[][] cases = {{true, false}, {true, true}, {false, true}};
+		for (boolean[] each : cases) {
+			boolean fast = each[0];
+			boolean follow = each[1];
+			configure(mc, config -> {
+				config.superFastInventory = fast;
+				config.shortcutsFollowPointer = follow;
+				return null;
+			}, 0);
 			hover(mc, TOTEM_SLOT);
 			int[] after = new int[1];
-			double[] target = slotCenter(mc, TOTALS_SLOT);
+			double[] target = slotCenter(mc, TARGET_SLOT);
 			mc.executeBlocking(() -> {
 				((MouseHandlerDebugInvoker) mc.mouseHandler).kohsInventoryDebug$invokeMove(mc.getWindow().handle(), target[0], target[1]);
 				SlotTargeting.refreshFromPointer((AbstractContainerScreen<?>) mc.screen);
 				after[0] = hoveredIndex(mc);
 			});
-			check(after[0] == (follow ? TOTALS_SLOT : TOTEM_SLOT), "shortcutsFollowPointer=" + follow + " targets slot " + after[0]);
+			int expected = fast && follow ? TARGET_SLOT : TOTEM_SLOT;
+			check(after[0] == expected, "superFastInventory=" + fast + "; shortcutsFollowPointer=" + follow + " targets slot " + after[0]);
 		}
 	}
 
-	private static void flash(final Minecraft mc) throws Exception {
-		// Pearls in menu slot 14 trade places with the golden apples of the fourth hotbar slot.
-		hover(mc, 14);
-		press(mc, mc.options.keyHotbarSlots[3]);
-		UiShowcaseLab.screenshotAfter(mc, "features-flash", 40);
-		Thread.sleep(300);
-		tap(mc, mc.options.keyHotbarSlots[3]);
-	}
-
-	private static void tweaksList(final Minecraft mc) throws Exception {
+	/** The page as a tree: the sub-option follows its parent, and its switch sleeps while the parent is off. */
+	private static void tree(final Minecraft mc) throws Exception {
+		configure(mc, config -> {
+			config.superFastInventory = true;
+			config.shortcutsFollowPointer = true;
+			return null;
+		}, 0);
 		mc.executeBlocking(() -> mc.setScreen(new InventoryTweaksScreen(null)));
 		Thread.sleep(400);
 		String label = Component.translatable("screen.kohs_inventory_tweaks.inventory_tweaks").getString();
 		mc.executeBlocking(() -> {
 			for (var child : mc.screen.children()) {
-				if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget && widget.getMessage().getString().equals(label)) {
-					widget.onClick(new net.minecraft.client.input.MouseButtonEvent(widget.getX() + 2, widget.getY() + 2, new MouseButtonInfo(0, 0)), false);
+				if (child instanceof AbstractWidget widget && widget.getMessage().getString().equals(label)) {
+					widget.onClick(new MouseButtonEvent(widget.getX() + 2, widget.getY() + 2, new MouseButtonInfo(0, 0)), false);
 					return;
 				}
 			}
 		});
 		Thread.sleep(500);
 		parkPointer(mc);
-		UiShowcaseLab.screenshot(mc, "features-tweaks-top");
-		mc.executeBlocking(() -> mc.screen.mouseScrolled(mc.screen.width / 2.0, mc.screen.height / 2.0, 0.0, -40.0));
-		Thread.sleep(700);
-		UiShowcaseLab.screenshot(mc, "features-tweaks-bottom");
+		List<?> options = (List<?>) field(mc.screen, "visibleTweaks");
+		check(options.toString().equals("[FAST, POINTER, CENTER, ANIMATIONS, MASCOT]"), "the page is the three options, the sub-option and the mascot; " + options);
+		List<?> switches = (List<?>) field(mc.screen, "tweakScrollingWidgets");
+		check(switches.size() == options.size(), "every option has its switch; switches=" + switches.size());
+		check(((AbstractWidget) switches.get(1)).active, "the sub-option works with Super Fast Inventory on");
+		UiShowcaseLab.screenshot(mc, "features-tree");
+		click(mc, (AbstractWidget) switches.get(0));
+		check(!ConfigStore.get().superFastInventory, "the parent switch turns Super Fast Inventory off");
+		check(!((AbstractWidget) switches.get(1)).active, "the sub-option sleeps with its parent off");
+		check(ConfigStore.get().shortcutsFollowPointer, "the sub-option keeps its own value while it sleeps");
+		UiShowcaseLab.screenshot(mc, "features-tree-parent-off");
+		click(mc, (AbstractWidget) switches.get(0));
+		check(((AbstractWidget) switches.get(1)).active, "the sub-option wakes with its parent");
+
+		// Pixel-perfect scale lives with the GUI Scaler it shapes.
+		mc.executeBlocking(() -> mc.setScreen(new GuiScalerScreen(null)));
+		Thread.sleep(600);
+		String on = Component.translatable("screen.kohs_inventory_tweaks.pixel_perfect_scale.short").getString();
+		AbstractWidget[] pixel = new AbstractWidget[1];
+		mc.executeBlocking(() -> {
+			for (var child : mc.screen.children()) {
+				if (child instanceof AbstractWidget widget && widget.getMessage().getString().equals(on)) pixel[0] = widget;
+			}
+		});
+		check(pixel[0] != null && ConfigStore.get().pixelPerfectScale, "the GUI Scaler page has the pixel-perfect switch, on");
+		UiShowcaseLab.screenshot(mc, "features-gui-scaler");
+		if (pixel[0] != null) {
+			click(mc, pixel[0]);
+			check(!ConfigStore.get().pixelPerfectScale, "the switch turns pixel-perfect scale off");
+			click(mc, pixel[0]);
+			check(ConfigStore.get().pixelPerfectScale, "and back on");
+		}
 		mc.executeBlocking(() -> mc.setScreen(null));
 	}
 
-	private static int recipeButtons(final Minecraft mc) throws Exception {
-		int[] count = new int[1];
-		mc.executeBlocking(() -> {
-			for (var child : mc.screen.children()) {
-				if (child instanceof ImageButton) count[0]++;
+	/**
+	 * The KoHs tab: its card opens it, it draws Zymekoh, and she gets cross while the mascot
+	 * is carried to her face, then calms down once it is taken away.
+	 */
+	private static void kohsTab(final Minecraft mc) throws Exception {
+		ZMascot.Prefs prefs = ZMascot.prefs();
+		boolean enabled = prefs.enabled;
+		prefs.enabled = true;
+		try {
+			mc.executeBlocking(() -> mc.setScreen(new InventoryTweaksScreen(null)));
+			Thread.sleep(500);
+			String label = Component.translatable("screen.kohs_inventory_tweaks.kohs").getString();
+			mc.executeBlocking(() -> {
+				for (var child : mc.screen.children()) {
+					if (child instanceof AbstractWidget widget && widget.visible && widget.getMessage().getString().equals(label)) {
+						widget.onClick(new MouseButtonEvent(widget.getX() + 2, widget.getY() + 2, new MouseButtonInfo(0, 0)), false);
+						return;
+					}
+				}
+			});
+			Thread.sleep(1800);
+			check(mc.screen instanceof KohsScreen, "the KoHs card opens the KoHs tab; screen=" + (mc.screen == null ? null : mc.screen.getClass().getSimpleName()));
+			if (!(mc.screen instanceof KohsScreen kohs)) return;
+			float faceX = ((Number) field(kohs, "faceShownX")).floatValue();
+			float faceY = ((Number) field(kohs, "faceShownY")).floatValue();
+			check(faceX > 0 && faceY > 0, "the tab draws Zymekoh's face; face=" + faceX + "," + faceY);
+			UiShowcaseLab.screenshot(mc, "features-kohs");
+			double[] head = mascotHead();
+			for (int settle = 0; settle < 4; settle++) {
+				pointAt(mc, head[0], head[1]);
+				Thread.sleep(90);
+				head = mascotHead();
 			}
+			press(mc, true);
+			Thread.sleep(80);
+			carry(mc, head, faceX, faceY);
+			// It dangles below the pointer: lift it until its head is at her face, wherever the window puts her.
+			double[] pointer = {faceX, faceY};
+			for (int nudge = 0; nudge < 4; nudge++) {
+				Thread.sleep(300);
+				float[] held = ZMascot.carriedHead();
+				if (held == null) break;
+				pointer = new double[] {pointer[0] + faceX - held[0], pointer[1] + faceY - held[1]};
+				pointAt(mc, pointer[0], pointer[1]);
+			}
+			Thread.sleep(1200);
+			float cross = ((Number) field(kohs, "anger")).floatValue();
+			check(cross > 0.5F, "Zymekoh gets cross with the mascot at her face; anger=" + cross + "; held=" + (ZMascot.carriedHead() != null));
+			UiShowcaseLab.screenshot(mc, "features-kohs-cross");
+			carry(mc, pointer, pointer[0] + 220, pointer[1]);
+			press(mc, false);
+			Thread.sleep(2600);
+			float calm = ((Number) field(kohs, "anger")).floatValue();
+			check(calm < 0.2F, "and calms down once it is taken away; anger=" + calm);
+		} finally {
+			prefs.enabled = enabled;
+			mc.executeBlocking(() -> mc.setScreen(null));
+		}
+	}
+
+	/** The GUI point the mascot is picked up by: the middle of its head. */
+	private static double[] mascotHead() throws Exception {
+		int unit = mascotInt("unit");
+		return new double[] {mascotInt("left") + 10.0 * unit, mascotInt("top") + 8.0 * unit};
+	}
+
+	private static int mascotInt(final String name) throws Exception {
+		var field = ZMascot.class.getDeclaredField(name);
+		field.setAccessible(true);
+		return field.getInt(null);
+	}
+
+	/** Moves the pointer to a GUI point through the ordinary move callback. */
+	private static void pointAt(final Minecraft mc, final double guiX, final double guiY) {
+		mc.executeBlocking(() -> {
+			var window = mc.getWindow();
+			((MouseHandlerDebugInvoker) mc.mouseHandler).kohsInventoryDebug$invokeMove(window.handle(),
+				guiX * window.getScreenWidth() / window.getGuiScaledWidth(),
+				guiY * window.getScreenHeight() / window.getGuiScaledHeight());
 		});
-		return count[0];
+	}
+
+	/** Carries what the left button holds from one GUI point to another in about a second, as a hand would. */
+	private static void carry(final Minecraft mc, final double[] from, final double toX, final double toY) throws Exception {
+		for (int step = 1; step <= 40; step++) {
+			double t = step / 40.0;
+			pointAt(mc, from[0] + (toX - from[0]) * t, from[1] + (toY - from[1]) * t);
+			Thread.sleep(25);
+		}
+	}
+
+	private static void press(final Minecraft mc, final boolean down) {
+		mc.executeBlocking(() -> ((MouseHandlerDebugInvoker) mc.mouseHandler)
+			.kohsInventoryDebug$invokeButton(mc.getWindow().handle(), new MouseButtonInfo(0, 0), down ? 1 : 0));
+	}
+
+	private static void click(final Minecraft mc, final AbstractWidget widget) throws Exception {
+		mc.executeBlocking(() -> widget.onClick(new MouseButtonEvent(widget.getX() + 2, widget.getY() + 2, new MouseButtonInfo(0, 0)), false));
+		Thread.sleep(300);
+	}
+
+	private static Object field(final Object owner, final String name) throws Exception {
+		var field = owner.getClass().getDeclaredField(name);
+		field.setAccessible(true);
+		return field.get(owner);
 	}
 
 	private static void openInventory(final Minecraft mc) throws Exception {
@@ -407,14 +344,10 @@ public final class FeatureLab {
 
 	/** Points at a menu slot and waits for a frame, so the drawn highlight follows. */
 	private static void hover(final Minecraft mc, final int slot) throws Exception {
-		moveTo(mc, slot);
-		Thread.sleep(FRAME_MILLIS * 2);
-	}
-
-	private static void moveTo(final Minecraft mc, final int slot) throws Exception {
 		double[] target = slotCenter(mc, slot);
 		mc.executeBlocking(() -> ((MouseHandlerDebugInvoker) mc.mouseHandler)
 			.kohsInventoryDebug$invokeMove(mc.getWindow().handle(), target[0], target[1]));
+		Thread.sleep(FRAME_MILLIS * 2);
 	}
 
 	private static void parkPointer(final Minecraft mc) throws Exception {
@@ -456,13 +389,8 @@ public final class FeatureLab {
 		Thread.sleep(150);
 	}
 
+	/** One press and release through the keyboard handler. */
 	private static void tap(final Minecraft mc, final KeyMapping mapping) throws Exception {
-		press(mc, mapping);
-		Thread.sleep(250);
-	}
-
-	/** One press and release through the keyboard handler, without waiting afterwards. */
-	private static void press(final Minecraft mc, final KeyMapping mapping) throws Exception {
 		InputConstants.Key key = ((KeyMappingDebugAccessor) mapping).kohsInventoryDebug$getKey();
 		if (key.getType() != InputConstants.Type.KEYSYM) throw new IllegalStateException("Keyboard binding required: " + mapping.getName());
 		KeyEvent event = new KeyEvent(key.getValue(), GLFW.glfwGetKeyScancode(key.getValue()), 0);
@@ -471,21 +399,7 @@ public final class FeatureLab {
 			keyboard.kohsInventoryDebug$invokeKeyPress(mc.getWindow().handle(), GLFW.GLFW_PRESS, event);
 			keyboard.kohsInventoryDebug$invokeKeyPress(mc.getWindow().handle(), GLFW.GLFW_RELEASE, event);
 		});
-	}
-
-	private static boolean serverOffhandIsTotem(final Minecraft mc) throws Exception {
-		return server(mc, player -> player.getOffhandItem().is(Items.TOTEM_OF_UNDYING));
-	}
-
-	private static boolean serverSlotIsTotem(final Minecraft mc, final int menuSlot) throws Exception {
-		return server(mc, player -> player.inventoryMenu.getSlot(menuSlot).getItem().is(Items.TOTEM_OF_UNDYING));
-	}
-
-	private static boolean server(final Minecraft mc, final java.util.function.Predicate<ServerPlayer> test) throws Exception {
-		Thread.sleep(150);
-		var server = mc.getSingleplayerServer();
-		var id = mc.player.getUUID();
-		return server.submit(() -> test.test(server.getPlayerList().getPlayer(id))).get(5, TimeUnit.SECONDS);
+		Thread.sleep(250);
 	}
 
 	private static void command(final Minecraft mc, final String command) throws Exception {

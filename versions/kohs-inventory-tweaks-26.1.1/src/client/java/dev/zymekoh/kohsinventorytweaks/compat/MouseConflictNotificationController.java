@@ -3,7 +3,7 @@ package dev.zymekoh.kohsinventorytweaks.compat;
 import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
 import dev.zymekoh.kohsinventorytweaks.screen.UiRender;
 import dev.zymekoh.kohsinventorytweaks.screen.UiTheme;
-import dev.zymekoh.kohsinventorytweaks.ui.ZIcons;
+import dev.zymekoh.kohsinventorytweaks.ui.ZScene;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -101,7 +101,10 @@ public final class MouseConflictNotificationController {
 			particle.draw(graphics, x, y, width, height, progress);
 		}
 		graphics.disableScissor();
-		severityIcon(primary.severity()).draw(graphics, x + 8, y + 7, iconSize, severityColor(primary.severity()), progress);
+		// An item cannot fade with the panel; it appears once the panel is mostly in.
+		if (progress > 0.35F) {
+			severityScene(primary.severity()).draw(graphics, x + 8, y + 7, iconSize, 0.4F);
+		}
 
 		graphics.text(
 			font,
@@ -174,11 +177,11 @@ public final class MouseConflictNotificationController {
 		};
 	}
 
-	private static ZIcons severityIcon(final CompatibilityIssue.Severity severity) {
+	private static ZScene severityScene(final CompatibilityIssue.Severity severity) {
 		return switch (severity) {
-			case ADAPTABLE -> ZIcons.SEVERITY_ADAPTED;
-			case DEGRADED -> ZIcons.SEVERITY_WARNING;
-			case BLOCKING -> ZIcons.SEVERITY_CRITICAL;
+			case ADAPTABLE -> ZScene.ADAPTED;
+			case DEGRADED -> ZScene.WARNING;
+			case BLOCKING -> ZScene.CRITICAL;
 		};
 	}
 

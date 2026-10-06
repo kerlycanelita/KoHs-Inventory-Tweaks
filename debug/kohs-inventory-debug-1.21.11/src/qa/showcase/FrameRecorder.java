@@ -36,10 +36,31 @@ public final class FrameRecorder {
     private static final Map<Integer, NativeImage> HELD = new ConcurrentHashMap<>();
     private static ExecutorService writers;
     private static long startNanos;
+    /** Frames are this many times smaller than the window; streamed takes write them as they come. */
+    private static volatile int downscale = 2;
+    private static volatile boolean streaming;
+    // A video take: every frame, in order, piped raw into an ffmpeg encoder.
+    private static Process encoder;
+    private static java.io.OutputStream encoderInput;
+    private static ExecutorService pipe;
+    private static byte[] pixels;
+    private static int videoWidth;
+    private static int videoHeight;
 
     private FrameRecorder() {}
 
     public static synchronized void start(final Path target) throws IOException {
+        start(target, 2, false);
+    }
+
+    /**
+     * A take at {@code scale} (1 is the window's own size). A streamed take writes each frame as
+     * soon as it is read back instead of holding them all, so a long full-size take fits in memory;
+     * the writers then share the CPU with the game, which a capped frame rate leaves room for.
+     */
+    public static synchronized void start(final Path target, final int scale, final boolean stream) throws IOException {
+        downscale = Math.max(1, scale);
+        streaming = stream;
         Files.createDirectories(target);
         try (var old = Files.list(target)) {
             for (Path file : old.toList()) Files.deleteIfExists(file);
@@ -56,6 +77,41 @@ public final class FrameRecorder {
         }
         startNanos = System.nanoTime();
         directory = target;
+    }
+
+    /**
+     * A full-size take encoded as it runs: each frame read back is piped, in order, to ffmpeg,
+     * which writes {@code take.mkv} in near-lossless H.264. Nothing piles up in memory and no
+     * frame is lost, at the cost of one ffmpeg process sharing the CPU.
+     */
+    public static synchronized void startVideo(final Path target, final String ffmpeg, final int width, final int height) throws IOException {
+        start(target, 1, false);
+        videoWidth = width;
+        videoHeight = height;
+        pixels = new byte[width * height * 4];
+        encoder = new ProcessBuilder(ffmpeg, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgba",
+            "-s", width + "x" + height, "-r", "30", "-i", "-", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "8",
+            "-pix_fmt", "yuv444p", target.resolve("take.mkv").toString())
+            .redirectErrorStream(true).redirectOutput(target.resolve("ffmpeg.log").toFile()).start();
+        encoderInput = new java.io.BufferedOutputStream(encoder.getOutputStream(), 1 << 22);
+        pipe = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "KoHs frame pipe");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    private static void pipeFrame(final NativeImage image, final int index) {
+        try (image) {
+            if (image.getWidth() != videoWidth || image.getHeight() != videoHeight) {
+                DebugCollector.issue("RECORDING", "frame " + index + " is " + image.getWidth() + "x" + image.getHeight());
+                return;
+            }
+            org.lwjgl.system.MemoryUtil.memByteBuffer(image.getPointer(), pixels.length).get(pixels);
+            encoderInput.write(pixels);
+        } catch (IOException error) {
+            DebugCollector.issue("RECORDING", "frame " + index + " not piped: " + error.getMessage());
+        }
     }
 
     public static boolean recording() {
@@ -78,8 +134,20 @@ public final class FrameRecorder {
             LOG.add("frame " + index + " " + (System.nanoTime() - startNanos) / 1_000);
         }
         PENDING.incrementAndGet();
-        Screenshot.takeScreenshot(minecraft.getMainRenderTarget(), 2, image -> {
-            HELD.put(index, image);
+        Screenshot.takeScreenshot(minecraft.getMainRenderTarget(), downscale, image -> {
+            if (encoder != null) {
+                pipe.execute(() -> pipeFrame(image, index));
+            } else if (streaming) {
+                writers.execute(() -> {
+                    try (image) {
+                        image.writeToFile(target.resolve(String.format("frame_%05d.png", index)));
+                    } catch (IOException error) {
+                        DebugCollector.issue("RECORDING", "frame " + index + " not written: " + error.getMessage());
+                    }
+                });
+            } else {
+                HELD.put(index, image);
+            }
             PENDING.decrementAndGet();
         });
     }
@@ -103,7 +171,15 @@ public final class FrameRecorder {
         }
         HELD.clear();
         writers.shutdown();
-        writers.awaitTermination(60, TimeUnit.SECONDS);
+        writers.awaitTermination(10, TimeUnit.MINUTES);
+        if (encoder != null) {
+            pipe.shutdown();
+            pipe.awaitTermination(10, TimeUnit.MINUTES);
+            encoderInput.close();
+            encoder.waitFor(10, TimeUnit.MINUTES);
+            encoder = null;
+            pixels = null;
+        }
         synchronized (LOG) {
             Files.write(target.resolve("take.txt"), LOG, StandardCharsets.UTF_8);
         }

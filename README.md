@@ -21,7 +21,12 @@ This repository contains released implementations for **Minecraft 26.2, 26.1.2, 
   <img src="docs/media/main-menu.png" alt="KoHs Inventory Tweaks main menu" width="720">
 </p>
 
-| Inventory Tweaks | Player Visibility |
+<p align="center"><a href="https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/releases/download/v1.2.0/KoHs-Inventory-Tweaks-1.2.0-trailer.mp4">▶ Watch the 1.2.0 trailer</a></p>
+
+| Zymekoh mascot | KoHs tab |
+| --- | --- |
+| <img src="docs/media/mascot-feed.png" alt="The mascot pulling a Totem of Undying from the inventory preview" width="360"> | <img src="docs/media/kohs-tab-cross.png" alt="Zymekoh cross with the cat at her face on the KoHs tab" width="360"> |
+| **Inventory Tweaks** | **Player Visibility** |
 | --- | --- |
 | <img src="docs/media/inventory-tweaks.png" alt="Inventory Tweaks page with its options" width="360"> | <img src="docs/media/player-visibility.png" alt="Player Visibility page with the live world view and silhouette glow" width="360"> |
 | **Cursor Landing** | **Customization** |
@@ -56,16 +61,13 @@ The mod does not need to be installed on the server.
 - **Cursor Landing:** stores independent normalized coordinates for the player inventory, single chest, double chest, Shulker Box, Ender Chest, and barrel. Individual container types can fall back to vanilla cursor behavior.
 - **Center Mouse Fix:** places the pointer at the real centre in the same move that releases it, even after the window changed size while the mouse was captured. Nothing rewrites the pointer once the inventory is open, so reaching for a totem is never pulled back.
 - **Super Fast Inventory:** optionally constructs the ordinary local inventory screen directly from the physical keyboard or remapped mouse press, up to one client tick (50 ms) sooner. It waits for the tick only when Vanilla would still run something first: a hotbar key, a pending attack or use, an item in use, or a block being broken. A held mouse button never holds it back, and holding the inventory key toggles it only once. Server-controlled openings, slot actions, packet types, cooldowns, and validation stay on Vanilla paths.
-- **Slot shortcuts:** F, 1-9, Q, Ctrl+Q, clicks and the wheel act on the slot under the pointer the moment they are pressed, even right after a fast flick, in the player inventory and in every Vanilla container. A switch returns them to the last-frame target Vanilla uses.
-- **Totem protection and swap warning:** optionally, the inventory keys never take a totem out of the offhand or throw one; an empty slot that the offhand key would fill with your totem turns crimson.
-- **Slot overlays:** the hotbar slot in hand, optional keycaps with the key of each slot, optional durability in percent, and a short glint when the item in a slot changes.
-- **Steady tooltips, inventory totals and recipe book lock:** optional tooltips that wait for the pointer to settle, a tooltip line with how many of an item you carry, and a closed recipe book without a button to misclick.
+- **Slot shortcuts:** with Super Fast Inventory, F, 1-9, Q, Ctrl+Q, clicks and the wheel act on the slot under the pointer the moment they are pressed, even right after a fast flick, in the player inventory and in every Vanilla container. Its sub-option returns them to the last-frame target Vanilla uses.
 - **Reduce inventory visual motion:** stills recipe-button bounce, item return motion, the enchanting book and animated backgrounds, while progress indicators and enchanted-item glint stay Vanilla's.
 - **Customization:** composes player-inventory and compatible-container textures at runtime using RGB palettes, opacity controls, static or animated backgrounds, and resource-pack-aware sources.
 - **GUI Scaler:** scales the player inventory—including slots, items, text, and the player model—from 65% to 315%, starting at 200% on a fresh installation and using adaptive limits based on available space. The default-enabled Affect Containers switch applies that scale to supported chest, Shulker Box, barrel, and Ender Chest screens. Pixel-perfect scale, on by default, keeps every size on whole screen pixels so slots stay even and the highlighted slot is always the one a click takes.
 - **Item Highlighter:** stores per-item colors, optional HUD hotbar highlighting, and dynamic activation based on Minecraft's calculated hovered slot.
 - **Player Visibility:** can tint normally visible players and draw a glowing silhouette around them while your inventory is open, outside its panel. Both are depth-tested like the body, so blocks hide them and nothing shows through walls; Minecraft's glowing outline is never used. Its page shows a live world view beside a walking preview of your own skin and equipment.
-- **Interface:** dark violet glass, a slow animated background that holds still with Reduce inventory visual motion, and controls that never shift under the pointer. Every page fits at GUI scale 2, 3 and 4; each option shows only its name, and hovering it explains the option.
+- **Interface:** dark violet glass, a slow animated background that holds still with Reduce inventory visual motion, and controls that never shift under the pointer. Tab and option icons are animated scenes of Minecraft items and particles, and a little Zymekoh cat lives on the free floor of each window: pet it, carry it, throw it against the edges of the window, or feed it Totems of Undying from the inventory preview with its right-click menu. A KoHs tab introduces Zymekoh, who makes the KoHs mods. Every page fits at GUI scale 2, 3 and 4; each option shows only its name, and hovering it explains the option.
 - **Safe persistence:** sanitizes every setting and writes it through atomic replacement to config/kohs_inventory_tweaks.json.
 
 ## Install

@@ -43,15 +43,6 @@ public final class InventoryTweaksConfig {
 	public boolean reduceInventoryMotion;
 	public boolean shortcutsFollowPointer = true;
 	public boolean pixelPerfectScale = true;
-	public boolean steadyTooltips;
-	public boolean recipeBookLock;
-	public boolean totemGuard;
-	public boolean swapWarning = true;
-	public boolean heldSlotMarker = true;
-	public boolean keyHints;
-	public boolean durabilityReadout;
-	public boolean itemTotals;
-	public boolean slotFlash = true;
 	public ProfilePreset activeProfile = ProfilePreset.CUSTOM;
 	public boolean autoProfileSwitch;
 	public ProfilePreset singleplayerProfile = ProfilePreset.BUILDING;
@@ -123,15 +114,6 @@ public final class InventoryTweaksConfig {
 		copy.reduceInventoryMotion = this.reduceInventoryMotion;
 		copy.shortcutsFollowPointer = this.shortcutsFollowPointer;
 		copy.pixelPerfectScale = this.pixelPerfectScale;
-		copy.steadyTooltips = this.steadyTooltips;
-		copy.recipeBookLock = this.recipeBookLock;
-		copy.totemGuard = this.totemGuard;
-		copy.swapWarning = this.swapWarning;
-		copy.heldSlotMarker = this.heldSlotMarker;
-		copy.keyHints = this.keyHints;
-		copy.durabilityReadout = this.durabilityReadout;
-		copy.itemTotals = this.itemTotals;
-		copy.slotFlash = this.slotFlash;
 		copy.activeProfile = this.activeProfile;
 		copy.autoProfileSwitch = this.autoProfileSwitch;
 		copy.singleplayerProfile = this.singleplayerProfile;
@@ -309,15 +291,6 @@ public final class InventoryTweaksConfig {
 				this.superFastInventory = false;
 				this.reduceInventoryMotion = false;
 				this.shortcutsFollowPointer = false;
-				this.steadyTooltips = false;
-				this.recipeBookLock = false;
-				this.totemGuard = false;
-				this.swapWarning = false;
-				this.heldSlotMarker = false;
-				this.keyHints = false;
-				this.durabilityReadout = false;
-				this.itemTotals = false;
-				this.slotFlash = false;
 				this.inventoryGuiScalerEnabled = false;
 				this.smartHighlighterEnabled = false;
 				this.accessibilitySlotFocusEnabled = false;
@@ -330,10 +303,6 @@ public final class InventoryTweaksConfig {
 				this.superFastInventory = true;
 				this.reduceInventoryMotion = true;
 				this.shortcutsFollowPointer = true;
-				this.steadyTooltips = true;
-				this.recipeBookLock = true;
-				this.totemGuard = true;
-				this.swapWarning = true;
 				this.smartHighlighterEnabled = true;
 				this.smartLowDurabilityEnabled = true;
 				this.smartHighlighterHotbar = true;
@@ -400,15 +369,6 @@ public final class InventoryTweaksConfig {
 			&& this.reduceInventoryMotion == other.reduceInventoryMotion
 			&& this.shortcutsFollowPointer == other.shortcutsFollowPointer
 			&& this.pixelPerfectScale == other.pixelPerfectScale
-			&& this.steadyTooltips == other.steadyTooltips
-			&& this.recipeBookLock == other.recipeBookLock
-			&& this.totemGuard == other.totemGuard
-			&& this.swapWarning == other.swapWarning
-			&& this.heldSlotMarker == other.heldSlotMarker
-			&& this.keyHints == other.keyHints
-			&& this.durabilityReadout == other.durabilityReadout
-			&& this.itemTotals == other.itemTotals
-			&& this.slotFlash == other.slotFlash
 			&& this.activeProfile == other.activeProfile
 			&& this.autoProfileSwitch == other.autoProfileSwitch
 			&& this.singleplayerProfile == other.singleplayerProfile

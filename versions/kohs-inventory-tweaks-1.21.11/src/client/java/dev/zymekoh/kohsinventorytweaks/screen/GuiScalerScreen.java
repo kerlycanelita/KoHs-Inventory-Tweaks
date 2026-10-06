@@ -6,6 +6,7 @@ import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.KeyEvent;
@@ -92,6 +93,22 @@ public final class GuiScalerScreen extends Screen {
 			},
 			GlassButton.Variant.NORMAL
 		));
+		// Whole screen pixels per inventory pixel, so every slot is even and sharp.
+		GlassButton pixelButton = this.addRenderableWidget(new GlassButton(
+			this.width - outerMargin - containersWidth,
+			controlsTop + 26,
+			containersWidth,
+			22,
+			// Short enough for the rail at every scale; the switch itself shows on or off.
+			Component.translatable("screen.kohs_inventory_tweaks.pixel_perfect_scale.short"),
+			button -> {
+				this.working.pixelPerfectScale = !this.working.pixelPerfectScale;
+				this.persistWorking();
+			},
+			GlassButton.Variant.SWITCH,
+			() -> this.working.pixelPerfectScale
+		));
+		pixelButton.setTooltip(Tooltip.create(Component.translatable("screen.kohs_inventory_tweaks.pixel_perfect_scale.description")));
 
 		int gap = Math.max(5, Math.min(10, this.width / 40));
 		int buttonWidth = Math.min(146, Math.max(68, (this.width - outerMargin * 2 - gap) / 2));

@@ -8,7 +8,6 @@
     "AbstractContainerScreenAccessor",
     "AbstractContainerScreenMixin",
     "AbstractRecipeBookScreenAccessor",
-    "AbstractRecipeBookScreenMixin",
     "ContainerScreenMixin",
     "ContainerSurfaceMixin",
     "ContainerMouseInputMixin",

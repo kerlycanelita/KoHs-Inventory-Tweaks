@@ -4,6 +4,7 @@ import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.screen.AdvancedSettingsScreen;
 import dev.zymekoh.kohsinventorytweaks.screen.InventoryTweaksScreen;
+import dev.zymekoh.kohsinventorytweaks.screen.KohsScreen;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import net.minecraft.client.Minecraft;
@@ -110,6 +111,7 @@ public final class UiShowcaseLab {
                 {"customization", "screen.kohs_inventory_tweaks.customization"},
                 {"item-highlighter", "screen.kohs_inventory_tweaks.item_highlighter"},
                 {"gui-scaler", "screen.kohs_inventory_tweaks.gui_scaler"},
+                {"kohs-tab", "screen.kohs_inventory_tweaks.kohs"},
             };
             int captures = 1;
             for (String[] page : pages) {
@@ -121,10 +123,22 @@ public final class UiShowcaseLab {
                         press(mc, "screen.kohs_inventory_tweaks.customization.warning.continue", false);
                     } else if (page[0].equals("gui-scaler")) {
                         press(mc, "screen.kohs_inventory_tweaks.gui_scaler.warning.accept", false);
+                    } else if (page[0].equals("kohs-tab")) {
+                        // Past its entrance: the art, the chips and the finale have all settled.
+                        Thread.sleep(2600);
                     }
                 }
                 parkPointer(mc);
                 screenshot(mc, "media-" + page[0]);
+                captures++;
+            }
+            // The KoHs tab at the other GUI scales: its four links in one row, or in two rows of two.
+            for (int scale : new int[] {2, 4}) {
+                guiScale(mc, scale);
+                open(mc, new KohsScreen(null));
+                Thread.sleep(2600);
+                parkPointer(mc);
+                screenshot(mc, "media-kohs-tab-gui" + scale);
                 captures++;
             }
             // Its live preview needs the room GUI scale 2 leaves on this window.

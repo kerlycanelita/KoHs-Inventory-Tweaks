@@ -22,7 +22,8 @@ import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import dev.zymekoh.kohsinventorytweaks.ui.ZBackdrop;
 import dev.zymekoh.kohsinventorytweaks.ui.ZChrome;
 import dev.zymekoh.kohsinventorytweaks.ui.ZDraw;
-import dev.zymekoh.kohsinventorytweaks.ui.ZIcons;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMascot;
+import dev.zymekoh.kohsinventorytweaks.ui.ZScene;
 import dev.zymekoh.kohsinventorytweaks.ui.ZMotion;
 import dev.zymekoh.kohsinventorytweaks.ui.ZTheme;
 import java.nio.file.Path;
@@ -55,6 +56,8 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 public final class InventoryTweaksScreen extends Screen {
+	/** How far a sub-option's card sits in from its parent's. */
+	private static final int TREE_INDENT = 22;
 	private static final Identifier CROP_PREVIEW_TEXTURE = Identifier.fromNamespaceAndPath(
 		"kohs_inventory_tweaks",
 		"dynamic/background_crop_preview"
@@ -110,6 +113,8 @@ public final class InventoryTweaksScreen extends Screen {
 	private int itemHighlighterCardX;
 	private int itemHighlighterCardY;
 	private int guiScalerCardX;
+	private int kohsCardX;
+	private int kohsCardY;
 	private int guiScalerCardY;
 	private int mainCardWidth;
 	private int mainCardHeight;
@@ -298,7 +303,7 @@ public final class InventoryTweaksScreen extends Screen {
 			if (visibleModal == Modal.CURSOR) {
 				this.drawCursorModal(graphics);
 			} else if (visibleModal == Modal.TWEAKS) {
-				this.drawTweaksModal(graphics);
+				this.drawTweaksModal(graphics, mouseX, mouseY);
 			} else if (visibleModal == Modal.CUSTOMIZATION) {
 				this.drawCustomizationModal(graphics, mouseX, mouseY);
 			} else if (visibleModal == Modal.CROP) {
@@ -322,6 +327,9 @@ public final class InventoryTweaksScreen extends Screen {
 					Component.translatable(this.tweakWarning.key + ".warning.description"));
 			} else {
 				warning = false;
+			}
+			if (warning) {
+				ZMascot.react(ZMascot.Mood.ALERT);
 			}
 			super.render(graphics, mouseX, mouseY, a);
 			this.drawActiveScrollFades(graphics);
@@ -538,6 +546,17 @@ public final class InventoryTweaksScreen extends Screen {
 			KohsTabIcon.ISSUES
 		);
 		this.addMainFeatureButton(
+			this.kohsCardX,
+			this.kohsCardY,
+			true,
+			null,
+			"screen.kohs_inventory_tweaks.kohs",
+			"screen.kohs_inventory_tweaks.kohs.description",
+			button -> this.minecraft.setScreen(new KohsScreen(this)),
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.KOHS
+		);
+		this.addMainFeatureButton(
 			this.customizationCardX,
 			this.customizationCardY,
 			false,
@@ -728,7 +747,6 @@ public final class InventoryTweaksScreen extends Screen {
 	private void addTweaksModalButtons() {
 		int toggleWidth = this.tweakToggleWidth();
 		for (var option : this.visibleTweaks) {
-			boolean available = CompatibilityIssueManager.isFeatureAvailable(option.feature());
 			Component state = this.tweakStateLabel(option);
 			GlassButton button = new GlassButton(this.tweakOptionsX + this.tweakOptionsWidth - toggleWidth - 10,
 				0, toggleWidth, 24, state, pressed -> {
@@ -739,11 +757,17 @@ public final class InventoryTweaksScreen extends Screen {
 					} else {
 						option.set(this.working, !option.enabled(this.working));
 						this.persistWorking();
+						if (option != InventoryTweakOption.MASCOT) {
+							boolean on = option.enabled(this.working);
+							ZMascot.react(!on ? ZMascot.Mood.MEH
+								: option == InventoryTweakOption.FAST || option == InventoryTweakOption.CENTER
+								|| option == InventoryTweakOption.POINTER ? ZMascot.Mood.ZOOM : ZMascot.Mood.HAPPY);
+						}
 						// Keep focus and positions stable when a switch is pressed.
 						this.updateTweakButtonStates();
 					}
 				}, GlassButton.Variant.SWITCH, () -> option.enabled(this.working));
-			button.active = available;
+			button.active = option.usable(this.working);
 			button.setNarrationLabel(Component.translatable(option.key));
 			this.addRenderableWidget(button);
 			this.tweakScrollingWidgets.add(button);
@@ -766,7 +790,8 @@ public final class InventoryTweaksScreen extends Screen {
 		for (int index = 0; index < this.tweakScrollingWidgets.size(); index++) {
 			var option = this.visibleTweaks.get(index);
 			var button = this.tweakScrollingWidgets.get(index);
-			button.active = CompatibilityIssueManager.isFeatureAvailable(option.feature());
+			// A sub-option wakes and sleeps with its parent.
+			button.active = option.usable(this.working);
 			button.setMessage(this.tweakStateLabel(option));
 		}
 	}
@@ -1264,6 +1289,7 @@ public final class InventoryTweaksScreen extends Screen {
 				switch (modalType) {
 					case CURSOR -> this.working.resetCursorPositions();
 					case TWEAKS -> {
+						ZMascot.react(ZMascot.Mood.SURPRISED);
 						InventoryTweaksConfig defaults = new InventoryTweaksConfig();
 						for (var option : InventoryTweakOption.values()) {
 							option.set(this.working, option.enabled(defaults));
@@ -1488,7 +1514,8 @@ public final class InventoryTweaksScreen extends Screen {
 		}
 	}
 
-	private void drawTweaksModal(final GuiGraphics graphics) {
+	private void drawTweaksModal(final GuiGraphics graphics, final int mouseX, final int mouseY) {
+		InventoryTweakOption hovered = this.modal == Modal.TWEAKS ? this.tweakCardAt(mouseX, mouseY) : null;
 		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.inventory_tweaks"));
 		int textWidth = Math.max(36, this.tweakOptionsWidth - this.tweakToggleWidth() - 52);
 		graphics.enableScissor(this.tweakOptionsX, this.tweakViewportTop,
@@ -1497,7 +1524,12 @@ public final class InventoryTweaksScreen extends Screen {
 			var option = this.visibleTweaks.get(index);
 			int y = this.tweakFirstCardY + index * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
 			if (y + this.tweakCardHeight <= this.tweakViewportTop || y >= this.tweakViewportBottom) continue;
-			this.drawTweakCard(graphics, this.tweakOptionsX, y, this.tweakOptionsWidth, this.tweakCardHeight, textWidth, option);
+			int indent = option.parent() == null ? 0 : TREE_INDENT;
+			if (indent > 0) {
+				this.drawTreeBranch(graphics, y, option);
+			}
+			this.drawTweakCard(graphics, this.tweakOptionsX + indent, y, this.tweakOptionsWidth - indent, this.tweakCardHeight,
+				textWidth - indent, option, option == hovered);
 		}
 		graphics.disableScissor();
 		this.drawPixelScrollbar(graphics, this.tweakOptionsX + this.tweakOptionsWidth + 3,
@@ -1577,9 +1609,24 @@ public final class InventoryTweaksScreen extends Screen {
 	}
 
 	private Component tweakDescription(final InventoryTweakOption option) {
-		boolean compatible = CompatibilityIssueManager.isFeatureAvailable(option.feature());
-		return Component.translatable(!compatible ? "screen.kohs_inventory_tweaks.compatibility.feature_disabled"
-			: option.key + ".description");
+		if (!option.available()) {
+			return Component.translatable("screen.kohs_inventory_tweaks.compatibility.feature_disabled");
+		}
+		InventoryTweakOption parent = option.parent();
+		if (parent != null && !parent.enabled(this.working)) {
+			return Component.translatable(option.key + ".description").append(" ")
+				.append(Component.translatable("screen.kohs_inventory_tweaks.needs_parent", Component.translatable(parent.key)));
+		}
+		return Component.translatable(option.key + ".description");
+	}
+
+	/** The branch from a parent down to its sub-option, lit while the sub-option works. */
+	private void drawTreeBranch(final GuiGraphics graphics, final int y, final InventoryTweakOption option) {
+		int color = option.usable(this.working) ? ZTheme.fade(ZTheme.CYAN, 0.7F) : ZTheme.alpha(ZTheme.CYAN, 55);
+		int x = this.tweakOptionsX + 9;
+		int middle = y + this.tweakCardHeight / 2;
+		graphics.fill(x, y - this.tweakCardGap, x + 2, middle + 1, color);
+		graphics.fill(x, middle - 1, this.tweakOptionsX + TREE_INDENT, middle + 1, color);
 	}
 
 	private void drawTweakCard(
@@ -1589,41 +1636,37 @@ public final class InventoryTweaksScreen extends Screen {
 		final int width,
 		final int height,
 		final int textWidth,
-		final InventoryTweakOption option
+		final InventoryTweakOption option,
+		final boolean hovered
 	) {
-		boolean enabled = option.enabled(this.working);
-		// Speed and precision wear cyan, protection crimson; what you see keeps the violet of the house.
-		int accent = switch (option) {
-			case FAST, CENTER, POINTER, PIXEL, STEADY, RECIPE -> ZTheme.CYAN;
-			case TOTEM, SWAP -> ZTheme.CRIMSON_BRIGHT;
-			default -> ZTheme.VIOLET_BRIGHT;
-		};
+		boolean usable = option.usable(this.working);
+		// Lit only when it acts: a sub-option under a parent that is off stays dark.
+		boolean lit = usable && option.enabled(this.working);
+		// Speed and precision wear cyan; what you see keeps the violet of the house.
+		int accent = option == InventoryTweakOption.ANIMATIONS || option == InventoryTweakOption.MASCOT
+			? ZTheme.VIOLET_BRIGHT : ZTheme.CYAN;
 		UiRender.panel(graphics, x, y, width, height, 8, UiTheme.GLASS_LIGHT,
-			enabled ? ZTheme.fade(accent, 0.6F) : UiTheme.BORDER_SOFT);
-		graphics.fill(x + 3, y + 6, x + 5, y + height - 6, enabled ? accent : ZTheme.alpha(accent, 60));
-		ZIcons icon = switch (option) {
-			case FAST -> ZIcons.PERFORMANCE;
-			case CENTER -> ZIcons.CURSOR;
-			case POINTER -> ZIcons.TARGET;
-			case PIXEL -> ZIcons.SCALER;
-			case STEADY -> ZIcons.TOOLTIP;
-			case RECIPE -> ZIcons.BOOK;
-			case TOTEM -> ZIcons.TOTEM;
-			case SWAP -> ZIcons.SEVERITY_WARNING;
-			case HELD -> ZIcons.HOTBAR;
-			case KEYS -> ZIcons.KEYBIND;
-			case DURABILITY -> ZIcons.DURABILITY;
-			case TOTALS -> ZIcons.TOTALS;
-			case FLASH -> ZIcons.FLASH;
-			case ANIMATIONS -> ZIcons.VISIBILITY;
+			lit ? ZTheme.fade(accent, 0.6F) : UiTheme.BORDER_SOFT);
+		graphics.fill(x + 3, y + 6, x + 5, y + height - 6, lit ? accent : ZTheme.alpha(accent, 60));
+		ZScene scene = switch (option) {
+			case FAST -> ZScene.FAST;
+			case POINTER -> ZScene.POINTER;
+			case CENTER -> ZScene.CENTER;
+			case ANIMATIONS -> ZScene.MOTION;
+			case MASCOT -> ZScene.MASCOT;
 		};
-		icon.draw(graphics, x + 10, y + (height - 16) / 2, 16, enabled ? ZTheme.LILAC_PALE : ZTheme.LILAC, 1.0F);
+		// A switched-on tweak idles awake; the pointer wakes it fully.
+		int iconY = y + (height - 16) / 2;
+		scene.draw(graphics, x + 10, iconY, 16, !usable ? 0.0F : hovered ? 1.0F : lit ? 0.35F : 0.0F);
+		if (!usable) {
+			graphics.fill(x + 10, iconY, x + 26, iconY + 16, ZTheme.alpha(ZTheme.SURFACE, 150));
+		}
 		// The whole title, on two lines when it needs them. The description is the hover.
 		List<FormattedCharSequence> titleLines = this.font.split(Component.translatable(option.key), textWidth);
 		int drawnTitleLines = Math.min(titleLines.size(), Math.max(1, Math.min(2, (height - 6) / 10)));
 		int titleY = y + (height - drawnTitleLines * 10 + 2) / 2;
 		for (int index = 0; index < drawnTitleLines; index++) {
-			graphics.drawString(this.font, titleLines.get(index), x + 32, titleY + index * 10, UiTheme.TEXT);
+			graphics.drawString(this.font, titleLines.get(index), x + 32, titleY + index * 10, usable ? UiTheme.TEXT : UiTheme.TEXT_MUTED);
 		}
 	}
 
@@ -2075,7 +2118,7 @@ public final class InventoryTweaksScreen extends Screen {
 		UiRender.panel(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, 10, UiTheme.GLASS, UiTheme.WARNING);
 		int titleWidth = Math.min(this.font.width(title), Math.max(1, this.warningWidth - 50));
 		int left = this.warningX + (this.warningWidth - titleWidth - 22) / 2;
-		ZIcons.SEVERITY_WARNING.draw(graphics, left, this.warningY + 10, 16, UiTheme.WARNING, 1.0F);
+		ZScene.WARNING.draw(graphics, left, this.warningY + 10, 16, 0.6F);
 		graphics.drawString(this.font, title, left + 22, this.warningY + 14, UiTheme.TEXT);
 		ZDraw.blade(graphics, this.warningX + this.warningWidth / 2, this.warningY + 30,
 			Math.min(64, this.warningWidth / 4), ZTheme.alpha(UiTheme.WARNING, 190));
@@ -2137,7 +2180,7 @@ public final class InventoryTweaksScreen extends Screen {
 		this.mainCardWidth = Math.max(1, railWidth - 10);
 		this.mainCardHeight = this.compactMain ? 22 : 28;
 		int cardGap = this.compactMain ? 5 : 7;
-		int leftRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
+		int leftRailContentHeight = this.mainCardHeight * 4 + cardGap * 3;
 		int rightRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
 		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 30);
 		this.mainLeftMaxScroll = Math.max(0, leftRailContentHeight - railVisibleHeight);
@@ -2154,6 +2197,8 @@ public final class InventoryTweaksScreen extends Screen {
 		this.tweakCardY = this.cursorCardY + this.mainCardHeight + cardGap;
 		this.issuesCardX = this.cursorCardX;
 		this.issuesCardY = this.tweakCardY + this.mainCardHeight + cardGap;
+		this.kohsCardX = this.cursorCardX;
+		this.kohsCardY = this.issuesCardY + this.mainCardHeight + cardGap;
 		this.customizationCardX = this.mainRightRailX + 5;
 		this.customizationCardY = railContentTop - this.mainRightScroll;
 		this.itemHighlighterCardX = this.customizationCardX;

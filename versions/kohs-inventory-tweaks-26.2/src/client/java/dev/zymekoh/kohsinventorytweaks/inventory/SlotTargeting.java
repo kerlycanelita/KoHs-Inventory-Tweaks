@@ -83,7 +83,7 @@ public final class SlotTargeting {
 		final boolean screenCoordinates
 	) {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (labVanillaTargeting || !ConfigStore.get().shortcutsFollowPointer || !covers(screen) || minecraft.gui.screen() != screen
+		if (labVanillaTargeting || !ConfigStore.get().superFastInventory || !ConfigStore.get().shortcutsFollowPointer || !covers(screen) || minecraft.gui.screen() != screen
 			|| minecraft.gui.overlay() != null || !minecraft.isWindowActive()
 			|| !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)) {
 			return;

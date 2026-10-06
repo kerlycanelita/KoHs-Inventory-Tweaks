@@ -5,6 +5,7 @@ import dev.zymekoh.kohsinventorytweaks.cursor.CursorTarget;
 import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMascot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -15,6 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Items;
 
 /**
  * Draws the inventories the configuration screens preview: the player's own, with the
@@ -98,6 +100,7 @@ final class InventoryPreviewRenderer {
 					}
 				}
 			}
+			int totems = 0;
 			for (Slot slot : minecraft.player.inventoryMenu.slots) {
 				if (slot.isActive() && !slot.getItem().isEmpty()) {
 					InventoryTweaksConfig.ItemHighlight highlight = ItemHighlighterController.highlightFor(visualConfig, slot.getItem());
@@ -108,6 +111,14 @@ final class InventoryPreviewRenderer {
 					}
 					graphics.renderItem(slot.getItem(), slot.x, slot.y, slot.x + slot.y * INVENTORY_WIDTH);
 					graphics.renderItemDecorations(font, slot.getItem(), slot.x, slot.y);
+					if (slot.getItem().is(Items.TOTEM_OF_UNDYING)) {
+						// The mascot pulls its meals from here; an eaten totem fades in the preview only.
+						int ordinal = totems++;
+						ZMascot.previewTotem(ordinal, x + slot.x * scale, y + slot.y * scale, 16.0F * scale);
+						if (ZMascot.totemEaten(ordinal)) {
+							graphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, 0xB08B8B8B);
+						}
+					}
 					if (renderHighlight) {
 						ItemHighlighterController.drawHighlightLayer(graphics, slot.x - 1, slot.y - 1, 18, highlight, true);
 					}

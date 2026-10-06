@@ -10,6 +10,7 @@ import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryWarmup;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import dev.zymekoh.kohsinventorytweaks.render.PlayerGlowLayer;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMascot;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -39,6 +40,7 @@ public final class KoHsInventoryTweaksClient implements ClientModInitializer {
 		}
 		ConfigStore.load();
 		ConfigMenuKeyBinding.register();
+		ZMascot.install();
 		ClientTickEvents.END_CLIENT_TICK.register(minecraft -> {
 			CompatibilityNoticeController.onClientTick(minecraft);
 			MouseConflictNotificationController.onClientTick(minecraft);

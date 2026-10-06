@@ -18,47 +18,73 @@ Fixes:
   backdrop at 0%, which hides nothing; with a backdrop, the rays stop once the
   nearest visible players are found.
 
-New options in Inventory Tweaks (default in brackets):
+The Inventory Tweaks page is a tree now: Super Fast Inventory, Center Mouse Fix
+and Reduce inventory visual motion, with one sub-option and the mascot.
 
-- **Shortcuts follow the pointer** (on): the switch for the targeting 1.1.0
-  added. Off, number keys, the offhand key and the drop keys act on the slot
-  highlighted in the last frame, as in Vanilla.
-- **Pixel-perfect scale** (on): the GUI Scaler moves to the nearest whole number
-  of screen pixels per inventory pixel, so every slot has the same size and
-  sharp edges. At GUI scale 3, 180% becomes 200%.
-- **Steady tooltips** (off): a tooltip waits 0.15 s after the pointer reaches
-  its slot, so a flick across the inventory is not covered by tooltips.
-- **Recipe book lock** (off): a closed recipe book loses its button, so a missed
-  click cannot open it and shift every slot. An open book keeps it.
-- **Totem protection** (off): the offhand key never takes a totem out of the
-  offhand, a number key over the offhand slot leaves it there, and the drop
-  keys never throw a totem. It only declines the key; nothing is clicked or
-  sent in its place.
-- **Empty-slot swap warning** (on): with a totem in the offhand, an empty slot
-  under the pointer turns crimson, because the offhand key would move the totem
-  there; violet when Totem protection will block it.
-- **Held slot marker** (on): brackets the hotbar slot in hand inside every
-  inventory.
-- **Key hints** (off): the key of each hotbar slot, and the offhand key, as
-  small keycaps on their slots.
-- **Durability readout** (off): the durability left on damaged items, in
-  percent; crimson at 20% or less.
-- **Inventory totals** (off): item tooltips add how many of that item you carry.
-- **Slot change flash** (on): a slot glints for 0.18 s when its item changes,
-  so swaps, refills and server corrections show. Reduce inventory visual motion
-  turns it off.
+- **Shortcuts follow the pointer** (on), under Super Fast Inventory: number
+  keys, the offhand key and the drop keys act on the slot under the pointer the
+  moment they are pressed, as 1.1.0 made them. It works while its parent is on;
+  turning Super Fast Inventory off returns every inventory input to Vanilla, and
+  the sub-option sleeps, greyed out, with its own value kept.
+- **Pixel-perfect scale** (on), on the GUI Scaler page beside Affect Containers:
+  the scale moves to the nearest whole number of screen pixels per inventory
+  pixel, so every slot has the same size and sharp edges. At GUI scale 3, 180%
+  becomes 200%.
 
-The PvP profile turns on Totem protection, Steady tooltips and Recipe book
-lock; the Vanilla profile turns every new option off. Reset on the Inventory
-Tweaks page now restores every option on the page to its default.
+Interface:
+
+- Every tab, card and warning icon is now a small animated scene made of
+  Minecraft itself: real items, real particle sprites and lines of light on a
+  transparent ground. The Inventory Tweaks tab is a slot with a totem in a rush
+  of speed streaks; Cursor Landing a compass in pulsing brackets; Item
+  Highlighter a glow ink sac in an orbit of glow. Each scene idles gently and
+  wakes up under the pointer. They run on their own clock with their own
+  sprites, so no graphics, particle, glint or motion setting stills them.
+- **Zymekoh mascot** (on): a little cat made from the Zymekoh skin, both of its
+  layers, lives on the free floor of every window, beside the buttons and never
+  over one. It breathes, blinks, slow-blinks when the pointer comes to it, turns
+  to face the pointer, wanders, and reacts to what happens: a smile for a
+  switch turned on, a dash for a speed option, a shrug for one turned off, an
+  alert for a warning. Click it to pet it (four quick pets and it falls in
+  love). Carry it and it dangles and swings behind the pointer; let go of a
+  still pointer and it falls; flick it and it tumbles through the air, bounces
+  off the edges of the window or, thrown hard, splats against one and cries.
+  Scroll a lot and it gets dizzy; leave it alone and it dozes off.
+- Its right-click menu, on the use key's mouse button even when remapped:
+  **Feed**, size, personality, sounds and hide. It eats only Totems of Undying:
+  with one in the inventory preview it pulls it out by magic, a circle of
+  enchanting glyphs under its feet, and eats it with both paws; with none it
+  makes a face and says so. Five totems make it round and heavy on the pointer
+  until it digests them, ten minutes after its last meal or at the next start.
+  An eaten totem only fades in the preview: the real inventory is never
+  touched.
+- **KoHs tab**, a new card under Behavior: Zymekoh, who makes every KoHs mod,
+  as the KoHs Mod Suite site draws her, the same page as in KoHs Anchor's and
+  Crystal Tweaks, with links to Discord, the site, Modrinth and Buy me a
+  coffee. Carry the
+  mascot up to her face and she gets cross, adorably: an anger mark, red eyes,
+  pink cheeks, a puff of steam and a "Hmph!".
+- The mascot meows, purrs and eats with Minecraft's own sounds, softly; its menu
+  turns them off. Its preferences live in
+  `config/kohs_inventory_tweaks_mascot.json`; what it ate lives only in memory.
+
+The PvP profile keeps Shortcuts follow the pointer on; the Vanilla profile turns
+it off. Reset on the Inventory Tweaks page restores every option on the page to
+its default.
 
 Code:
 
 - New debug-companion labs: `hover-agreement` (also runs against older builds
-  with `-PinventoryTweaksJar`), `features` (61-63 checks, totem protection
-  confirmed against the integrated server) and `overlay-perf`. In the 26.2
-  development client every overlay on costs about 26 µs of render-thread time
-  per frame; the frame rate moved within its own noise.
+  with `-PinventoryTweaksJar`), `features` (63 checks: pixel-perfect sizes at
+  GUI scale 2, 3 and 4, the shortcut target with and without its parent, the
+  page as a tree, the GUI Scaler switch, and the KoHs tab: it opens from its
+  card, draws Zymekoh, and she gets cross with the mascot carried to her face)
+  and `mascot`, which records the mascot
+  through the game's own input handlers: petting, five meals, the heavy drag,
+  a drop, a splat and a bounce. `mascot-body` runs the physics alone.
+- New `trailer` lab: one full-size take of every new feature, piped into an
+  ffmpeg encoder as it runs, with the pointer, the mascot, Zymekoh's face and
+  every sound the game played marked in step for the edit.
 
 ## 1.1.1 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
 

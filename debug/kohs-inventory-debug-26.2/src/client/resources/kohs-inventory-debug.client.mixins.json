@@ -16,10 +16,10 @@
     "KeyboardHandlerTraceMixin",
     "KoHsCursorTraceMixin",
     "KoHsFastInventoryTraceMixin",
-    "KoHsSlotOverlayTimingMixin",
     "MinecraftTraceMixin",
     "MouseHandlerDebugInvoker",
-    "MouseHandlerTraceMixin"
+    "MouseHandlerTraceMixin",
+    "SoundManagerTraceMixin"
   ],
   "injectors": {
     "defaultRequire": 1
