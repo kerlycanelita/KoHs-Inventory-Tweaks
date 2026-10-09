@@ -7,6 +7,7 @@ import dev.zymekoh.kohsinventorytweaks.compat.BlockingCompatibilityController;
 import dev.zymekoh.kohsinventorytweaks.compat.MouseConflictNotificationController;
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
 import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
+import dev.zymekoh.kohsinventorytweaks.inventory.InputFence;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryWarmup;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import dev.zymekoh.kohsinventorytweaks.render.PlayerGlowLayer;
@@ -46,6 +47,7 @@ public final class KoHsInventoryTweaksClient implements ClientModInitializer {
 			MouseConflictNotificationController.onClientTick(minecraft);
 			ConfigMenuKeyBinding.onClientTick(minecraft);
 			InventoryWarmup.onClientTick(minecraft);
+			InputFence.onClientTick();
 		});
 		LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, layers, context) -> {
 			if (renderer instanceof AvatarRenderer<?> avatar) {

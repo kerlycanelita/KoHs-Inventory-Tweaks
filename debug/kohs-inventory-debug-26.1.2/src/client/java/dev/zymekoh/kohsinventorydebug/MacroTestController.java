@@ -58,6 +58,7 @@ public final class MacroTestController {
 		RECORD_ANIMATIONS("record-animations", "kohs_inventory_debug.lab.record", "kohs_inventory_debug.lab.record.desc", false, true),
 		PVP_INPUT("pvp-input", "kohs_inventory_debug.lab.pvp_input", "kohs_inventory_debug.lab.pvp_input.desc", false, true),
 		SLOT_SHORTCUTS("slot-shortcuts", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
+		INVENTORY_ORDER("inventory-order", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		FEATURES("features", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
 		HOVER_AGREEMENT("hover-agreement", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		MASCOT("mascot", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
@@ -196,7 +197,7 @@ public final class MacroTestController {
 						minecraft.getWindow().getY() + (int) Math.round(originalPointer[1])
 					);
 				}
-				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && kind != MacroKind.UI_MEDIA && kind != MacroKind.UI_REVIEW && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT && kind != MacroKind.SLOT_SHORTCUTS) {
+				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && kind != MacroKind.UI_MEDIA && kind != MacroKind.UI_REVIEW && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT && kind != MacroKind.SLOT_SHORTCUTS && kind != MacroKind.INVENTORY_ORDER) {
 					DebugCollector.info("MACRO_SUMMARY", metrics.summary());
 				}
 				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id + "; screen=" + screenName(screenSnapshot(minecraft))
@@ -314,6 +315,7 @@ public final class MacroTestController {
 			case RECORD_ANIMATIONS -> RecordingLab.run(minecraft, "animations");
 			case PVP_INPUT -> PvpInputRegressionLab.run(minecraft);
 			case SLOT_SHORTCUTS -> SlotShortcutLab.run(minecraft);
+			case INVENTORY_ORDER -> InventoryOrderLab.run(minecraft);
 			case FEATURES -> FeatureLab.run(minecraft);
 			case HOVER_AGREEMENT -> HoverAgreementLab.run(minecraft);
 			case MASCOT -> MascotLab.run(minecraft);

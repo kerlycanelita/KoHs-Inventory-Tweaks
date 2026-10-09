@@ -96,7 +96,7 @@ tasks.named('sourcesJar').configure {
 tasks.named('runClient').configure {
 	if (project.hasProperty('debugMacro')) {
 		jvmArgs "-Dkohs.inventory.debug.autorun=${project.property('debugMacro')}"
-		if (project.property('debugMacro') in ['cursor-contract', 'cursor-weight', 'pvp-input', 'slot-shortcuts', 'features', 'hover-agreement', 'mascot', 'mascot-body', 'ui-showcase', 'ui-media', 'ui-review', 'record-all', 'record-fast', 'record-center', 'record-animations']) {
+		if (project.property('debugMacro') in ['cursor-contract', 'cursor-weight', 'pvp-input', 'slot-shortcuts', 'inventory-order', 'features', 'hover-agreement', 'mascot', 'mascot-body', 'ui-showcase', 'ui-media', 'ui-review', 'record-all', 'record-fast', 'record-center', 'record-animations']) {
 			args '--width', '1440', '--height', '1000'
 		} else if (project.property('debugMacro') == 'trailer') {
 			args '--width', '1920', '--height', '1080'

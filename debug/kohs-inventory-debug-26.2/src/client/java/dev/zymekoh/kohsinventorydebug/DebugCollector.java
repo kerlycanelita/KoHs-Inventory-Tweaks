@@ -702,6 +702,7 @@ public final class DebugCollector {
 	}
 
 	public static void onPacketSent(final Packet<?> packet) {
+		InventoryOrderLab.onPacket(packet);
 		if (packet instanceof ServerboundContainerClosePacket) {
 			info("PACKET_OUT_CLOSE", "screen=" + screen(Minecraft.getInstance().gui.screen())
 				+ "; sinceCloseInput=" + (pendingCloseScreen == null ? -1 : micros(System.nanoTime() - pendingCloseNanos)) + "us");

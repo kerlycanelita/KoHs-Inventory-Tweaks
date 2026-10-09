@@ -5,6 +5,7 @@ import net.minecraft.client.input.MouseButtonInfo;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
+import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(MouseHandler.class)
 public interface MouseHandlerAccessor {
@@ -32,4 +33,11 @@ public interface MouseHandlerAccessor {
 	 */
 	@Accessor("activeButton")
 	@Nullable MouseButtonInfo kohsInventoryTweaks$getActiveButton();
+
+	/** Minecraft's own mouse entry points, for handing over input the fence kept. */
+	@Invoker("onButton")
+	void kohsInventoryTweaks$onButton(long window, MouseButtonInfo button, int action);
+
+	@Invoker("onScroll")
+	void kohsInventoryTweaks$onScroll(long window, double horizontal, double vertical);
 }

@@ -32,7 +32,7 @@ The mod keeps normal Minecraft inventory rules. It does not require installation
 
 - **Cursor Landing** — choose where the cursor appears in your inventory, single or double chests, Ender Chests, and barrels. Every container can be individually disabled to keep its Vanilla behavior.
 - **Center Mouse Fix** — places the cursor in a single move right as Minecraft releases the mouse, before your inventory exists. A hand already moving toward a totem or any item is never pulled back.
-- **Super Fast Inventory** — opens the local inventory up to one tick (50 ms) sooner, and waits only when Vanilla would still run something first, such as a pending attack or an item in use.
+- **Super Fast Inventory** — shows the local inventory up to one tick (50 ms) sooner, and waits only when Vanilla would still run something first, such as a pending attack or an item in use. Only the screen is early: what you do in it is handled once that tick has run, in the order a Vanilla client sends.
 - **Shortcuts follow the pointer** — under Super Fast Inventory: F, 1-9, Q and Ctrl+Q act on the slot under your pointer the moment you press them, even right after a fast flick, in your inventory and every Vanilla container.
 - **Customization** — recolor inventory and slot frames, control opacity and world backdrop darkness, or use a cropped image, GIF, or short video background.
 - **Resource-pack aware** — choose the active resource-pack inventory texture or the Vanilla base, then apply KoHs customization above it.

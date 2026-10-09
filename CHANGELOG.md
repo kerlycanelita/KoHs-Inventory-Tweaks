@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.2.1 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
+
+Update if you play on servers with Super Fast Inventory on; on an older version,
+turn it off there.
+
+- Super Fast Inventory no longer lets anything done in an inventory it opened
+  early reach the server before the tick that inventory would have opened in.
+  Vanilla opens the inventory inside a client tick, and that tick tells the
+  server the keys were released and the sprint ended before any click can
+  follow. Up to 1.2.0 a shortcut or a click made right after the early opening
+  was sent at once, ahead of those packets: a container click from a player the
+  server still saw sprinting, an order no Vanilla client can send and one that
+  inventory checks look for. The new `inventory-order` lab judges the packets
+  with the inventory rules of an open-source anti-cheat: on 1.2.0 it flagged 23
+  of 48 fast re-totems, 8 of 8 with the offhand key in the same frame as the
+  opening and none 42 ms later, and none of 20 Vanilla ones; on 1.2.1 it flags
+  none on any of the five versions, and every totem still reaches the offhand.
+- Now only the screen is early. Keys, clicks, the wheel and typed characters
+  made in it are kept until its tick has run. The first is handled at the first
+  input poll after that tick, the earliest moment a Vanilla client could act
+  there, and each one after it as far behind it as it was made; whatever comes
+  within a tick of something handled late is kept the same way, so two actions
+  never reach the server closer together than the hand made them. Each acts on
+  the slot that was under the pointer when it was made. Once one of them closes
+  the inventory, the rest goes to the world at once. They go through
+  Minecraft's own handlers: nothing is generated, repeated, reordered or handled
+  sooner than it was made.
+- The wiki, the README and the porting specification said a server could not
+  tell an early opening apart. They now describe the order a server sees.
+
 ## 1.2.0 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
 
 Fixes:

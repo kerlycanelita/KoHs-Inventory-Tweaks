@@ -60,8 +60,8 @@ The mod does not need to be installed on the server.
 
 - **Cursor Landing:** stores independent normalized coordinates for the player inventory, single chest, double chest, Shulker Box, Ender Chest, and barrel. Individual container types can fall back to vanilla cursor behavior.
 - **Center Mouse Fix:** places the pointer at the real centre in the same move that releases it, even after the window changed size while the mouse was captured. Nothing rewrites the pointer once the inventory is open, so reaching for a totem is never pulled back.
-- **Super Fast Inventory:** optionally constructs the ordinary local inventory screen directly from the physical keyboard or remapped mouse press, up to one client tick (50 ms) sooner. It waits for the tick only when Vanilla would still run something first: a hotbar key, a pending attack or use, an item in use, or a block being broken. A held mouse button never holds it back, and holding the inventory key toggles it only once. Server-controlled openings, slot actions, packet types, cooldowns, and validation stay on Vanilla paths.
-- **Slot shortcuts:** with Super Fast Inventory, F, 1-9, Q, Ctrl+Q, clicks and the wheel act on the slot under the pointer the moment they are pressed, even right after a fast flick, in the player inventory and in every Vanilla container. Its sub-option returns them to the last-frame target Vanilla uses.
+- **Super Fast Inventory:** optionally constructs the ordinary local inventory screen directly from the physical keyboard or remapped mouse press, up to one client tick (50 ms) sooner. It waits for the tick only when Vanilla would still run something first: a hotbar key, a pending attack or use, an item in use, or a block being broken. A held mouse button never holds it back, and holding the inventory key toggles it only once. Only the screen is early: keys, clicks and the wheel made in it before its tick has run are kept until that tick has run and then handled in the same order and rhythm, so a server receives the packet order a Vanilla client sends and never a container click from a player it still sees sprinting. Server-controlled openings, slot actions, packet types, cooldowns, and validation stay on Vanilla paths.
+- **Slot shortcuts:** with Super Fast Inventory, F, 1-9, Q, Ctrl+Q, clicks and the wheel act on the slot that was under the pointer when they were pressed, even right after a fast flick, in the player inventory and in every Vanilla container. Its sub-option returns them to the last-frame target Vanilla uses.
 - **Reduce inventory visual motion:** stills recipe-button bounce, item return motion, the enchanting book and animated backgrounds, while progress indicators and enchanted-item glint stay Vanilla's.
 - **Customization:** composes player-inventory and compatible-container textures at runtime using RGB palettes, opacity controls, static or animated backgrounds, and resource-pack-aware sources.
 - **GUI Scaler:** scales the player inventory—including slots, items, text, and the player model—from 65% to 315%, starting at 200% on a fresh installation and using adaptive limits based on available space. The default-enabled Affect Containers switch applies that scale to supported chest, Shulker Box, barrel, and Ender Chest screens. Pixel-perfect scale, on by default, keeps every size on whole screen pixels so slots stay even and the highlighted slot is always the one a click takes.
@@ -106,7 +106,7 @@ This checks every source tree against the exact Minecraft jar it compiles agains
 
 This reports any translation key the client asks for that is missing from a language file, and any key present in English but absent from a translation.
 
-    python tools/verify-release-artifacts.py --release 1.2.0
+    python tools/verify-release-artifacts.py --release 1.2.1
 
 After building all five targets, this checks each release JAR's metadata, mixin classes, Java target and bundled translations, and prints its size and hashes.
 

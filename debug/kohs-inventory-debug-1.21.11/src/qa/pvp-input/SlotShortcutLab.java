@@ -262,20 +262,30 @@ public final class SlotShortcutLab {
 
 		if (ConfigStore.get().superFastInventory) {
 			fixture(mc);
+			ItemStack[] totem = new ItemStack[1];
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				if (mc.screen != null) mc.screen.onClose();
 				KeyMapping.releaseAll();
 				mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, book);
-				ItemStack totem = mc.player.getInventory().getItem(TOTEM_SLOT).copy();
+				totem[0] = mc.player.getInventory().getItem(TOTEM_SLOT).copy();
 				tap(mc, binding(mc.options.keyInventory), 0);
 				SuperFastInventoryController.afterInputPoll(mc);
 				check(mc.screen instanceof InventoryScreen, setup + " fast opening before the first frame");
 				if (mc.screen instanceof InventoryScreen screen) {
 					flick(mc, screen, TOTEM_SLOT);
 					tap(mc, binding(mc.options.keySwapOffhand), 0);
-					check(ItemStack.matches(mc.player.getOffhandItem(), totem), setup + " open, flick and F before the first frame");
+					// The server has not been told the keys were released yet: nothing may be sent.
+					check(mc.player.getOffhandItem().isEmpty(), setup + " open, flick and F before the first frame is kept for the opening tick");
 				}
 			});
+			// It lands once the opening tick has run, on the slot that was under the pointer then.
+			boolean[] swapped = {false};
+			long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(600);
+			while (!swapped[0] && System.nanoTime() < deadline) {
+				mc.executeBlocking(() -> swapped[0] = ItemStack.matches(mc.player.getOffhandItem(), totem[0]));
+				if (!swapped[0]) Thread.sleep(5);
+			}
+			check(swapped[0], setup + " open, flick and F: the totem reaches the offhand after the opening tick");
 			verifyServer(mc, setup + " open and act");
 		}
 		CloseHotbarRegressionLab.atPoll(mc, () -> {
@@ -415,6 +425,11 @@ public final class SlotShortcutLab {
 	private static void fixture(final Minecraft mc) throws Exception {
 		var server = mc.getSingleplayerServer();
 		var playerId = mc.player.getUUID();
+		// The slots checked below can already look right before the server's answer is in.
+		// A step that started then had its clicks overwritten by that answer, and the server
+		// applied them on top of the next fixture: wait for the answer itself.
+		int[] stateBefore = new int[1];
+		mc.executeBlocking(() -> stateBefore[0] = mc.player.inventoryMenu.getStateId());
 		server.submit(() -> {
 			var player = server.getPlayerList().getPlayer(playerId);
 			// Stacks the drop checks threw are picked up again once their delay ends; one
@@ -433,7 +448,8 @@ public final class SlotShortcutLab {
 		while (!synced[0] && System.nanoTime() < deadline) {
 			mc.executeBlocking(() -> {
 				var inventory = mc.player.getInventory();
-				synced[0] = inventory.getItem(0).is(ITEMS[0]) && inventory.getItem(35).is(ITEMS[32])
+				synced[0] = mc.player.inventoryMenu.getStateId() != stateBefore[0]
+					&& inventory.getItem(0).is(ITEMS[0]) && inventory.getItem(35).is(ITEMS[32])
 					&& inventory.getItem(TOTEM_SLOT).is(Items.TOTEM_OF_UNDYING) && inventory.getItem(40).isEmpty()
 					&& inventory.getItem(8).isEmpty();
 			});

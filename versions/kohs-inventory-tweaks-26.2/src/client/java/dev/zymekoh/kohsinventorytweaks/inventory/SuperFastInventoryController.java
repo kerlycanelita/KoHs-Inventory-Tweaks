@@ -191,6 +191,9 @@ public final class SuperFastInventoryController {
 		long now = System.nanoTime();
 		long batchSpanNanos = previousPollNanos == 0L ? Long.MAX_VALUE : now - previousPollNanos;
 		previousPollNanos = now;
+		// What was done in an inventory opened ahead of its tick is handed over here, where
+		// Vanilla handles input, once that tick has run.
+		InputFence.afterInputPoll(minecraft);
 		if (!BATCH.observed) {
 			return;
 		}
@@ -299,6 +302,9 @@ public final class SuperFastInventoryController {
 		// A tick-time opening goes on to call continueAttack(false) in the same pass, and
 		// with no block being broken its only effect is clearing the miss penalty.
 		((MinecraftAccessor) minecraft).kohsInventoryTweaks$setMissTime(0);
+		// The server learns that the keys were released in the coming tick; until then
+		// nothing done in this screen may reach it.
+		InputFence.raise(minecraft);
 	}
 
 	/**

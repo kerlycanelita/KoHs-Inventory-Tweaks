@@ -101,7 +101,9 @@ Sigue esperando al tick cuando abrir antes cambiaría lo que hace Vanilla:
 
 Un cambio a la mano secundaria, soltar o elegir bloque pendientes no la hacen esperar: Vanilla los descarta por sí mismo cuando el inventario se abre en ese tick. La línea bajo la opción indica el motivo cada vez que una apertura esperó.
 
-Los inventarios controlados por el servidor conservan su ruta Vanilla. Los tipos, contenido y orden de paquetes, la validación de slots y los manejadores siguen siendo Vanilla; el servidor solo puede observar el tiempo anterior de un clic hecho después de que aparezca la pantalla.
+Solo la pantalla se adelanta. Vanilla abre el inventario dentro de un tick, y ese tick le dice al servidor que soltaste las teclas y dejaste de esprintar antes de que pueda llegar ningún clic. Por eso lo que haces en un inventario abierto antes de tiempo no se envía antes de tiempo: las teclas, los clics y la rueda hechos antes de que su tick haya corrido se guardan hasta que ese tick ha corrido y entonces se atienden en el mismo orden y con el mismo ritmo, sobre el slot que estaba bajo el cursor cuando los hiciste. El servidor recibe el orden de paquetes que envía un cliente Vanilla, y nunca un clic de contenedor de un jugador al que todavía ve esprintando o con una tecla de movimiento pulsada, que es lo que buscan las comprobaciones de inventario de los anti-cheat. Las versiones hasta la 1.2.0 enviaban esos clics al instante; actualiza a la 1.2.1 o posterior.
+
+Los inventarios controlados por el servidor conservan su ruta Vanilla. Los tipos y el contenido de los paquetes, la validación de slots y los manejadores siguen siendo Vanilla.
 
 Dos comportamientos que antes eran opciones aparte están siempre activos: la apertura anticipada con un botón del mouse presionado y un cambio por pulsación, así mantener la tecla del inventario nunca lo abre y cierra una y otra vez. La búsqueda de recetas escribe con normalidad.
 

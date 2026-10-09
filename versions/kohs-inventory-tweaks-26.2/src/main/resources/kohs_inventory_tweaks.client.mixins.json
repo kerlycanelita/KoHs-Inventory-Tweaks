@@ -20,6 +20,7 @@
     "InventorySlotInputMixin",
     "KeyMappingAccessor",
     "MinecraftAccessor",
+    "KeyboardHandlerInvoker",
     "KeyboardHandlerMixin",
     "LivingEntityRendererMixin",
     "GuiScreenMixin",

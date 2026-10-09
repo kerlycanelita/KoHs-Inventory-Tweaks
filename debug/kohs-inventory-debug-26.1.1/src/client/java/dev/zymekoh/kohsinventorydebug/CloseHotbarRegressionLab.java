@@ -75,6 +75,15 @@ public final class CloseHotbarRegressionLab {
 		return ((Number) owner.getMethod(method).invoke(object)).doubleValue();
 	}
 
+	/** Whether the mod still keeps input back after an early opening; false on builds without the fence. */
+	static boolean fenceUp() {
+		try {
+			return (boolean) Class.forName("dev.zymekoh.kohsinventorytweaks.inventory.InputFence").getMethod("isUp").invoke(null);
+		} catch (Exception error) {
+			return false;
+		}
+	}
+
 	/** The reason the fast path recorded for its last decision, or "" if unavailable. */
 	private static String decisionReason() {
 		try {
@@ -123,6 +132,9 @@ public final class CloseHotbarRegressionLab {
 					tap(mc, inventoryKey, 0);
 				});
 				await(mc, () -> mc.screen instanceof InventoryScreen, "inventory open");
+				// This lab orders keys inside an inventory that is already open; what the mod does
+				// with input made before the opening tick is the inventory-order lab's subject.
+				await(mc, () -> !fenceUp(), "opening tick");
 				atPoll(mc, () -> {
 					try {
 						var screen = (InventoryScreen) mc.screen;
@@ -192,15 +204,17 @@ public final class CloseHotbarRegressionLab {
 				AtomicReference<Boolean> open = new AtomicReference<>(false);
 				mc.executeBlocking(() -> open.set(mc.screen instanceof InventoryScreen));
 				boolean settled = reason.contains("open-and-close");
+				// Two presses closer together than a hand can tap are one press bouncing: they open.
+				boolean bounced = reason.contains("collapsed-contact-bounce");
 				boolean yielded = reason.contains("physical-conflict");
-				if (clean && settled && !open.get()) settledCases++;
+				if (clean && (settled && !open.get() || bounced && open.get())) settledCases++;
 				if (!clean && yielded && open.get()) yieldedCases++;
 				DebugCollector.info("CLOSE_DOUBLE_CASE", "cycle=" + cycle + "; batch=" + (clean ? "two-presses-only" : "two-presses-plus-other")
 					+ "; open=" + open.get() + "; reason=" + reason);
 				if (open.get()) atPoll(mc, () -> tap(mc, inventoryKey, 0));
 				await(mc, () -> mc.screen == null, "double-press recovery");
 			}
-			DebugCollector.info("CLOSE_DOUBLE_SUMMARY", "clean=" + settledCases + "/4 settled-and-closed; mixed="
+			DebugCollector.info("CLOSE_DOUBLE_SUMMARY", "clean=" + settledCases + "/4 settled-closed-or-bounce-open; mixed="
 				+ yieldedCases + "/4 yielded-and-open");
 			if (settledCases != 4 || yieldedCases != 4) throw new IllegalStateException("Double-press contract");
 		} catch (Exception error) { throw new RuntimeException(error); }

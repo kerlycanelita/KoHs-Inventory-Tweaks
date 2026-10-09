@@ -101,7 +101,9 @@ It still waits for the tick when opening early would change what Vanilla does:
 
 A pending offhand swap, drop or pick-block click does not make it wait: Vanilla discards those itself when the inventory opens in that tick. The line under the option names the reason whenever an opening waited.
 
-Server-controlled openings stay on Vanilla's tick and packet path. Packet types, payloads, ordering, slot validation and action handlers are Vanilla's; a server can only observe the earlier timing of a click made after the screen appears.
+Only the screen is early. Vanilla opens the inventory inside a tick, and that tick tells the server you released your keys and stopped sprinting before any click can follow. So what you do in an inventory that opened early is not sent early: keys, clicks and the wheel made before its tick has run are kept until that tick has run and then handled in the same order and with the same rhythm, on the slot that was under the pointer when you made them. The server receives the packet order a Vanilla client sends, and never a container click from a player it still sees sprinting or holding a movement key, which is what inventory anti-cheat checks look for. Versions up to 1.2.0 sent those clicks at once; update to 1.2.1 or later.
+
+Server-controlled openings stay on Vanilla's tick and packet path. Packet types, payloads, slot validation and action handlers are Vanilla's.
 
 Two behaviors that used to be separate options are always on: early opening while a mouse button is held, and one toggle per key press, so holding the inventory key never opens and closes the screen repeatedly. Recipe search keeps normal typing.
 

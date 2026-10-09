@@ -1,6 +1,7 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import dev.zymekoh.kohsinventorytweaks.cursor.CursorLandingController;
+import dev.zymekoh.kohsinventorytweaks.inventory.InputFence;
 import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
@@ -67,6 +68,25 @@ public abstract class MouseHandlerMixin {
 	)
 	private void kohsInventoryTweaks$checkRestoredPointer(final CallbackInfo callbackInfo) {
 		CursorLandingController.afterMouseRelease(this.minecraft, this.xpos, this.ypos);
+	}
+
+	// An inventory opened ahead of its tick: what is done in it waits for that tick.
+	@Inject(method = "onButton", at = @At("HEAD"), cancellable = true)
+	private void kohsInventoryTweaks$keepEarlyButton(
+		final long windowHandle, final MouseButtonInfo buttonInfo, final int action, final CallbackInfo callbackInfo
+	) {
+		if (InputFence.holdButton(this.minecraft, windowHandle, buttonInfo, action)) {
+			callbackInfo.cancel();
+		}
+	}
+
+	@Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
+	private void kohsInventoryTweaks$keepEarlyScroll(
+		final long windowHandle, final double horizontal, final double vertical, final CallbackInfo callbackInfo
+	) {
+		if (InputFence.holdScroll(this.minecraft, windowHandle, horizontal, vertical)) {
+			callbackInfo.cancel();
+		}
 	}
 
 	@Inject(method = "onButton", at = @At("TAIL"))
