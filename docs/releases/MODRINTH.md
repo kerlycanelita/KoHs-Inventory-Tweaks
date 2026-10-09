@@ -7,9 +7,6 @@
 
 ![KoHs Inventory Tweaks main configuration menu](https://raw.githubusercontent.com/kerlycanelita/KoHs-Inventory-Tweaks/v1.2.0/docs/media/main-menu.png)
 
-<p align="center">
-  <a href="https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/releases/download/v1.2.0/KoHs-Inventory-Tweaks-1.2.0-trailer.mp4"><img alt="Watch the 1.2.0 trailer" src="https://img.shields.io/badge/%E2%96%B6-Watch_the_1.2.0_trailer-a855f7?style=for-the-badge"></a>
-</p>
 
 > **Support update (September 2026):** KoHs Inventory Tweaks now supports **Minecraft 1.21.11 and later**. The 1.21.10 builds stay downloadable as archived versions but no longer receive fixes or new features.
 

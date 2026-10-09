@@ -40,7 +40,7 @@ Since 26 September 2026, KoHs Inventory Tweaks supports **Minecraft 1.21.11 and 
 
 ### Older versions
 
-Modrinth only offers the latest version. Earlier releases stay on the [GitHub Releases](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/releases) page as archived references: they get no fixes, and each one lists the known problems that 1.1.0 fixes. The 1.0.3 and 1.0.4 releases include Minecraft 1.21.10 files.
+Modrinth only offers the latest version. Earlier releases stay on the [GitHub Releases](https://github.com/kerlycanelita/KoHs-Inventory-Tweaks/releases) page as archived references: they get no fixes, and each one lists the known problems fixed since. The 1.0.3 and 1.0.4 releases include Minecraft 1.21.10 files.
 
 ## Compatibility
 
