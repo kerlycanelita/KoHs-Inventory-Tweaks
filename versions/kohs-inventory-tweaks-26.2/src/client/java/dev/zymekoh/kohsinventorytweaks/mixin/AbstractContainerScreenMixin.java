@@ -1,5 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
+import dev.zymekoh.kohsinventorytweaks.inventory.SteadyInventory;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -66,6 +67,12 @@ public abstract class AbstractContainerScreenMixin {
 		final CallbackInfo callbackInfo
 	) {
 		ItemHighlighterController.updateDynamicHover((AbstractContainerScreen<?>) (Object) this);
+	}
+
+	// Before Vanilla tidies the menu up, as if the answers had gone on screen when they arrived.
+	@Inject(method = "removed", at = @At("HEAD"))
+	private void kohsInventoryTweaks$settleSteadyInventory(final CallbackInfo callbackInfo) {
+		SteadyInventory.onScreenRemoved((AbstractContainerScreen<?>) (Object) this);
 	}
 
 	@Inject(method = "removed", at = @At("RETURN"))

@@ -1,5 +1,8 @@
 package dev.zymekoh.kohsinventorytweaks.cursor;
 
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
+import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.mixin.MouseHandlerAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -69,10 +72,23 @@ public final class CursorLandingController {
 	 * release stays Vanilla's.</p>
 	 */
 	public static void beforeMouseRelease(final Minecraft minecraft) {
-		if (!placesThisRelease(minecraft) || GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_WAYLAND) {
+		if (!placesThisRelease(minecraft) && !centersThisRelease(minecraft)
+			|| GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_WAYLAND) {
 			return;
 		}
 		GLFW.glfwSetInputMode(minecraft.getWindow().handle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
+	}
+
+	/**
+	 * Center Mouse Fix for every other screen the mouse is released for: chests, furnaces,
+	 * anvils, villagers and the rest. GLFW's restore misplaces the pointer there exactly as it
+	 * does for the inventory, so the same single move fixes it; nothing is placed or corrected
+	 * afterwards, and a screen that replaces another keeps the pointer where it was.
+	 */
+	private static boolean centersThisRelease(final Minecraft minecraft) {
+		return minecraft != null && minecraft.gui.screen() != null && canPositionCursor(minecraft)
+			&& ConfigStore.get().centerMouseFix
+			&& CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
 	}
 
 	/** Runs inside {@code releaseMouse}, after Vanilla placed the pointer; records where. */

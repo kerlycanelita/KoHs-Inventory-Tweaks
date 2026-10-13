@@ -15,6 +15,9 @@ enum InventoryTweakOption {
 	FAST("screen.kohs_inventory_tweaks.super_fast_inventory"),
 	POINTER("screen.kohs_inventory_tweaks.shortcuts_follow_pointer"),
 	CENTER("screen.kohs_inventory_tweaks.center_mouse_fix"),
+	LEAVE("screen.kohs_inventory_tweaks.leave_with_movement"),
+	STEADY("screen.kohs_inventory_tweaks.steady_inventory"),
+	SHINE("screen.kohs_inventory_tweaks.fast_enchanted_items"),
 	ANIMATIONS("screen.kohs_inventory_tweaks.remove_animations"),
 	MASCOT("screen.kohs_inventory_tweaks.mascot");
 
@@ -34,6 +37,9 @@ enum InventoryTweakOption {
 			case FAST -> config.superFastInventory;
 			case POINTER -> config.shortcutsFollowPointer;
 			case CENTER -> config.centerMouseFix;
+			case LEAVE -> config.leaveWithMovementKeys;
+			case STEADY -> config.steadyInventory;
+			case SHINE -> config.fastEnchantedItems;
 			case ANIMATIONS -> config.reduceInventoryMotion;
 			// The mascot keeps its own file: it is never part of a profile or a working copy.
 			case MASCOT -> ZMascot.prefs().enabled;
@@ -51,6 +57,9 @@ enum InventoryTweakOption {
 			case FAST -> config.superFastInventory = enabled;
 			case POINTER -> config.shortcutsFollowPointer = enabled;
 			case CENTER -> config.centerMouseFix = enabled;
+			case LEAVE -> config.leaveWithMovementKeys = enabled;
+			case STEADY -> config.steadyInventory = enabled;
+			case SHINE -> config.fastEnchantedItems = enabled;
 			case ANIMATIONS -> config.reduceInventoryMotion = enabled;
 			default -> {
 			}

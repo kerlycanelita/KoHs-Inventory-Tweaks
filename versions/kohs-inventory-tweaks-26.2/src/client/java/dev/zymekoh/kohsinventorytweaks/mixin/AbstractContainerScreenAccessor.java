@@ -1,6 +1,7 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,4 +33,7 @@ public interface AbstractContainerScreenAccessor {
 
 	@Invoker("onStopHovering")
 	void kohsInventoryTweaks$stopHovering(Slot slot);
+
+	@Invoker("slotClicked")
+	void kohsInventoryTweaks$slotClicked(@Nullable Slot slot, int slotId, int button, ContainerInput input);
 }

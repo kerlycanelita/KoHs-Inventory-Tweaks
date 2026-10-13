@@ -42,6 +42,12 @@ public final class InventoryTweaksConfig {
 	@SerializedName(value = "reduceInventoryMotion", alternate = {"removeAllInventoryAnimations"})
 	public boolean reduceInventoryMotion;
 	public boolean shortcutsFollowPointer = true;
+	/** Enchanted and animated items in menus and the hotbar are redrawn sixty times a second, not every frame. */
+	public boolean fastEnchantedItems = true;
+	/** A movement key pressed in a container screen closes it and starts the move. */
+	public boolean leaveWithMovementKeys;
+	/** Whole-inventory answers to clicks still in flight are kept back until those clicks are answered. */
+	public boolean steadyInventory = true;
 	public boolean pixelPerfectScale = true;
 	public ProfilePreset activeProfile = ProfilePreset.CUSTOM;
 	public boolean autoProfileSwitch;
@@ -113,6 +119,9 @@ public final class InventoryTweaksConfig {
 		copy.superFastInventory = this.superFastInventory;
 		copy.reduceInventoryMotion = this.reduceInventoryMotion;
 		copy.shortcutsFollowPointer = this.shortcutsFollowPointer;
+		copy.fastEnchantedItems = this.fastEnchantedItems;
+		copy.leaveWithMovementKeys = this.leaveWithMovementKeys;
+		copy.steadyInventory = this.steadyInventory;
 		copy.pixelPerfectScale = this.pixelPerfectScale;
 		copy.activeProfile = this.activeProfile;
 		copy.autoProfileSwitch = this.autoProfileSwitch;
@@ -368,6 +377,9 @@ public final class InventoryTweaksConfig {
 			&& this.superFastInventory == other.superFastInventory
 			&& this.reduceInventoryMotion == other.reduceInventoryMotion
 			&& this.shortcutsFollowPointer == other.shortcutsFollowPointer
+			&& this.fastEnchantedItems == other.fastEnchantedItems
+			&& this.leaveWithMovementKeys == other.leaveWithMovementKeys
+			&& this.steadyInventory == other.steadyInventory
 			&& this.pixelPerfectScale == other.pixelPerfectScale
 			&& this.activeProfile == other.activeProfile
 			&& this.autoProfileSwitch == other.autoProfileSwitch

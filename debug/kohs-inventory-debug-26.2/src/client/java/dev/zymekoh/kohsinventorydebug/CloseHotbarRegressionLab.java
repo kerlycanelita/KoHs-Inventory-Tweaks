@@ -30,7 +30,8 @@ public final class CloseHotbarRegressionLab {
 		CompletableFuture<Void> done = new CompletableFuture<>();
 		Runnable task = () -> {
 			try {
-				if (!MacroTestController.isSafeLocalWorld(mc) || !mc.isWindowActive()) {
+				// Singleplayer, or the ping lab's Grim server on this machine; nowhere else.
+				if (!MacroTestController.isSafeLocalWorld(mc) && !InventoryPingLab.allowed(mc) || !mc.isWindowActive()) {
 					throw new IllegalStateException("Local/focus guard failed");
 				}
 				action.run();

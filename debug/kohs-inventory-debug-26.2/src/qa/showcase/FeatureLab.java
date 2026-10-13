@@ -196,7 +196,7 @@ public final class FeatureLab {
 		Thread.sleep(500);
 		parkPointer(mc);
 		List<?> options = (List<?>) field(mc.gui.screen(), "visibleTweaks");
-		check(options.toString().equals("[FAST, POINTER, CENTER, ANIMATIONS, MASCOT]"), "the page is the three options, the sub-option and the mascot; " + options);
+		check(options.toString().equals("[FAST, POINTER, CENTER, LEAVE, STEADY, SHINE, ANIMATIONS, MASCOT]"), "the page is the six options, the sub-option and the mascot; " + options);
 		List<?> switches = (List<?>) field(mc.gui.screen(), "tweakScrollingWidgets");
 		check(switches.size() == options.size(), "every option has its switch; switches=" + switches.size());
 		check(((AbstractWidget) switches.get(1)).active, "the sub-option works with Super Fast Inventory on");

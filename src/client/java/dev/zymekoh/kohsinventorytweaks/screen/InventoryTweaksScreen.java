@@ -761,7 +761,9 @@ public final class InventoryTweaksScreen extends Screen {
 							boolean on = option.enabled(this.working);
 							ZMascot.react(!on ? ZMascot.Mood.MEH
 								: option == InventoryTweakOption.FAST || option == InventoryTweakOption.CENTER
-								|| option == InventoryTweakOption.POINTER ? ZMascot.Mood.ZOOM : ZMascot.Mood.HAPPY);
+								|| option == InventoryTweakOption.POINTER || option == InventoryTweakOption.LEAVE
+								|| option == InventoryTweakOption.STEADY || option == InventoryTweakOption.SHINE
+								? ZMascot.Mood.ZOOM : ZMascot.Mood.HAPPY);
 						}
 						// Keep focus and positions stable when a switch is pressed.
 						this.updateTweakButtonStates();
@@ -1652,6 +1654,9 @@ public final class InventoryTweaksScreen extends Screen {
 			case FAST -> ZScene.FAST;
 			case POINTER -> ZScene.POINTER;
 			case CENTER -> ZScene.CENTER;
+			case LEAVE -> ZScene.LEAVE;
+			case STEADY -> ZScene.STEADY;
+			case SHINE -> ZScene.SHINE;
 			case ANIMATIONS -> ZScene.MOTION;
 			case MASCOT -> ZScene.MASCOT;
 		};

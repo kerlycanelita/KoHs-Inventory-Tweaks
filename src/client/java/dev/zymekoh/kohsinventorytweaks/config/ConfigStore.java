@@ -192,6 +192,9 @@ public final class ConfigStore {
 		sanitized.superFastInventory = candidate.superFastInventory;
 		sanitized.reduceInventoryMotion = candidate.reduceInventoryMotion;
 		sanitized.shortcutsFollowPointer = candidate.shortcutsFollowPointer;
+		sanitized.fastEnchantedItems = candidate.fastEnchantedItems;
+		sanitized.leaveWithMovementKeys = candidate.leaveWithMovementKeys;
+		sanitized.steadyInventory = candidate.steadyInventory;
 		sanitized.pixelPerfectScale = candidate.pixelPerfectScale;
 		// Removed profiles are migrated to their inert compatibility values.
 		sanitized.activeProfile = InventoryTweaksConfig.ProfilePreset.CUSTOM;

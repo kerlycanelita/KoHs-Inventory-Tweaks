@@ -304,13 +304,21 @@ def resolve_imports(source: str) -> dict[str, str]:
     return resolved
 
 
+def resolve_class(name: str, imports: dict[str, str]) -> str:
+    """An imported class, or a class nested in one ("Outer.Inner" is "pkg.Outer$Inner")."""
+    first, _, rest = name.partition(".")
+    if first not in imports:
+        return name
+    return imports[first] + ("$" + rest.replace(".", "$") if rest else "")
+
+
 def mixin_targets(source: str) -> list[str]:
     match = MIXIN_ANNOTATION.search(source)
     if not match:
         return []
     body = match.group("body")
     imports = resolve_imports(source)
-    targets = [imports.get(name, name) for name in CLASS_LITERAL.findall(body)]
+    targets = [resolve_class(name, imports) for name in CLASS_LITERAL.findall(body)]
     targets += TARGETS_LITERAL.findall(body)
     return targets
 

@@ -34,6 +34,10 @@ public interface MouseHandlerAccessor {
 	@Accessor("activeButton")
 	@Nullable MouseButtonInfo kohsInventoryTweaks$getActiveButton();
 
+	/** The button of the last click, which a double click has to repeat; -1 matches none. */
+	@Accessor("lastClickButton")
+	void kohsInventoryTweaks$setLastClickButton(int button);
+
 	/** Minecraft's own mouse entry points, for handing over input the fence kept. */
 	@Invoker("onButton")
 	void kohsInventoryTweaks$onButton(long window, MouseButtonInfo button, int action);
