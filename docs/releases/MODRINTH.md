@@ -16,21 +16,24 @@
 
 The mod keeps normal Minecraft inventory rules. It does not require installation on the server and does not add automated item transfers or custom inventory packets.
 
-## New in 1.2.0
+## New in 1.3.0
 
-- **The slot that lights up is the slot you click.** With the GUI Scaler on, 1.1.1 highlighted one slot while a click, F, 1-9 or Q went to its neighbour at 63 of 560 slot edges. 1.2.0 has none, on all five versions.
-- **Center Mouse Fix in one move** — the pointer is placed once, before your inventory opens, and nothing rewrites it afterwards.
-- **Inventory Tweaks as a tree** — Shortcuts follow the pointer now sits under Super Fast Inventory and rests while its parent is off. Pixel-perfect scale moved to the GUI Scaler page.
-- **Animated icons** made of real Minecraft items and particles, waking up under your pointer.
-- **The Zymekoh mascot** — a little cat made from the Zymekoh skin that lives in every window. Pet it, carry it, throw it, and feed it Totems of Undying from your inventory preview.
-- **KoHs tab** — meet Zymekoh, who makes every KoHs mod, with links to Discord, the KoHs Mod Suite site, Modrinth and Buy me a coffee. Bring the cat to her face and she gets cross.
+- **Minecraft's inventory bugs, fixed** — double clicks that collect again (MC-306262, MC-301852, MC-312333, MC-311852), F and number keys that keep swapping while held, inventory and drop keys on mouse buttons (MC-577), the player in your inventory moving only 20 times a second (MC-265935), and toggles on mouse buttons after a screen (MC-308595). Always on.
+- **Steady inventory** — on servers with ping, your clicks stop flashing back while the server catches up. In our ping lab the double re-totem flickered in up to 11 of 24 tries at 200 ms; with Steady inventory, in none.
+- **Faster enchanted items** — enchanted gear in menus and the hotbar is redrawn 60 times a second instead of on every frame (MC-310555), so it costs far less of your frame rate.
+- **Hide recipe book** — no recipe book button, and no book pushing your inventory aside mid-fight. Off by default.
+- **Leave with movement keys** — a movement key closes a container and you start moving. Off by default.
+- **Center Mouse Fix in every container**, not only in your inventory.
 
 ## Features
 
 - **Cursor Landing** — choose where the cursor appears in your inventory, single or double chests, Ender Chests, and barrels. Every container can be individually disabled to keep its Vanilla behavior.
-- **Center Mouse Fix** — places the cursor in a single move right as Minecraft releases the mouse, before your inventory exists. A hand already moving toward a totem or any item is never pulled back.
+- **Center Mouse Fix** — places the cursor in a single move right as Minecraft releases the mouse, before your inventory or any container exists. A hand already moving toward a totem or any item is never pulled back.
 - **Super Fast Inventory** — shows the local inventory up to one tick (50 ms) sooner, and waits only when Vanilla would still run something first, such as a pending attack or an item in use. Only the screen is early: what you do in it is handled once that tick has run, in the order a Vanilla client sends.
 - **Shortcuts follow the pointer** — under Super Fast Inventory: F, 1-9, Q and Ctrl+Q act on the slot under your pointer the moment you press them, even right after a fast flick, in your inventory and every Vanilla container.
+- **Steady inventory** — with ping, the slots your clicks just changed keep showing those clicks until the server answers them all; everything else shows the server's word at once. Nothing you send changes.
+- **Faster enchanted items** — enchanted and animated items in menus and the hotbar are redrawn 60 times a second, which looks the same and saves frames.
+- **Hide recipe book** and **Leave with movement keys** — optional: no recipe book button, and movement keys that close a container.
 - **Customization** — recolor inventory and slot frames, control opacity and world backdrop darkness, or use a cropped image, GIF, or short video background.
 - **Resource-pack aware** — choose the active resource-pack inventory texture or the Vanilla base, then apply KoHs customization above it.
 - **Item Highlighter** — search Vanilla items and configure slot colors, borders, hotbar highlighting, and dynamic hover highlighting.
