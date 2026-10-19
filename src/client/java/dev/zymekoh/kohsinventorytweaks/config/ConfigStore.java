@@ -195,6 +195,7 @@ public final class ConfigStore {
 		sanitized.fastEnchantedItems = candidate.fastEnchantedItems;
 		sanitized.leaveWithMovementKeys = candidate.leaveWithMovementKeys;
 		sanitized.steadyInventory = candidate.steadyInventory;
+		sanitized.hideRecipeBook = candidate.hideRecipeBook;
 		sanitized.pixelPerfectScale = candidate.pixelPerfectScale;
 		// Removed profiles are migrated to their inert compatibility values.
 		sanitized.activeProfile = InventoryTweaksConfig.ProfilePreset.CUSTOM;

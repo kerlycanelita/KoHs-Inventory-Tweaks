@@ -392,6 +392,8 @@
   "screen.kohs_inventory_tweaks.leave_with_movement.description": "In your inventory or a container, a movement key closes it and starts moving in the same press. The close is sent before the movement, as when you close and then walk. Text boxes keep their keys.",
   "screen.kohs_inventory_tweaks.steady_inventory": "Steady inventory",
   "screen.kohs_inventory_tweaks.steady_inventory.description": "With ping, the server answers each click with the whole inventory, and an answer can arrive after your next click: Vanilla then flashes that slot back for a moment. Steady inventory keeps showing your own clicks until they are all answered, then shows the server's last word. Totem pops, worn armor and pickups still show at once.",
+  "screen.kohs_inventory_tweaks.hide_recipe_book": "Hide recipe book",
+  "screen.kohs_inventory_tweaks.hide_recipe_book.description": "Removes the green recipe book button and keeps the book shut in the inventory, the crafting table and the furnaces, so a stray click can never open it and push the inventory aside mid-fight. Your saved book setting is left as it was.",
   "screen.kohs_inventory_tweaks.fast_enchanted_items": "Faster enchanted items",
   "screen.kohs_inventory_tweaks.fast_enchanted_items.description": "Menus and the hotbar redraw enchanted and animated items 60 times a second instead of on every frame. They look the same, and the frame rate stays higher with enchanted gear on screen.",
   "screen.kohs_inventory_tweaks.pixel_perfect_scale": "Pixel-perfect scale",

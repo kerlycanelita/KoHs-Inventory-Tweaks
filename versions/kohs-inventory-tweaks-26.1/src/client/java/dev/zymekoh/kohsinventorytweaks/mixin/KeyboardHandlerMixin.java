@@ -1,5 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
+import dev.zymekoh.kohsinventorytweaks.inventory.ContainerKeys;
 import dev.zymekoh.kohsinventorytweaks.inventory.InputFence;
 import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
 import net.minecraft.client.KeyboardHandler;
@@ -25,10 +26,15 @@ public abstract class KeyboardHandlerMixin {
 		final long windowHandle, final int action, final KeyEvent event, final CallbackInfo callbackInfo
 	) {
 		// An inventory opened ahead of its tick: what is done in it waits for that tick.
+		// A held swap key in a container: each press swaps once, its repeats do nothing.
 		if (InputFence.holdKey(this.minecraft, windowHandle, action, event)
-			|| SuperFastInventoryController.suppressInventoryKeyRepeat(this.minecraft, windowHandle, action, event)) {
+			|| SuperFastInventoryController.suppressInventoryKeyRepeat(this.minecraft, windowHandle, action, event)
+			|| ContainerKeys.ignoresRepeat(this.minecraft, windowHandle, action, event)) {
 			callbackInfo.cancel();
+			return;
 		}
+		// Leave with movement keys: the screen closes first and the press then moves, as in the world.
+		ContainerKeys.leaveWithMovement(this.minecraft, windowHandle, action, event);
 	}
 
 	@Inject(method = "charTyped", at = @At("HEAD"), cancellable = true)

@@ -458,7 +458,7 @@ public final class PvpInputRegressionLab {
 				mc.screen.mouseScrolled(x, top + 10, 0, -20);
 				check(field(mc.screen, "tweakScroll").equals(field(mc.screen, "tweakMaxScroll")), "wheel reaches bottom");
 				var buttons = (java.util.List<?>) field(mc.screen, "tweakScrollingWidgets");
-				check(buttons.size() == ((java.util.List<?>) field(mc.screen, "visibleTweaks")).size() && buttons.size() == 8,
+				check(buttons.size() == ((java.util.List<?>) field(mc.screen, "visibleTweaks")).size() && buttons.size() == 9,
 					"every option on the page has its switch; switches=" + buttons.size());
 				for (var value : buttons) {
 					var widget = (AbstractWidget) value;
@@ -483,7 +483,7 @@ public final class PvpInputRegressionLab {
 				// Reduce inventory visual motion follows Center Mouse Fix, Leave with movement keys and
 				// Faster enchanted items: at the bottom of the page.
 				mc.screen.mouseScrolled((int) field(mc.screen, "tweakOptionsX") + 10, (int) field(mc.screen, "tweakViewportTop") + 10, 0, -20);
-				clickTweak(mc.screen, 6);
+				clickTweak(mc.screen, 7);
 				check(field(mc.screen, "modal").toString().equals("TWEAK_WARNING"), "visual warning is shown");
 			});
 			screenshot(mc, "pvp-tweaks-visual-warning-gui" + scale);

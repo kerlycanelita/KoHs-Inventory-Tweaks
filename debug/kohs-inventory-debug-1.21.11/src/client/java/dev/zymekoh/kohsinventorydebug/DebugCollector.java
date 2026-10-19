@@ -265,6 +265,11 @@ public final class DebugCollector {
 		return report.toString();
 	}
 
+	/** Frames drawn since the client started, for the labs that count them. */
+	public static long frames() {
+		return frameNumber;
+	}
+
 	public static void onFrameStart() {
 		frameStartedNanos = System.nanoTime();
 		frameNumber++;
@@ -378,6 +383,7 @@ public final class DebugCollector {
 			return;
 		}
 
+		FastOpenValueLab.onScreenApplied(minecraft.screen);
 		lastScreen = screen(minecraft.screen);
 		long setScreenMicros = micros(now - lastSetScreenRequestNanos);
 		info("SCREEN_APPLIED", "screen=" + lastScreen + "; setScreen=" + setScreenMicros + "us" + inputLatencySuffix(now));
@@ -703,6 +709,8 @@ public final class DebugCollector {
 
 	public static void onPacketSent(final Packet<?> packet) {
 		InventoryOrderLab.onPacket(packet);
+		InventoryFeelLab.onPacket(packet);
+		FastOpenValueLab.onPacket(packet);
 		if (packet instanceof ServerboundContainerClosePacket) {
 			info("PACKET_OUT_CLOSE", "screen=" + screen(Minecraft.getInstance().screen)
 				+ "; sinceCloseInput=" + (pendingCloseScreen == null ? -1 : micros(System.nanoTime() - pendingCloseNanos)) + "us");

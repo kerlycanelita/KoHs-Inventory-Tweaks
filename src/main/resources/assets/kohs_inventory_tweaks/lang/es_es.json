@@ -392,6 +392,8 @@
   "screen.kohs_inventory_tweaks.leave_with_movement.description": "En tu inventario o en un contenedor, una tecla de movimiento lo cierra y empiezas a moverte con la misma pulsación. El cierre sale antes que el movimiento, como al cerrar y luego andar. Los cuadros de texto conservan sus teclas.",
   "screen.kohs_inventory_tweaks.steady_inventory": "Inventario estable",
   "screen.kohs_inventory_tweaks.steady_inventory.description": "Con ping, el servidor responde cada clic con el inventario entero, y una respuesta puede llegar después de tu siguiente clic: Vanilla hace parpadear esa ranura un instante hacia atrás. Inventario estable sigue mostrando tus propios clics hasta que todos tienen respuesta y entonces muestra la última palabra del servidor. Los tótems que saltan, la armadura que se gasta y lo que recoges siguen apareciendo al instante.",
+  "screen.kohs_inventory_tweaks.hide_recipe_book": "Ocultar libro de recetas",
+  "screen.kohs_inventory_tweaks.hide_recipe_book.description": "Quita el botón verde del libro de recetas y lo mantiene cerrado en el inventario, la mesa de crafteo y los hornos, para que un clic perdido nunca lo abra y desplace el inventario en pleno combate. Tu ajuste guardado del libro no se toca.",
   "screen.kohs_inventory_tweaks.fast_enchanted_items": "Objetos encantados más rápidos",
   "screen.kohs_inventory_tweaks.fast_enchanted_items.description": "Los menús y la barra rápida redibujan los objetos encantados y animados 60 veces por segundo en vez de en cada fotograma. Se ven igual, y los FPS se mantienen más altos con equipo encantado en pantalla.",
   "screen.kohs_inventory_tweaks.pixel_perfect_scale": "Escala de píxel perfecto",

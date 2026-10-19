@@ -91,6 +91,13 @@ public final class InputFence {
 		return up;
 	}
 
+	/** The fence in one line. Read-only, for KoHs Inventory Debug. */
+	public static String describe() {
+		return "up=" + up + "; held=" + HELD.size() + "; ticksSinceRaised=" + (ticks - raisedAt) + "; delayMs=" + delayNanos / 1_000_000L
+			+ "; settleInMs=" + (settleNanos == 0L ? 0L : (settleNanos - System.nanoTime()) / 1_000_000L)
+			+ "; owner=" + (owner == null ? "none" : owner.getClass().getSimpleName());
+	}
+
 	public static boolean holdKey(final Minecraft minecraft, final long window, final int action, final KeyEvent event) {
 		return hold(minecraft, window, action != GLFW.GLFW_RELEASE, (client, handle) ->
 			((KeyboardHandlerInvoker) client.keyboardHandler).kohsInventoryTweaks$keyPress(handle, action, event));

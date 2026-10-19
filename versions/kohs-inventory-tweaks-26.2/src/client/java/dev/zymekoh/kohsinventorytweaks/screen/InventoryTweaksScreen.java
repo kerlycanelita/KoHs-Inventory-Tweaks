@@ -1656,6 +1656,7 @@ public final class InventoryTweaksScreen extends Screen {
 			case CENTER -> ZScene.CENTER;
 			case LEAVE -> ZScene.LEAVE;
 			case STEADY -> ZScene.STEADY;
+			case BOOK -> ZScene.BOOK;
 			case SHINE -> ZScene.SHINE;
 			case ANIMATIONS -> ZScene.MOTION;
 			case MASCOT -> ZScene.MASCOT;

@@ -83,12 +83,13 @@ public final class FastOpenValueLab {
 				mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, false);
 			});
 			for (boolean fast : new boolean[] {false, true}) {
-				for (int delay : DELAYS) {
+				for (int delay : LabSuite.quick() ? new int[] {0, 20, 60} : DELAYS) {
 					int swapped = 0;
 					int turned = 0;
 					List<Double> screen = new ArrayList<>();
 					List<Double> click = new ArrayList<>();
-					for (int repeat = 0; repeat < REPEATS; repeat++) {
+					int repeats = LabSuite.quick() ? 4 : REPEATS;
+					for (int repeat = 0; repeat < repeats; repeat++) {
 						Trial trial = trial(mc, fast, delay, random);
 						if (trial.swapped()) swapped++;
 						if (trial.turned()) turned++;
@@ -96,9 +97,9 @@ public final class FastOpenValueLab {
 						if (trial.swapped() && trial.clickMs() >= 0) click.add(trial.clickMs());
 					}
 					String line = String.format("%s d=%dms: totem %d/%d; camera turned %d; screen p50=%.1fms max=%.1fms; click p50=%.1fms",
-						fast ? "fast" : "vanilla", delay, swapped, REPEATS, turned, median(screen), max(screen), median(click));
+						fast ? "fast" : "vanilla", delay, swapped, repeats, turned, median(screen), max(screen), median(click));
 					DebugCollector.info("FAST_OPEN_VALUE", line);
-					summary.append(fast ? "F" : "V").append(delay).append('=').append(swapped).append('/').append(REPEATS).append(' ');
+					summary.append(fast ? "F" : "V").append(delay).append('=').append(swapped).append('/').append(repeats).append(' ');
 				}
 			}
 			DebugCollector.info("FAST_OPEN_VALUE_SUMMARY", summary.toString().trim());

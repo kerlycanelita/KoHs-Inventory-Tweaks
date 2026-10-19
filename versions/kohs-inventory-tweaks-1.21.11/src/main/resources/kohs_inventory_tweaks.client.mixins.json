@@ -30,7 +30,16 @@
     "RecipeBookComponentAccessor",
     "RecipeBookTabButtonMixin",
     "RecipeButtonMixin",
-    "ScreenBackgroundMixin"
+    "ScreenBackgroundMixin",
+    "ContainerDoubleClickMixin",
+    "ContainerClickSentMixin",
+    "ContainerMouseKeysMixin",
+    "GuiItemAtlasMixin",
+    "InventoryModelMixin",
+    "RecipeBookButtonMixin",
+    "RecipeBookVisibilityMixin",
+    "SteadyInventoryMixin",
+    "ToggleKeyMappingMixin"
   ],
   "injectors": {
     "defaultRequire": 1

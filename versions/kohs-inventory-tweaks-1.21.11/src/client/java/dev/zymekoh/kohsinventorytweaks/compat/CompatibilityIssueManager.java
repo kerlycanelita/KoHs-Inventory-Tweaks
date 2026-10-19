@@ -157,6 +157,8 @@ public final class CompatibilityIssueManager {
 					|| INVENTORY_DEBUG_ID.equals(modId)
 					|| modId.startsWith("fabric-") || modId.equals("minecraft")
 					|| HERZIUM_ID.equals(modId)
+					// Another KoHs mod, built to share the input path with this one.
+					|| KOHS_SYNAPSE_ID.equals(modId)
 					|| explicitlyHandledIds.contains(modId)
 					|| (rawInputPipelineCollisionHandled
 						&& (IXERIS_ID.equals(modId) || RAW_INPUT_BUFFER_ID.equals(modId)))) {
@@ -381,19 +383,9 @@ public final class CompatibilityIssueManager {
 	private static CompatibilityIssue explicitIssueFor(final ModContainer container) {
 		String modId = container.getMetadata().getId();
 		if (KOHS_SYNAPSE_ID.equals(modId)) {
-			return new CompatibilityIssue(
-				container.getMetadata().getId(),
-				container.getMetadata().getName(),
-				container.getMetadata().getVersion().getFriendlyString(),
-				creatorsOf(container),
-				CompatibilityIssue.Severity.DEGRADED,
-				CompatibilityIssue.Reason.MOUSE_POSITION_OVERRIDE,
-				List.of(
-					"net.minecraft.client.Minecraft#setScreen",
-					"net.minecraft.client.MouseHandler#onMove"
-				),
-				Set.of(CompatibilityFeature.CURSOR_LANDING)
-			);
+			// KoHs Synapse 1.0 reads raw motion only while the mouse is captured and never
+			// touches setScreen, the release or the pointer: nothing to yield.
+			return null;
 		}
 		if (IXERIS_ID.equals(modId)) {
 			ModContainer rawInputBuffer = FabricLoader.getInstance().getModContainer(RAW_INPUT_BUFFER_ID).orElse(null);

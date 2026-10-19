@@ -62,7 +62,7 @@ def verify(repo, release):
                         f"{mc}: divergent Spanish locale {locale}")
 
         scaler = source(tree, "inventory/InventoryGuiScaler.java")
-        require("player.getRecipeBook().isOpen" in scaler, f"{mc}: recipe-book state port absent")
+        require("RecipeBookHider.open(player" in scaler, f"{mc}: recipe-book state port absent")
         require("hasActiveSurfaceScope" in scaler, f"{mc}: scale ownership absent")
         off_branch = scaler.split("public static double configuredContainerScale(", 1)[1].split(
             "return toSurfaceScale", 1)[0]

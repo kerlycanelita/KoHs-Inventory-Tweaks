@@ -48,6 +48,8 @@ public final class InventoryTweaksConfig {
 	public boolean leaveWithMovementKeys;
 	/** Whole-inventory answers to clicks still in flight are kept back until those clicks are answered. */
 	public boolean steadyInventory = true;
+	/** No recipe book button, and the book stays shut, in the inventory, crafting table and furnaces. */
+	public boolean hideRecipeBook;
 	public boolean pixelPerfectScale = true;
 	public ProfilePreset activeProfile = ProfilePreset.CUSTOM;
 	public boolean autoProfileSwitch;
@@ -122,6 +124,7 @@ public final class InventoryTweaksConfig {
 		copy.fastEnchantedItems = this.fastEnchantedItems;
 		copy.leaveWithMovementKeys = this.leaveWithMovementKeys;
 		copy.steadyInventory = this.steadyInventory;
+		copy.hideRecipeBook = this.hideRecipeBook;
 		copy.pixelPerfectScale = this.pixelPerfectScale;
 		copy.activeProfile = this.activeProfile;
 		copy.autoProfileSwitch = this.autoProfileSwitch;
@@ -380,6 +383,7 @@ public final class InventoryTweaksConfig {
 			&& this.fastEnchantedItems == other.fastEnchantedItems
 			&& this.leaveWithMovementKeys == other.leaveWithMovementKeys
 			&& this.steadyInventory == other.steadyInventory
+			&& this.hideRecipeBook == other.hideRecipeBook
 			&& this.pixelPerfectScale == other.pixelPerfectScale
 			&& this.activeProfile == other.activeProfile
 			&& this.autoProfileSwitch == other.autoProfileSwitch

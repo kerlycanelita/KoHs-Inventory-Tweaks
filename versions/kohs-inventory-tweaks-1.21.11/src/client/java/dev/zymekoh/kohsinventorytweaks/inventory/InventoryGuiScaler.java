@@ -300,8 +300,7 @@ public final class InventoryGuiScaler {
 	 */
 	private static boolean recipeBookOpen(final AbstractRecipeBookScreen<?> screen) {
 		LocalPlayer player = Minecraft.getInstance().player;
-		return player != null
-			&& player.getRecipeBook().isOpen(screen.getMenu().getRecipeBookType());
+		return player != null && RecipeBookHider.open(player, screen.getMenu().getRecipeBookType());
 	}
 
 	public static double toInventoryCoordinate(final double coordinate, final int screenSize, final double scale) {

@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.3.0 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
+
+Always on, fixing Minecraft:
+
+- Double clicks no longer linger after they collect: a third quick click places
+  the stack (MC-306262), place then shift-click moves one stack (MC-301852), a
+  drag started by a double click spreads (MC-312333), and a release over another
+  slot does not collect (MC-311852).
+- A held F or number key swaps once instead of repeating; the drop key still
+  repeats.
+- The inventory and drop keys bound to mouse buttons work in containers (MC-577).
+- The player in the inventory moves smoothly, with the frame's partial tick
+  (MC-265935).
+- Toggled sprint and sneak on a mouse button come back after a screen (MC-308595).
+- Center Mouse Fix also centers chests and every other container.
+- KoHs Synapse is no longer reported as a mouse conflict.
+
+New options:
+
+- **Steady inventory** (on): on servers with ping, a full inventory answer that
+  arrives while later clicks are still on their way no longer flashes their slots
+  back. In the ping lab the double re-totem flickered in 4, 6 and 11 of 24 tries
+  at 70, 130 and 200 ms; with the option, in none, and Grim raised no alert.
+- **Faster enchanted items** (on): animated GUI items are redrawn 60 times a
+  second instead of every frame (MC-310555).
+- **Hide recipe book** (off): no recipe book button, and the book kept shut,
+  without touching the saved setting or sending anything.
+- **Leave with movement keys** (off): a movement key closes a container and starts
+  the move; the close is sent first.
+
+Labs: `inventory-feel` and `sfi-value`, the ping lab for a local Grim server, and
+`suite`, which runs every lab in one game per version. Full notes in
+`docs/releases/1.3.0.md`; the research in `docs/audits/1.3.0-research-2026-10-18.md`.
+
 ## 1.2.1 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
 
 Update if you play on servers with Super Fast Inventory on; on an older version,

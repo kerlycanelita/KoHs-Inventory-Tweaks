@@ -37,6 +37,8 @@
     "ContainerMouseKeysMixin",
     "GuiItemAtlasMixin",
     "InventoryModelMixin",
+    "RecipeBookButtonMixin",
+    "RecipeBookVisibilityMixin",
     "SteadyInventoryMixin",
     "ToggleKeyMappingMixin"
   ],

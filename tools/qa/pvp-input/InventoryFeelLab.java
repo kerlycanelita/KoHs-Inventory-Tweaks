@@ -28,6 +28,7 @@ import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket;
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
+import net.minecraft.network.protocol.game.ServerboundRecipeBookChangeSettingsPacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.inventory.RecipeBookType;
@@ -55,6 +56,7 @@ import org.lwjgl.system.MemoryStack;
  * <li>A chest opened after the window changed size while the mouse was captured puts the pointer
  * on the new centre, with Center Mouse Fix.</li>
  * <li>Leave with movement keys closes the inventory before the movement is sent.</li>
+ * <li>Hide recipe book: no book, no button, the saved setting untouched and nothing sent.</li>
  * <li>Steady inventory: a stale answer leaves the later click on screen, and the server's word is
  * what the menu holds once the screen closes.</li>
  * <li>Faster enchanted items: frames and item-atlas redraws per second, off and on, with every slot
@@ -70,6 +72,7 @@ public final class InventoryFeelLab {
 	private static final List<String> FAILED = new ArrayList<>();
 	private static volatile long atlasDraws;
 	private static volatile boolean recording;
+	private static volatile int bookPackets;
 	private static final List<String> SENT = new ArrayList<>();
 
 	private InventoryFeelLab() {
@@ -81,6 +84,7 @@ public final class InventoryFeelLab {
 	}
 
 	public static void onPacket(final Packet<?> packet) {
+		if (packet instanceof ServerboundRecipeBookChangeSettingsPacket) bookPackets++;
 		if (!recording) return;
 		String kind;
 		if (packet instanceof ServerboundContainerClosePacket) {
@@ -121,6 +125,12 @@ public final class InventoryFeelLab {
 		try {
 			command(mc, "gamemode survival");
 			command(mc, "effect give @s minecraft:resistance 600 4 true");
+			// A platform of its own, whatever earlier labs left in the world: the chest test needs
+			// a player standing still within reach.
+			command(mc, "fill -4 119 -4 4 119 4 minecraft:smooth_stone");
+			command(mc, "fill -4 120 -4 4 124 4 minecraft:air");
+			command(mc, "tp @s 0 120 0 0 0");
+			Thread.sleep(500);
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				mc.options.guiScale().set(3);
 				mc.resizeGui();
@@ -135,6 +145,7 @@ public final class InventoryFeelLab {
 			results.append(containerCentre(mc));
 			results.append(leaveWithMovement(mc));
 			results.append(steadyInventory(mc));
+			results.append(hideRecipeBook(mc));
 			results.append(enchantedItems(mc));
 			DebugCollector.info("INVENTORY_FEEL_SUMMARY", "checks=" + checks + "; failures=" + failures + results
 				+ (FAILED.isEmpty() ? "" : "; failed=" + FAILED));
@@ -296,14 +307,24 @@ public final class InventoryFeelLab {
 	// ---------------------------------------------------------------- inventory model
 
 	private static void modelPartialTick(final Minecraft mc) throws Exception {
-		Method extract = InventoryScreen.class.getDeclaredMethod("extractRenderState", LivingEntity.class);
+		// The static builder of the model's state, InventoryScreen#extractRenderState(LivingEntity),
+		// found by its shape so that no port renames it.
+		Method extract = null;
+		for (Method candidate : InventoryScreen.class.getDeclaredMethods()) {
+			if (java.lang.reflect.Modifier.isStatic(candidate.getModifiers()) && candidate.getParameterCount() == 1
+				&& candidate.getParameterTypes()[0] == LivingEntity.class && candidate.getReturnType() != void.class) {
+				extract = candidate;
+			}
+		}
+		if (extract == null) throw new NoSuchMethodException("InventoryScreen model state builder");
 		extract.setAccessible(true);
+		Method builder = extract;
 		int fractional = 0;
 		for (int sample = 0; sample < 8; sample++) {
 			float[] age = new float[1];
 			CloseHotbarRegressionLab.atPoll(mc, () -> {
 				try {
-					Object state = extract.invoke(null, mc.player);
+					Object state = builder.invoke(null, mc.player);
 					Field field = findField(state.getClass(), "ageInTicks");
 					age[0] = field.getFloat(state);
 				} catch (ReflectiveOperationException error) {
@@ -360,7 +381,8 @@ public final class InventoryFeelLab {
 		for (boolean fix : new boolean[] {false, true}) {
 			double miss = chestOpeningMiss(mc, chest[0], fix);
 			out.append("; chestCentre").append(fix ? "Fix" : "Vanilla").append("Px=").append(String.format("%.1f", miss));
-			if (fix) check(miss <= 1.0, "chest opened after a resize centres the pointer: miss=" + miss + "px");
+			check(miss >= 0.0, "the chest opened (" + (fix ? "fix" : "vanilla") + ")");
+			if (fix) check(miss >= 0.0 && miss <= 1.0, "chest opened after a resize centres the pointer: miss=" + miss + "px");
 		}
 		command(mc, "setblock " + chest[0].getX() + " " + chest[0].getY() + " " + chest[0].getZ() + " minecraft:air");
 		return out.toString();
@@ -546,6 +568,51 @@ public final class InventoryFeelLab {
 		return "";
 	}
 
+	// ---------------------------------------------------------------- hide recipe book
+
+	/**
+	 * Hide recipe book on a player whose book is saved open: the inventory shows no book and no
+	 * book button, the saved setting stays open, and nothing about the book is sent to the server.
+	 * Off, the book and its button come back as they were.
+	 */
+	private static String hideRecipeBook(final Minecraft mc) throws Exception {
+		if (!hasOption("hideRecipeBook")) return "; book=n/a";
+		boolean savedOpen = mc.player.getRecipeBook().isOpen(RecipeBookType.CRAFTING);
+		long[] buttons = new long[2];
+		try {
+			bookPackets = 0;
+			for (boolean hide : new boolean[] {false, true}) {
+				CloseHotbarRegressionLab.atPoll(mc, () -> {
+					if (mc.screen != null) mc.screen.onClose();
+					setOption("hideRecipeBook", hide);
+					mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, true);
+					mc.setScreen(new InventoryScreen(mc.player));
+				});
+				// A few ticks: a hidden book must not reopen itself.
+				Thread.sleep(250);
+				screenshot(mc, "feel-book-" + (hide ? "hidden" : "shown"));
+				CloseHotbarRegressionLab.atPoll(mc, () -> {
+					var screen = (InventoryScreen) mc.screen;
+					var book = ((dev.zymekoh.kohsinventorytweaks.mixin.AbstractRecipeBookScreenAccessor) screen)
+						.kohsInventoryTweaks$getRecipeBookComponent();
+					buttons[hide ? 1 : 0] = screen.children().stream()
+						.filter(child -> child instanceof net.minecraft.client.gui.components.ImageButton).count();
+					check(book.isVisible() != hide, (hide ? "hide recipe book: the book stays shut" : "option off: the saved open book shows"));
+				});
+			}
+			check(buttons[1] == buttons[0] - 1, "hide recipe book: its button is gone; buttons " + buttons[0] + " -> " + buttons[1]);
+			check(mc.player.getRecipeBook().isOpen(RecipeBookType.CRAFTING), "hide recipe book: the saved book setting is untouched");
+			check(bookPackets == 0, "hide recipe book sends nothing to the server; book packets=" + bookPackets);
+		} finally {
+			CloseHotbarRegressionLab.atPoll(mc, () -> {
+				if (mc.screen != null) mc.screen.onClose();
+				setOption("hideRecipeBook", false);
+				mc.player.getRecipeBook().setOpen(RecipeBookType.CRAFTING, savedOpen);
+			});
+		}
+		return "";
+	}
+
 	// ---------------------------------------------------------------- enchanted items
 
 	private static String enchantedItems(final Minecraft mc) throws Exception {
@@ -556,7 +623,7 @@ public final class InventoryFeelLab {
 		});
 		StringBuilder out = new StringBuilder();
 		// "full": every slot enchanted, the worst case. "pvp": a crystal kit as players carry it.
-		for (String kit : new String[] {"full", "pvp"}) {
+		for (String kit : LabSuite.quick() ? new String[] {"pvp"} : new String[] {"full", "pvp"}) {
 			giveKit(mc, kit);
 			for (String where : new String[] {"inventory", "hud"}) {
 				CloseHotbarRegressionLab.atPoll(mc, () -> {
@@ -566,14 +633,16 @@ public final class InventoryFeelLab {
 				screenshot(mc, "feel-shine-" + kit + "-" + where);
 				double[][] runs = new double[2][2];
 				// Interleaved, twice each, so a drift in the machine falls on both sides.
-				for (int round = 0; round < 4; round++) {
+				int rounds = LabSuite.quick() ? 2 : 4;
+				long window = LabSuite.quick() ? 1_500_000_000L : 3_000_000_000L;
+				for (int round = 0; round < rounds; round++) {
 					boolean on = round % 2 == 1;
 					CloseHotbarRegressionLab.atPoll(mc, () -> setOption("fastEnchantedItems", on));
 					Thread.sleep(700);
 					long frames0 = DebugCollector.frames();
 					long draws0 = atlasDraws;
 					long start = System.nanoTime();
-					while (System.nanoTime() - start < 3_000_000_000L) {
+					while (System.nanoTime() - start < window) {
 						// A little pointer movement keeps the game from counting the player as away.
 						CloseHotbarRegressionLab.atPoll(mc, () -> ((MouseHandlerDebugInvoker) mc.mouseHandler).kohsInventoryDebug$invokeMove(
 							mc.getWindow().handle(), mc.getWindow().getScreenWidth() / 2.0 + (System.nanoTime() / 1_000_000 % 7),
@@ -581,8 +650,8 @@ public final class InventoryFeelLab {
 						Thread.sleep(250);
 					}
 					double seconds = (System.nanoTime() - start) / 1.0E9;
-					runs[on ? 1 : 0][0] += (DebugCollector.frames() - frames0) / seconds / 2.0;
-					runs[on ? 1 : 0][1] += (atlasDraws - draws0) / seconds / 2.0;
+					runs[on ? 1 : 0][0] += (DebugCollector.frames() - frames0) / seconds / (rounds / 2.0);
+					runs[on ? 1 : 0][1] += (atlasDraws - draws0) / seconds / (rounds / 2.0);
 				}
 				String name = kit + (where.equals("inventory") ? "Inventory" : "Hud");
 				out.append(String.format("; %sFps=%.0f->%.0f; %sAtlasDrawsPerSecond=%.0f->%.0f", name, runs[0][0], runs[1][0],

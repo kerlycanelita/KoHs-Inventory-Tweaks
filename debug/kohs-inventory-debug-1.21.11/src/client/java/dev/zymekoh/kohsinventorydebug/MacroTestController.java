@@ -59,6 +59,10 @@ public final class MacroTestController {
 		PVP_INPUT("pvp-input", "kohs_inventory_debug.lab.pvp_input", "kohs_inventory_debug.lab.pvp_input.desc", false, true),
 		SLOT_SHORTCUTS("slot-shortcuts", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		INVENTORY_ORDER("inventory-order", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
+		INVENTORY_FEEL("inventory-feel", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
+		SFI_VALUE("sfi-value", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
+		PING_INVENTORY("ping-inventory", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
+		SUITE("suite", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		FEATURES("features", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
 		HOVER_AGREEMENT("hover-agreement", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		MASCOT("mascot", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
@@ -197,7 +201,7 @@ public final class MacroTestController {
 						minecraft.getWindow().getY() + (int) Math.round(originalPointer[1])
 					);
 				}
-				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && kind != MacroKind.UI_MEDIA && kind != MacroKind.UI_REVIEW && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT && kind != MacroKind.SLOT_SHORTCUTS && kind != MacroKind.INVENTORY_ORDER) {
+				if (kind != MacroKind.CURSOR_CONTRACT && kind != MacroKind.CURSOR_WEIGHT && kind != MacroKind.UI_SHOWCASE && kind != MacroKind.UI_MEDIA && kind != MacroKind.UI_REVIEW && !kind.id.startsWith("record-") && kind != MacroKind.PVP_INPUT && kind != MacroKind.SLOT_SHORTCUTS && kind != MacroKind.INVENTORY_ORDER && kind != MacroKind.INVENTORY_FEEL && kind != MacroKind.SFI_VALUE && kind != MacroKind.SUITE) {
 					DebugCollector.info("MACRO_SUMMARY", metrics.summary());
 				}
 				DebugCollector.info("MACRO_COMPLETE", "macro=" + kind.id + "; screen=" + screenName(screenSnapshot(minecraft))
@@ -228,6 +232,13 @@ public final class MacroTestController {
 			return;
 		}
 		MacroKind requested = MacroKind.parse(System.getProperty(AUTORUN_PROPERTY));
+		if (requested == MacroKind.PING_INVENTORY && InventoryPingLab.allowed(minecraft)) {
+			if (++autorunTicks >= 60) {
+				autorunAttempted = true;
+				startPingLab(minecraft);
+			}
+			return;
+		}
 		if (requested == null || !isSafeLocalWorld(minecraft)) {
 			return;
 		}
@@ -242,6 +253,30 @@ public final class MacroTestController {
 			return;
 		}
 		start(minecraft, requested, null);
+	}
+
+	/** The one lab that joins a server: a Grim server on this machine, started by KoHs-Debug-Tools. */
+	private static void startPingLab(final Minecraft minecraft) {
+		if (!RUNNING.compareAndSet(false, true)) {
+			return;
+		}
+		current = MacroKind.PING_INVENTORY.id;
+		Thread.ofPlatform().daemon(true).name("KoHs Inventory Debug ping lab").start(() -> {
+			try {
+				Thread.sleep(1_500);
+				InventoryPingLab.run(minecraft);
+				DebugCollector.info("MACRO_COMPLETE", "macro=" + MacroKind.PING_INVENTORY.id);
+			} catch (Throwable throwable) {
+				DebugCollector.issue("MACRO_ABORT", "macro=ping-inventory; " + throwable.getClass().getSimpleName() + ": " + throwable.getMessage());
+				System.out.println("[lab] ABORT " + throwable);
+			} finally {
+				current = "idle";
+				RUNNING.set(false);
+				if (Boolean.getBoolean(EXIT_AFTER_MACRO_PROPERTY)) {
+					minecraft.execute(minecraft::stop);
+				}
+			}
+		});
 	}
 
 	/**
@@ -316,6 +351,9 @@ public final class MacroTestController {
 			case PVP_INPUT -> PvpInputRegressionLab.run(minecraft);
 			case SLOT_SHORTCUTS -> SlotShortcutLab.run(minecraft);
 			case INVENTORY_ORDER -> InventoryOrderLab.run(minecraft);
+			case INVENTORY_FEEL -> InventoryFeelLab.run(minecraft);
+			case SFI_VALUE -> FastOpenValueLab.run(minecraft);
+			case SUITE -> LabSuite.run(minecraft);
 			case FEATURES -> FeatureLab.run(minecraft);
 			case HOVER_AGREEMENT -> HoverAgreementLab.run(minecraft);
 			case MASCOT -> MascotLab.run(minecraft);

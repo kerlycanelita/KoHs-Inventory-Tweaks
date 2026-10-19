@@ -80,13 +80,13 @@ Chest, Shulker Box, Ender Chest, and Barrel have independent switches. When one 
 
 ## Inventory Tweaks
 
-The page has three options: Super Fast Inventory, Center Mouse Fix and Reduce inventory visual motion. Each shows only its name; hover it to read what it does.
+The page has Super Fast Inventory with its sub-option, Center Mouse Fix, Leave with movement keys, Steady inventory, Hide recipe book, Faster enchanted items, Reduce inventory visual motion and the mascot. Each shows only its name; hover it to read what it does. A few Minecraft bugs are fixed with no switch at all (see Always-on fixes).
 
 ### Center Mouse Fix
 
 Vanilla centres the pointer when the inventory opens, but GLFW can restore it to a stale position instead, for example after the window was resized while the mouse was captured. Center Mouse Fix checks the position once, right after Minecraft releases the mouse, and corrects it only when it is not where the opening asked for. A Cursor Landing position takes priority over the centre.
 
-That check is the only time it moves the pointer. Movement you make while the screen is opening, such as heading for a totem, is left to you, and it never recenters while you move. It does not affect chests, Ender Chests, barrels or other containers.
+That check is the only time it moves the pointer. Movement you make while the screen is opening, such as heading for a totem, is left to you, and it never recenters while you move. Since 1.3.0 it does the same in chests, Ender Chests, barrels, furnaces and every other container opened from the game.
 
 ### Super Fast Inventory
 
@@ -106,6 +106,34 @@ Only the screen is early. Vanilla opens the inventory inside a tick, and that ti
 Server-controlled openings stay on Vanilla's tick and packet path. Packet types, payloads, slot validation and action handlers are Vanilla's.
 
 Two behaviors that used to be separate options are always on: early opening while a mouse button is held, and one toggle per key press, so holding the inventory key never opens and closes the screen repeatedly. Recipe search keeps normal typing.
+
+### Leave with movement keys
+
+Off by default. A movement key pressed in your inventory or a container closes it, and the same press starts the move as it would in the world. The close is sent before the movement, the order you get by pressing Escape and then walking. Text boxes, such as an anvil name or the recipe search, keep their keys.
+
+### Steady inventory
+
+On by default. On a server with ping, the server answers almost every click with the whole inventory, because something else changed it while the click was travelling: in a fight, armor losing durability on every hit is enough. When a second click follows within the ping, the answer to the first one arrives after the second was already shown, and Vanilla flashes that slot back until the second answer arrives.
+
+With Steady inventory, while your inventory or a container is open, the slots changed by your clicks still on their way keep showing those clicks. Every other slot shows the server's answer at once, and so does any slot the server updates on its own: a totem that pops, armor that wears down, an item you pick up. Once every click has its answer, the server's last word is on screen; the moment the screen closes, it is all that is left. Nothing sent to the server changes.
+
+### Hide recipe book
+
+Off by default. Removes the green recipe book button and keeps the book shut in the inventory, the crafting table, the furnace, the smoker and the blast furnace, so a stray click can never open it and push the inventory aside. Your saved book setting is not touched and nothing is sent to the server: turn the option off and the book is back as you left it.
+
+### Faster enchanted items
+
+On by default. Minecraft draws every enchanted or animated item in menus and the hotbar again from scratch on every frame. These items are now drawn again sixty times a second, or twenty with the glint speed at zero, which looks the same: the shine moves less than a pixel between two drawings. With a set of enchanted gear on screen the frame rate stays higher; how much depends on what else limits it.
+
+### Always-on fixes
+
+These fix Minecraft bugs and have no switch:
+
+- Double clicks no longer linger: a third quick click places the stack it collected, a place followed by a shift-click moves one stack, a drag started by a double click spreads the items, and a double click released over another slot does not collect there.
+- Holding F or a number key over a slot swaps it once instead of back and forth at the key-repeat rate. The drop key still repeats.
+- The inventory and drop keys bound to mouse buttons close containers and drop items as their keyboard bindings do.
+- The player in the inventory moves as smoothly as in the world.
+- A toggled sprint or sneak bound to a mouse button comes back after a screen closes.
 
 ### Reduce inventory visual motion
 

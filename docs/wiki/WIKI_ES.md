@@ -80,13 +80,13 @@ Chest, Shulker Box, Ender Chest y Barrel tienen interruptores independientes. Si
 
 ## Inventory Tweaks
 
-La página tiene tres opciones: Inventario superrápido, Center Mouse Fix y Reducir el movimiento visual del inventario. Cada una muestra solo su nombre; pasa el cursor por encima para leer qué hace.
+La página tiene Inventario superrápido con su subopción, Center Mouse Fix, Salir con las teclas de movimiento, Inventario estable, Ocultar libro de recetas, Objetos encantados más rápidos, Reducir el movimiento visual del inventario y la mascota. Cada una muestra solo su nombre; pasa el cursor por encima para leer qué hace. Algunos bugs de Minecraft se arreglan sin interruptor (ver Arreglos siempre activos).
 
 ### Center Mouse Fix
 
 Vanilla centra el puntero al abrir el inventario, pero GLFW puede devolverlo a una posición vieja, por ejemplo después de cambiar el tamaño de la ventana con el mouse capturado. Center Mouse Fix comprueba la posición una sola vez, justo después de que Minecraft libera el mouse, y la corrige solo si no está donde la apertura la pidió. Una posición de Cursor Landing tiene prioridad sobre el centro.
 
-Esa comprobación es la única vez que mueve el puntero. El movimiento que hagas mientras se abre la pantalla, como ir hacia un tótem, queda en tus manos, y nunca recentra mientras te mueves. No afecta cofres, Ender Chests, barriles ni otros contenedores.
+Esa comprobación es la única vez que mueve el puntero. El movimiento que hagas mientras se abre la pantalla, como ir hacia un tótem, queda en tus manos, y nunca recentra mientras te mueves. Desde 1.3.0 hace lo mismo en cofres, Ender Chests, barriles, hornos y cualquier otro contenedor que abras desde el juego.
 
 ### Inventario superrápido
 
@@ -106,6 +106,34 @@ Solo la pantalla se adelanta. Vanilla abre el inventario dentro de un tick, y es
 Los inventarios controlados por el servidor conservan su ruta Vanilla. Los tipos y el contenido de los paquetes, la validación de slots y los manejadores siguen siendo Vanilla.
 
 Dos comportamientos que antes eran opciones aparte están siempre activos: la apertura anticipada con un botón del mouse presionado y un cambio por pulsación, así mantener la tecla del inventario nunca lo abre y cierra una y otra vez. La búsqueda de recetas escribe con normalidad.
+
+### Salir con las teclas de movimiento
+
+Desactivada por defecto. Una tecla de movimiento pulsada en tu inventario o en un contenedor lo cierra, y la misma pulsación empieza el movimiento como en el mundo. El cierre sale antes que el movimiento, el orden que obtienes al pulsar Escape y luego andar. Los cuadros de texto, como el nombre del yunque o la búsqueda de recetas, conservan sus teclas.
+
+### Inventario estable
+
+Activada por defecto. En un servidor con ping, el servidor responde casi cada clic con el inventario entero, porque otra cosa lo cambió mientras el clic viajaba: en una pelea basta con que la armadura pierda durabilidad en cada golpe. Cuando un segundo clic llega dentro del ping, la respuesta al primero llega después de que el segundo ya se mostró, y Vanilla hace parpadear esa ranura hacia atrás hasta que llega la segunda respuesta.
+
+Con Inventario estable, mientras tu inventario o un contenedor está abierto, las ranuras que cambiaron tus clics todavía en camino siguen mostrando esos clics. Todas las demás muestran la respuesta del servidor al instante, igual que cualquier ranura que el servidor actualiza por su cuenta: un tótem que salta, la armadura que se gasta, un objeto que recoges. Cuando cada clic tiene su respuesta, en pantalla queda la última palabra del servidor; en cuanto se cierra la pantalla, es lo único que queda. No cambia nada de lo que se envía al servidor.
+
+### Ocultar libro de recetas
+
+Desactivada por defecto. Quita el botón verde del libro de recetas y mantiene el libro cerrado en el inventario, la mesa de crafteo, el horno, el ahumador y el alto horno, para que un clic perdido nunca lo abra y desplace el inventario. Tu ajuste guardado del libro no se toca y no se envía nada al servidor: al desactivar la opción el libro vuelve como lo dejaste.
+
+### Objetos encantados más rápidos
+
+Activada por defecto. Minecraft vuelve a dibujar desde cero cada objeto encantado o animado de los menús y la barra rápida en cada fotograma. Ahora se vuelven a dibujar sesenta veces por segundo, o veinte con la velocidad del brillo a cero, y se ven igual: el brillo se mueve menos de un píxel entre dos dibujos. Con equipo encantado en pantalla los FPS se mantienen más altos; cuánto depende de qué más los limite.
+
+### Arreglos siempre activos
+
+Arreglan bugs de Minecraft y no tienen interruptor:
+
+- El doble clic ya no se queda pegado: un tercer clic rápido coloca la pila que recogió, colocar y hacer Mayús+clic mueve una sola pila, un arrastre empezado por un doble clic reparte los objetos y un doble clic soltado sobre otra ranura no recoge ahí.
+- Mantener F o un número sobre una ranura la intercambia una vez en lugar de ir y volver al ritmo de repetición del teclado. La tecla de soltar sigue repitiendo.
+- Las teclas de inventario y de soltar asignadas a botones del mouse cierran contenedores y sueltan objetos como sus teclas del teclado.
+- El jugador del inventario se mueve tan fluido como en el mundo.
+- Un sprint o agacharse en modo alternar asignado a un botón del mouse vuelve tras cerrar una pantalla.
 
 ### Reducir el movimiento visual del inventario
 

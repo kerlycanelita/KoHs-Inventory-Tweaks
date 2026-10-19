@@ -1,6 +1,8 @@
 package dev.zymekoh.kohsinventorydebug.mixin;
 
 import dev.zymekoh.kohsinventorydebug.DebugCollector;
+import dev.zymekoh.kohsinventorydebug.InventoryPingLab;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket;
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
@@ -15,10 +17,12 @@ abstract class ClientPacketListenerTraceMixin {
 	@Inject(method = "handleContainerSetSlot", at = @At("HEAD"))
 	private void kohsInventoryDebug$slot(final ClientboundContainerSetSlotPacket packet, final CallbackInfo callbackInfo) {
 		DebugCollector.onContainerSlot(packet);
+		if (Minecraft.getInstance().isSameThread()) InventoryPingLab.onPacketReceived(packet);
 	}
 
 	@Inject(method = "handleContainerContent", at = @At("HEAD"))
 	private void kohsInventoryDebug$content(final ClientboundContainerSetContentPacket packet, final CallbackInfo callbackInfo) {
 		DebugCollector.onContainerContent(packet);
+		if (Minecraft.getInstance().isSameThread()) InventoryPingLab.onPacketReceived(packet);
 	}
 }

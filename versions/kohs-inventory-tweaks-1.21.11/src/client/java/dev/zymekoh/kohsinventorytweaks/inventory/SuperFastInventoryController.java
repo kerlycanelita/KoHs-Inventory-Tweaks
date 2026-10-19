@@ -194,6 +194,9 @@ public final class SuperFastInventoryController {
 		// What was done in an inventory opened ahead of its tick is handed over here, where
 		// Vanilla handles input, once that tick has run.
 		InputFence.afterInputPoll(minecraft);
+		if (minecraft != null) {
+			SteadyInventory.update(minecraft);
+		}
 		if (!BATCH.observed) {
 			return;
 		}

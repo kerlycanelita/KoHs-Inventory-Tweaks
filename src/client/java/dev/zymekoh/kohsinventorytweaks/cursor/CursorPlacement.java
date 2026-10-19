@@ -1,5 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.cursor;
 
+import dev.zymekoh.kohsinventorytweaks.inventory.RecipeBookHider;
 import com.mojang.blaze3d.platform.Window;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
@@ -51,7 +52,7 @@ final class CursorPlacement {
 			} else if (screen instanceof InventoryScreen inventoryScreen
 				&& guiWidth >= 379
 				&& minecraft.player != null
-				&& minecraft.player.getRecipeBook().isOpen(inventoryScreen.getMenu().getRecipeBookType())) {
+				&& RecipeBookHider.open(minecraft.player, inventoryScreen.getMenu().getRecipeBookType())) {
 				// AbstractRecipeBookScreen shifts the player inventory during init when
 				// its book is open. Reproducing that vanilla calculation here avoids a
 				// visible second jump after initialization.

@@ -241,8 +241,8 @@ public final class InventoryOrderLab {
 				start[1] = mc.player.getY();
 				start[2] = mc.player.getZ();
 			});
-			// KOHS_LAB_QUICK in the environment runs three trials instead of sixty-eight.
-			boolean quick = System.getenv("KOHS_LAB_QUICK") != null;
+			// -PlabQuick (or KOHS_LAB_QUICK in the environment) runs a few trials instead of ninety-four.
+			boolean quick = LabSuite.quick();
 			for (int delay : quick ? new int[] {0, 12} : FAST_DELAYS) {
 				for (int repeat = 0; repeat < (quick ? 1 : FAST_REPEATS); repeat++) {
 					Trial trial = trial(mc, start, true, delay, 0, false, random);

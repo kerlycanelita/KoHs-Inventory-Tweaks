@@ -23,7 +23,7 @@ import org.joml.Matrix3x2fStack;
 public enum ZScene {
 	TWEAKS, CURSOR, ISSUES, CUSTOMIZATION, HIGHLIGHTER, SCALER, VISIBILITY, PERFORMANCE, SAFETY,
 	INVENTORY, CHEST, SHULKER, ENDER_CHEST, BARREL, KEYBIND,
-	FAST, CENTER, POINTER, MOTION, MASCOT, KOHS,
+	FAST, CENTER, POINTER, LEAVE, STEADY, BOOK, SHINE, MOTION, MASCOT, KOHS,
 	ADAPTED, WARNING, CRITICAL;
 
 	private static final float TAU = (float) (Math.PI * 2.0);
@@ -56,6 +56,9 @@ public enum ZScene {
 		static final ItemStack EMERALD = glint(stack(Items.EMERALD));
 		static final ItemStack TORCH = stack(Items.REDSTONE_TORCH);
 		static final ItemStack AMETHYST = stack(Items.AMETHYST_CLUSTER);
+		static final ItemStack BOOTS = stack(Items.NETHERITE_BOOTS);
+		static final ItemStack RECIPE_BOOK = stack(Items.KNOWLEDGE_BOOK);
+		static final ItemStack SWORD = glint(stack(Items.NETHERITE_SWORD));
 
 		private static ItemStack stack(final Item item) {
 			return new ItemStack(item);
@@ -158,6 +161,31 @@ public enum ZScene {
 				float pulse = (t * (0.9F + e)) % 1.0F;
 				ring(graphics, cx, cy, size * (0.3F + 0.25F * pulse), ZTheme.fade(ZTheme.CRIMSON_BRIGHT, 1.0F - pulse));
 				item(graphics, Stacks.TARGET, cx, cy, 0.72F * k, 0.0F);
+			}
+			case LEAVE -> {
+				// Leave with movement keys: boots striding out of the screen.
+				streaks(graphics, x - 2, y + 2, size + 4, size - 4, t, 1.0F + 1.8F * e, ZTheme.CYAN, 3);
+				float step = (float) -Math.abs(Math.sin(t * (2.6F + 4.0F * e))) * k * (0.6F + 1.2F * e);
+				item(graphics, Stacks.BOOTS, cx + (float) Math.sin(t * 1.3F) * k * e, cy + step, 0.8F * k, 0.0F);
+			}
+			case STEADY -> {
+				// Steady inventory: a totem held still inside a slow, steady ring while the ring's echo fades.
+				float pulse = (t * (0.45F + 0.6F * e)) % 1.0F;
+				ring(graphics, cx, cy, size * 0.42F, ZTheme.fade(ZTheme.CYAN, 0.55F + 0.35F * e));
+				ring(graphics, cx, cy, size * (0.42F + 0.16F * pulse), ZTheme.fade(ZTheme.CYAN, 0.6F * (1.0F - pulse)));
+				item(graphics, Stacks.TOTEM, cx, cy, 0.78F * k, 0.0F);
+			}
+			case BOOK -> {
+				// Hide recipe book: the book sinks out of sight and comes back, under a slow ring.
+				float sink = (float) (0.5 - 0.5 * Math.cos(t * (1.1F + 1.4F * e))) * k * (1.0F + 2.0F * e);
+				ring(graphics, cx, cy, size * 0.44F, ZTheme.fade(ZTheme.VIOLET_BRIGHT, 0.35F + 0.4F * e));
+				item(graphics, Stacks.RECIPE_BOOK, cx, cy + sink, 0.78F * k, 0.0F);
+			}
+			case SHINE -> {
+				// Faster enchanted items: an enchanted sword in an orbit of sparks.
+				orbit(graphics, cx, cy, size * 0.5F, t * (1.6F + 3.0F * e), "spark", 0xFF3FDCFF, k, 1);
+				item(graphics, Stacks.SWORD, cx, cy, 0.8F * k, -0.2F);
+				twinkle(graphics, x, y, size, t, e);
 			}
 			case MOTION -> {
 				// Reduce visual motion: ice, and snow falling slowly past it.
