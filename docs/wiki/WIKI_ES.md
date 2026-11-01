@@ -80,7 +80,7 @@ Chest, Shulker Box, Ender Chest y Barrel tienen interruptores independientes. Si
 
 ## Inventory Tweaks
 
-La página tiene Inventario superrápido con su subopción, Center Mouse Fix, Salir con las teclas de movimiento, Inventario estable, Ocultar libro de recetas, Objetos encantados más rápidos, Reducir el movimiento visual del inventario y la mascota. Cada una muestra solo su nombre; pasa el cursor por encima para leer qué hace. Algunos bugs de Minecraft se arreglan sin interruptor (ver Arreglos siempre activos).
+La página tiene Inventario superrápido con su subopción, Center Mouse Fix, Salir con las teclas de movimiento, Inventario estable, Ocultar libro de recetas, Reducir el movimiento visual del inventario y la mascota. Cada una muestra solo su nombre; pasa el cursor por encima para leer qué hace. Algunos bugs de Minecraft se arreglan sin interruptor (ver Arreglos siempre activos).
 
 ### Center Mouse Fix
 
@@ -120,10 +120,6 @@ Con Inventario estable, mientras tu inventario o un contenedor está abierto, la
 ### Ocultar libro de recetas
 
 Desactivada por defecto. Quita el botón verde del libro de recetas y mantiene el libro cerrado en el inventario, la mesa de crafteo, el horno, el ahumador y el alto horno, para que un clic perdido nunca lo abra y desplace el inventario. Tu ajuste guardado del libro no se toca y no se envía nada al servidor: al desactivar la opción el libro vuelve como lo dejaste.
-
-### Objetos encantados más rápidos
-
-Activada por defecto. Minecraft vuelve a dibujar desde cero cada objeto encantado o animado de los menús y la barra rápida en cada fotograma. Ahora se vuelven a dibujar sesenta veces por segundo, o veinte con la velocidad del brillo a cero, y se ven igual: el brillo se mueve menos de un píxel entre dos dibujos. Con equipo encantado en pantalla los FPS se mantienen más altos; cuánto depende de qué más los limite.
 
 ### Arreglos siempre activos
 

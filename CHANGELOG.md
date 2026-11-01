@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
+
+- Removed **Faster enchanted items**. Minecraft draws enchanted and animated items
+  in menus and the hotbar itself again, and the option is gone from the Inventory
+  Tweaks page. A value already saved in the config file is ignored.
+
 ## 1.3.0 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
 
 Always on, fixing Minecraft:

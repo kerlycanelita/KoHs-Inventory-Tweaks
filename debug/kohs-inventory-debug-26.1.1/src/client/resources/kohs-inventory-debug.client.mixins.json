@@ -8,7 +8,6 @@
     "ClientCommonPacketListenerTraceMixin",
     "ClientPacketListenerTraceMixin",
     "ConfigStoreTraceMixin",
-    "GuiItemAtlasProbeMixin",
     "InventoryScreenInitProbeMixin",
     "KeyMappingDebugAccessor",
     "KeyMappingTraceMixin",

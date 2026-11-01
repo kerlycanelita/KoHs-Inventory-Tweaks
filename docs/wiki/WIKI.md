@@ -80,7 +80,7 @@ Chest, Shulker Box, Ender Chest, and Barrel have independent switches. When one 
 
 ## Inventory Tweaks
 
-The page has Super Fast Inventory with its sub-option, Center Mouse Fix, Leave with movement keys, Steady inventory, Hide recipe book, Faster enchanted items, Reduce inventory visual motion and the mascot. Each shows only its name; hover it to read what it does. A few Minecraft bugs are fixed with no switch at all (see Always-on fixes).
+The page has Super Fast Inventory with its sub-option, Center Mouse Fix, Leave with movement keys, Steady inventory, Hide recipe book, Reduce inventory visual motion and the mascot. Each shows only its name; hover it to read what it does. A few Minecraft bugs are fixed with no switch at all (see Always-on fixes).
 
 ### Center Mouse Fix
 
@@ -120,10 +120,6 @@ With Steady inventory, while your inventory or a container is open, the slots ch
 ### Hide recipe book
 
 Off by default. Removes the green recipe book button and keeps the book shut in the inventory, the crafting table, the furnace, the smoker and the blast furnace, so a stray click can never open it and push the inventory aside. Your saved book setting is not touched and nothing is sent to the server: turn the option off and the book is back as you left it.
-
-### Faster enchanted items
-
-On by default. Minecraft draws every enchanted or animated item in menus and the hotbar again from scratch on every frame. These items are now drawn again sixty times a second, or twenty with the glint speed at zero, which looks the same: the shine moves less than a pixel between two drawings. With a set of enchanted gear on screen the frame rate stays higher; how much depends on what else limits it.
 
 ### Always-on fixes
 

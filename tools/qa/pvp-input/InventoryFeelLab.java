@@ -22,7 +22,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket;
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
@@ -59,8 +58,6 @@ import org.lwjgl.system.MemoryStack;
  * <li>Hide recipe book: no book, no button, the saved setting untouched and nothing sent.</li>
  * <li>Steady inventory: a stale answer leaves the later click on screen, and the server's word is
  * what the menu holds once the screen closes.</li>
- * <li>Faster enchanted items: frames and item-atlas redraws per second, off and on, with every slot
- * enchanted and with a crystal kit.</li>
  * </ul>
  *
  * <p>Options this jar may not have are reached by reflection, so the same lab measures an older
@@ -70,17 +67,11 @@ public final class InventoryFeelLab {
 	private static int checks;
 	private static int failures;
 	private static final List<String> FAILED = new ArrayList<>();
-	private static volatile long atlasDraws;
 	private static volatile boolean recording;
 	private static volatile int bookPackets;
 	private static final List<String> SENT = new ArrayList<>();
 
 	private InventoryFeelLab() {
-	}
-
-	/** Counted by the companion at every item drawn into the GUI item atlas. */
-	public static void onAtlasDraw() {
-		atlasDraws++;
 	}
 
 	public static void onPacket(final Packet<?> packet) {
@@ -114,8 +105,6 @@ public final class InventoryFeelLab {
 		}).join();
 		InventoryTweaksConfig savedConfig = ConfigStore.get().copy();
 		int savedGui = mc.options.guiScale().get();
-		int savedFps = mc.options.framerateLimit().get();
-		boolean savedVsync = mc.options.enableVsync().get();
 		boolean savedToggleSprint = mc.options.toggleSprint().get();
 		boolean savedBook = mc.player.getRecipeBook().isOpen(RecipeBookType.CRAFTING);
 		InputConstants.Key savedInventoryKey = key(mc.options.keyInventory);
@@ -146,7 +135,6 @@ public final class InventoryFeelLab {
 			results.append(leaveWithMovement(mc));
 			results.append(steadyInventory(mc));
 			results.append(hideRecipeBook(mc));
-			results.append(enchantedItems(mc));
 			DebugCollector.info("INVENTORY_FEEL_SUMMARY", "checks=" + checks + "; failures=" + failures + results
 				+ (FAILED.isEmpty() ? "" : "; failed=" + FAILED));
 			if (failures > 0) throw new IllegalStateException("Inventory feel failures=" + failures + " " + FAILED);
@@ -164,8 +152,6 @@ public final class InventoryFeelLab {
 					setKey(mc.options.keyDrop, savedDropKey);
 					setKey(mc.options.keySprint, savedSprintKey);
 					mc.options.toggleSprint().set(savedToggleSprint);
-					mc.options.framerateLimit().set(savedFps);
-					mc.options.enableVsync().set(savedVsync);
 					ConfigStore.replaceAndSave(savedConfig);
 					mc.options.guiScale().set(savedGui);
 					mc.resizeGui();
@@ -611,100 +597,6 @@ public final class InventoryFeelLab {
 			});
 		}
 		return "";
-	}
-
-	// ---------------------------------------------------------------- enchanted items
-
-	private static String enchantedItems(final Minecraft mc) throws Exception {
-		if (!hasOption("fastEnchantedItems")) return "; shine=n/a";
-		CloseHotbarRegressionLab.atPoll(mc, () -> {
-			mc.options.framerateLimit().set(260);
-			mc.options.enableVsync().set(false);
-		});
-		StringBuilder out = new StringBuilder();
-		// "full": every slot enchanted, the worst case. "pvp": a crystal kit as players carry it.
-		for (String kit : LabSuite.quick() ? new String[] {"pvp"} : new String[] {"full", "pvp"}) {
-			giveKit(mc, kit);
-			for (String where : new String[] {"inventory", "hud"}) {
-				CloseHotbarRegressionLab.atPoll(mc, () -> {
-					if (mc.screen != null) mc.screen.onClose();
-					if (where.equals("inventory")) mc.setScreen(new InventoryScreen(mc.player));
-				});
-				screenshot(mc, "feel-shine-" + kit + "-" + where);
-				double[][] runs = new double[2][2];
-				// Interleaved, twice each, so a drift in the machine falls on both sides.
-				int rounds = LabSuite.quick() ? 2 : 4;
-				long window = LabSuite.quick() ? 1_500_000_000L : 3_000_000_000L;
-				for (int round = 0; round < rounds; round++) {
-					boolean on = round % 2 == 1;
-					CloseHotbarRegressionLab.atPoll(mc, () -> setOption("fastEnchantedItems", on));
-					Thread.sleep(700);
-					long frames0 = DebugCollector.frames();
-					long draws0 = atlasDraws;
-					long start = System.nanoTime();
-					while (System.nanoTime() - start < window) {
-						// A little pointer movement keeps the game from counting the player as away.
-						CloseHotbarRegressionLab.atPoll(mc, () -> ((MouseHandlerDebugInvoker) mc.mouseHandler).kohsInventoryDebug$invokeMove(
-							mc.getWindow().handle(), mc.getWindow().getScreenWidth() / 2.0 + (System.nanoTime() / 1_000_000 % 7),
-							mc.getWindow().getScreenHeight() / 2.0));
-						Thread.sleep(250);
-					}
-					double seconds = (System.nanoTime() - start) / 1.0E9;
-					runs[on ? 1 : 0][0] += (DebugCollector.frames() - frames0) / seconds / (rounds / 2.0);
-					runs[on ? 1 : 0][1] += (atlasDraws - draws0) / seconds / (rounds / 2.0);
-				}
-				String name = kit + (where.equals("inventory") ? "Inventory" : "Hud");
-				out.append(String.format("; %sFps=%.0f->%.0f; %sAtlasDrawsPerSecond=%.0f->%.0f", name, runs[0][0], runs[1][0],
-					name, runs[0][1], runs[1][1]));
-				check(runs[1][1] < runs[0][1], name + ": fewer atlas redraws with Faster enchanted items");
-			}
-		}
-		CloseHotbarRegressionLab.atPoll(mc, () -> {
-			if (mc.screen != null) mc.screen.onClose();
-		});
-		return out.toString();
-	}
-
-	private static void giveKit(final Minecraft mc, final String kit) throws Exception {
-		Item[] gear = {Items.NETHERITE_SWORD, Items.NETHERITE_AXE, Items.NETHERITE_PICKAXE, Items.NETHERITE_SHOVEL, Items.BOW,
-			Items.CROSSBOW, Items.TRIDENT, Items.MACE, Items.ENCHANTED_BOOK, Items.DIAMOND_SWORD, Items.DIAMOND_AXE,
-			Items.DIAMOND_PICKAXE, Items.ELYTRA, Items.FISHING_ROD, Items.SHEARS, Items.FLINT_AND_STEEL, Items.SHIELD,
-			Items.NETHERITE_HOE};
-		var server = mc.getSingleplayerServer();
-		var playerId = mc.player.getUUID();
-		server.submit(() -> {
-			var player = server.getPlayerList().getPlayer(playerId);
-			var inventory = player.getInventory();
-			for (int index = 0; index < inventory.getContainerSize(); index++) inventory.setItem(index, ItemStack.EMPTY);
-			if (kit.equals("full")) {
-				for (int index = 0; index < 36; index++) inventory.setItem(index, glint(gear[index % gear.length]));
-			} else {
-				// Hotbar: four of the nine shine (sword, pickaxe, crystals, bottles).
-				ItemStack[] hotbar = {glint(Items.NETHERITE_SWORD), glint(Items.NETHERITE_PICKAXE), new ItemStack(Items.END_CRYSTAL, 64),
-					new ItemStack(Items.OBSIDIAN, 64), new ItemStack(Items.GOLDEN_APPLE, 64), new ItemStack(Items.TOTEM_OF_UNDYING),
-					new ItemStack(Items.ENDER_PEARL, 16), new ItemStack(Items.EXPERIENCE_BOTTLE, 64), new ItemStack(Items.RESPAWN_ANCHOR, 64)};
-				for (int index = 0; index < hotbar.length; index++) inventory.setItem(index, hotbar[index]);
-				ItemStack[] bag = {new ItemStack(Items.TOTEM_OF_UNDYING), new ItemStack(Items.TOTEM_OF_UNDYING), new ItemStack(Items.TOTEM_OF_UNDYING),
-					new ItemStack(Items.TOTEM_OF_UNDYING), new ItemStack(Items.END_CRYSTAL, 64), new ItemStack(Items.END_CRYSTAL, 64),
-					new ItemStack(Items.OBSIDIAN, 64), new ItemStack(Items.EXPERIENCE_BOTTLE, 64), new ItemStack(Items.EXPERIENCE_BOTTLE, 64),
-					new ItemStack(Items.GLOWSTONE, 64), new ItemStack(Items.ENDER_PEARL, 16), new ItemStack(Items.GOLDEN_APPLE, 64),
-					glint(Items.NETHERITE_AXE), glint(Items.CROSSBOW)};
-				for (int index = 0; index < bag.length; index++) inventory.setItem(9 + index, bag[index]);
-				inventory.setItem(40, new ItemStack(Items.TOTEM_OF_UNDYING));
-			}
-			inventory.setItem(36, glint(Items.NETHERITE_BOOTS));
-			inventory.setItem(37, glint(Items.NETHERITE_LEGGINGS));
-			inventory.setItem(38, glint(Items.NETHERITE_CHESTPLATE));
-			inventory.setItem(39, glint(Items.NETHERITE_HELMET));
-			player.inventoryMenu.broadcastFullState();
-		}).join();
-		Thread.sleep(400);
-	}
-
-	private static ItemStack glint(final Item item) {
-		ItemStack stack = new ItemStack(item);
-		stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
-		return stack;
 	}
 
 	// ---------------------------------------------------------------- helpers

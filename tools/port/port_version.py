@@ -37,9 +37,9 @@ TARGETS = ("26.1", "26.1.1", "26.2", "1.21.11")
 # whose target moved, and the key order read from that version's own jar.
 KEEP = {
     "26.2": ("mixin/GuiScreenMixin.java", "mixin/HudMixin.java", "inventory/VanillaKeyOrder.java"),
-    "1.21.11": ("mixin/WindowMixin.java", "inventory/VanillaKeyOrder.java", "mixin/GuiItemAtlasMixin.java"),
+    "1.21.11": ("mixin/WindowMixin.java", "inventory/VanillaKeyOrder.java"),
 }
-DEBUG_KEEP = {"26.2": ("GuiTraceMixin.java",), "1.21.11": ("GuiItemAtlasProbeMixin.java",)}
+DEBUG_KEEP = {"26.2": ("GuiTraceMixin.java",)}
 
 
 def read(path: Path) -> tuple[str, bool]:
@@ -209,13 +209,9 @@ def port_tree(version: str) -> None:
         # picture-in-picture states live in gui.render.state.pip, built by GuiGraphics'
         # submit*RenderState.
         (mixins / "MinecraftInputPollMixin.java").unlink()
-        # No GuiItemAtlas or DynamicAtlasAllocator yet: the item atlas lives in GuiRenderer,
-        # and the kept GuiItemAtlasMixin paces it there without a slot accessor.
-        (mixins / "AtlasSlotAccessor.java").unlink()
         edit(mixin_config, [
             ('"compatibilityLevel": "JAVA_25"', '"compatibilityLevel": "JAVA_21"'),
             ('    "MinecraftInputPollMixin",\n', '    "WindowMixin",\n'),
-            ('    "AtlasSlotAccessor",\n', ''),
         ])
         edit(target / "src/main/resources/fabric.mod.json", [('"java": ">=25"', '"java": ">=21"')])
         edit(target / PKG / "inventory/SuperFastInventoryController.java", [

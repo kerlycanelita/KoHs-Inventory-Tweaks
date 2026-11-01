@@ -762,8 +762,7 @@ public final class InventoryTweaksScreen extends Screen {
 							ZMascot.react(!on ? ZMascot.Mood.MEH
 								: option == InventoryTweakOption.FAST || option == InventoryTweakOption.CENTER
 								|| option == InventoryTweakOption.POINTER || option == InventoryTweakOption.LEAVE
-								|| option == InventoryTweakOption.STEADY || option == InventoryTweakOption.SHINE
-								? ZMascot.Mood.ZOOM : ZMascot.Mood.HAPPY);
+								|| option == InventoryTweakOption.STEADY ? ZMascot.Mood.ZOOM : ZMascot.Mood.HAPPY);
 						}
 						// Keep focus and positions stable when a switch is pressed.
 						this.updateTweakButtonStates();
@@ -1657,7 +1656,6 @@ public final class InventoryTweaksScreen extends Screen {
 			case LEAVE -> ZScene.LEAVE;
 			case STEADY -> ZScene.STEADY;
 			case BOOK -> ZScene.BOOK;
-			case SHINE -> ZScene.SHINE;
 			case ANIMATIONS -> ZScene.MOTION;
 			case MASCOT -> ZScene.MASCOT;
 		};

@@ -18,7 +18,6 @@ enum InventoryTweakOption {
 	LEAVE("screen.kohs_inventory_tweaks.leave_with_movement"),
 	STEADY("screen.kohs_inventory_tweaks.steady_inventory"),
 	BOOK("screen.kohs_inventory_tweaks.hide_recipe_book"),
-	SHINE("screen.kohs_inventory_tweaks.fast_enchanted_items"),
 	ANIMATIONS("screen.kohs_inventory_tweaks.remove_animations"),
 	MASCOT("screen.kohs_inventory_tweaks.mascot");
 
@@ -41,7 +40,6 @@ enum InventoryTweakOption {
 			case LEAVE -> config.leaveWithMovementKeys;
 			case STEADY -> config.steadyInventory;
 			case BOOK -> config.hideRecipeBook;
-			case SHINE -> config.fastEnchantedItems;
 			case ANIMATIONS -> config.reduceInventoryMotion;
 			// The mascot keeps its own file: it is never part of a profile or a working copy.
 			case MASCOT -> ZMascot.prefs().enabled;
@@ -62,7 +60,6 @@ enum InventoryTweakOption {
 			case LEAVE -> config.leaveWithMovementKeys = enabled;
 			case STEADY -> config.steadyInventory = enabled;
 			case BOOK -> config.hideRecipeBook = enabled;
-			case SHINE -> config.fastEnchantedItems = enabled;
 			case ANIMATIONS -> config.reduceInventoryMotion = enabled;
 			default -> {
 			}

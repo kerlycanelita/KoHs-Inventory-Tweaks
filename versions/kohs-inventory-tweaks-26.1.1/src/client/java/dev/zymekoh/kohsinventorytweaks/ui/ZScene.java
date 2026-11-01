@@ -23,7 +23,7 @@ import org.joml.Matrix3x2fStack;
 public enum ZScene {
 	TWEAKS, CURSOR, ISSUES, CUSTOMIZATION, HIGHLIGHTER, SCALER, VISIBILITY, PERFORMANCE, SAFETY,
 	INVENTORY, CHEST, SHULKER, ENDER_CHEST, BARREL, KEYBIND,
-	FAST, CENTER, POINTER, LEAVE, STEADY, BOOK, SHINE, MOTION, MASCOT, KOHS,
+	FAST, CENTER, POINTER, LEAVE, STEADY, BOOK, MOTION, MASCOT, KOHS,
 	ADAPTED, WARNING, CRITICAL;
 
 	private static final float TAU = (float) (Math.PI * 2.0);
@@ -58,7 +58,6 @@ public enum ZScene {
 		static final ItemStack AMETHYST = stack(Items.AMETHYST_CLUSTER);
 		static final ItemStack BOOTS = stack(Items.NETHERITE_BOOTS);
 		static final ItemStack RECIPE_BOOK = stack(Items.KNOWLEDGE_BOOK);
-		static final ItemStack SWORD = glint(stack(Items.NETHERITE_SWORD));
 
 		private static ItemStack stack(final Item item) {
 			return new ItemStack(item);
@@ -180,12 +179,6 @@ public enum ZScene {
 				float sink = (float) (0.5 - 0.5 * Math.cos(t * (1.1F + 1.4F * e))) * k * (1.0F + 2.0F * e);
 				ring(graphics, cx, cy, size * 0.44F, ZTheme.fade(ZTheme.VIOLET_BRIGHT, 0.35F + 0.4F * e));
 				item(graphics, Stacks.RECIPE_BOOK, cx, cy + sink, 0.78F * k, 0.0F);
-			}
-			case SHINE -> {
-				// Faster enchanted items: an enchanted sword in an orbit of sparks.
-				orbit(graphics, cx, cy, size * 0.5F, t * (1.6F + 3.0F * e), "spark", 0xFF3FDCFF, k, 1);
-				item(graphics, Stacks.SWORD, cx, cy, 0.8F * k, -0.2F);
-				twinkle(graphics, x, y, size, t, e);
 			}
 			case MOTION -> {
 				// Reduce visual motion: ice, and snow falling slowly past it.
