@@ -12,17 +12,17 @@
 
 ## Your inventory, your rules
 
-**KoHs Inventory Tweaks** is the client-side successor to **KoHs Inv Cursor**, maintained for Minecraft 1.21.11, 26.1, 26.1.1, 26.1.2, and 26.2. It gives you precise cursor placement, faster and more reliable inventory input, visual customization, item highlighting, and an inventory-only GUI scaler—all through a responsive purple configuration menu, with a little cat to keep you company.
+**KoHs Inventory Tweaks** is the client-side successor to **KoHs Inv Cursor**, maintained for Minecraft 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2, and 26.3. It gives you precise cursor placement, faster and more reliable inventory input, visual customization, item highlighting, and an inventory-only GUI scaler—all through a responsive purple configuration menu, with a little cat to keep you company.
 
 The mod keeps normal Minecraft inventory rules. It does not require installation on the server and does not add automated item transfers or custom inventory packets.
 
-## New in 1.3.0
+## New in 1.4.0
 
-- **Minecraft's inventory bugs, fixed** — double clicks that collect again (MC-306262, MC-301852, MC-312333, MC-311852), F and number keys that keep swapping while held, inventory and drop keys on mouse buttons (MC-577), the player in your inventory moving only 20 times a second (MC-265935), and toggles on mouse buttons after a screen (MC-308595). Always on.
-- **Steady inventory** — on servers with ping, your clicks stop flashing back while the server catches up. In our ping lab the double re-totem flickered in up to 11 of 24 tries at 200 ms; with Steady inventory, in none.
-- **Hide recipe book** — no recipe book button, and no book pushing your inventory aside mid-fight. Off by default.
-- **Leave with movement keys** — a movement key closes a container and you start moving. Off by default.
-- **Center Mouse Fix in every container**, not only in your inventory.
+- **Next Gen KoHs Inventories** — 13 layouts that move your slots around the middle of the screen: Broken, Visor, Vertical, Compact, Ring, Honeycomb, Fan, Hotbar Up, Mirror, Flipped, Wide, Side Hotbar, and Custom, where you drag the hotbar, every slot, your player and your effects wherever you like. Each one has its own Creative version. Behind a warning: some servers may not allow moved slots.
+- **Your look, everywhere** — creative tabs, recipe book tabs, scrollbars, effect panels and item tooltips follow your customized inventory. Minecraft's own buttons can too.
+- **Hotbar styles** — Visor, Ghost, Split or Vertical, with optional movement as you walk and fall, and reactions to totems, hearts and hits.
+- **Russian** — and pre-reform Russian.
+- **Minecraft 26.3**, which moved from GLFW to SDL.
 
 ## Features
 
@@ -32,14 +32,15 @@ The mod keeps normal Minecraft inventory rules. It does not require installation
 - **Shortcuts follow the pointer** — under Super Fast Inventory: F, 1-9, Q and Ctrl+Q act on the slot under your pointer the moment you press them, even right after a fast flick, in your inventory and every Vanilla container.
 - **Steady inventory** — with ping, the slots your clicks just changed keep showing those clicks until the server answers them all; everything else shows the server's word at once. Nothing you send changes.
 - **Hide recipe book** and **Leave with movement keys** — optional: no recipe book button, and movement keys that close a container.
-- **Customization** — recolor inventory and slot frames, control opacity and world backdrop darkness, or use a cropped image, GIF, or short video background.
+- **Customization** — recolor inventory and slot frames, control opacity and world backdrop darkness, or use a cropped image, GIF, or short video background. Tabs, tooltips and buttons can follow it.
 - **Resource-pack aware** — choose the active resource-pack inventory texture or the Vanilla base, then apply KoHs customization above it.
 - **Item Highlighter** — search Vanilla items and configure slot colors, borders, hotbar highlighting, and dynamic hover highlighting.
 - **GUI Scaler** — resize only the player inventory, including its slots, text, items, and character model. Pixel-perfect scale keeps every slot even and sharp.
+- **Next Gen KoHs Inventories** — 13 inventory layouts, each with a Creative version, and a Custom layout you arrange yourself. Hotbar styles with optional movement and reactions.
 - **Player Visibility** — tint and a glowing silhouette for the players you can already see while your inventory is open. Blocks hide both: nothing shows through walls.
 - **Zymekoh mascot** — it breathes, blinks, follows your pointer and reacts to your switches. It only eats Totems of Undying, pulled by magic from your inventory preview: your real inventory is never touched. Five make it round and heavy for ten minutes. Turn it off on the Inventory Tweaks page or hide it from its menu.
 - **The interface** — dark violet glass, animated icons that no graphics or particle setting stills, controls that never shift under your pointer, hover explanations, and pages that fit at GUI scale 2, 3 and 4.
-- **English and Spanish** — every supported Spanish locale uses the Spanish interface; other languages fall back to English.
+- **English, Spanish and Russian** — every supported Spanish locale uses the Spanish interface, and pre-reform Russian has its own; other languages fall back to English.
 
 ## A closer look
 
