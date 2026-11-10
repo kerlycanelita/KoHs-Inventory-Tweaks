@@ -71,7 +71,9 @@ public final class InventoryTweaksScreen extends Screen {
 	private static final int CUSTOM_SLOT_CARD_Y = CUSTOM_LAYER_CARD_HEIGHT + 8;
 	private static final int CUSTOM_BACKGROUND_CARD_Y = CUSTOM_SLOT_CARD_Y + CUSTOM_LAYER_CARD_HEIGHT + 8;
 	private static final int CUSTOM_BACKGROUND_CARD_HEIGHT = 126;
-	private static final int CUSTOM_BACKDROP_CARD_Y = CUSTOM_BACKGROUND_CARD_Y + CUSTOM_BACKGROUND_CARD_HEIGHT + 8;
+	private static final int CUSTOM_INTERFACE_CARD_Y = CUSTOM_BACKGROUND_CARD_Y + CUSTOM_BACKGROUND_CARD_HEIGHT + 8;
+	private static final int CUSTOM_INTERFACE_CARD_HEIGHT = 64;
+	private static final int CUSTOM_BACKDROP_CARD_Y = CUSTOM_INTERFACE_CARD_Y + CUSTOM_INTERFACE_CARD_HEIGHT + 8;
 	private static final int CUSTOM_BACKDROP_CARD_HEIGHT = 108;
 	private static final int CUSTOM_PLAYER_GLOW_CARD_Y = CUSTOM_BACKDROP_CARD_Y + CUSTOM_BACKDROP_CARD_HEIGHT + 8;
 	private static final int CUSTOM_PLAYER_GLOW_CARD_HEIGHT = 64;
@@ -113,6 +115,8 @@ public final class InventoryTweaksScreen extends Screen {
 	private int itemHighlighterCardX;
 	private int itemHighlighterCardY;
 	private int guiScalerCardX;
+	private int nextGenCardX;
+	private int nextGenCardY;
 	private int kohsCardX;
 	private int kohsCardY;
 	private int guiScalerCardY;
@@ -239,6 +243,7 @@ public final class InventoryTweaksScreen extends Screen {
 		GUI_SCALER,
 		GUI_SCALER_WARNING,
 		CUSTOMIZATION_WARNING,
+		NEXT_GEN_WARNING,
 		TWEAK_WARNING,
 		WARNING
 	}
@@ -278,6 +283,7 @@ public final class InventoryTweaksScreen extends Screen {
 			case GUI_SCALER -> this.addGuiScalerModalButtons();
 			case GUI_SCALER_WARNING -> this.addGuiScalerWarningButtons();
 			case CUSTOMIZATION_WARNING -> this.addCustomizationWarningButtons();
+			case NEXT_GEN_WARNING -> this.addNextGenWarningButtons();
 			case TWEAK_WARNING -> this.addTweakWarningButtons();
 			case WARNING -> this.addWarningButtons();
 		}
@@ -322,6 +328,9 @@ public final class InventoryTweaksScreen extends Screen {
 			} else if (this.modal == Modal.CUSTOMIZATION_WARNING) {
 				this.drawWarningPanel(graphics, Component.translatable("screen.kohs_inventory_tweaks.customization.warning.title"),
 					Component.translatable("screen.kohs_inventory_tweaks.customization.warning.description"));
+			} else if (this.modal == Modal.NEXT_GEN_WARNING) {
+				this.drawWarningPanel(graphics, Component.translatable("screen.kohs_inventory_tweaks.next_gen.warning.title"),
+					Component.translatable("screen.kohs_inventory_tweaks.next_gen.warning.description"));
 			} else if (this.modal == Modal.TWEAK_WARNING) {
 				this.drawWarningPanel(graphics, Component.translatable(this.tweakWarning.key + ".warning.title"),
 					Component.translatable(this.tweakWarning.key + ".warning.description"));
@@ -466,7 +475,7 @@ public final class InventoryTweaksScreen extends Screen {
 		} else if (this.modal == Modal.GUI_SCALER_WARNING) {
 			this.modal = Modal.NONE;
 			this.rebuildWidgets();
-		} else if (this.modal == Modal.CUSTOMIZATION_WARNING) {
+		} else if (this.modal == Modal.CUSTOMIZATION_WARNING || this.modal == Modal.NEXT_GEN_WARNING) {
 			this.modal = Modal.NONE;
 			this.rebuildWidgets();
 		} else if (this.modal == Modal.TWEAK_WARNING) {
@@ -595,6 +604,20 @@ public final class InventoryTweaksScreen extends Screen {
 			button -> this.openGuiScaler(),
 			GlassButton.Variant.NORMAL,
 			KohsTabIcon.SCALER
+		);
+		this.addMainFeatureButton(
+			this.nextGenCardX,
+			this.nextGenCardY,
+			false,
+			CompatibilityFeature.INVENTORY_TWEAKS,
+			"screen.kohs_inventory_tweaks.next_gen",
+			"screen.kohs_inventory_tweaks.next_gen.description",
+			button -> {
+				this.modal = Modal.NEXT_GEN_WARNING;
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.NEXT_GEN
 		);
 		int textureGap = 4;
 		int textureButtonWidth = Math.max(1, (this.textureSelectorWidth - textureGap) / 2);
@@ -928,6 +951,19 @@ public final class InventoryTweaksScreen extends Screen {
 			value -> this.working.backgroundOpacity = value
 		);
 
+		this.addCustomizationButton(
+			controlX,
+			contentY + CUSTOM_INTERFACE_CARD_Y + 35,
+			controlWidth,
+			Component.translatable("screen.kohs_inventory_tweaks.advanced.configure"),
+			button -> {
+				this.persistWorking();
+				this.minecraft.gui.setScreen(AdvancedSettingsScreen.interfaceTheme(this));
+			},
+			true,
+			GlassButton.Variant.PRIMARY
+		);
+
 		int backdropY = contentY + CUSTOM_BACKDROP_CARD_Y;
 		this.addCustomizationSlider(
 			backdropY + 49,
@@ -1165,6 +1201,38 @@ public final class InventoryTweaksScreen extends Screen {
 			Component.translatable("screen.kohs_inventory_tweaks.customization.warning.continue"),
 			button -> this.openModal(Modal.CUSTOMIZATION),
 			GlassButton.Variant.PRIMARY
+		));
+		this.addRenderableWidget(new GlassButton(
+			startX + buttonWidth + gap,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("gui.back"),
+			button -> {
+				this.modal = Modal.NONE;
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.NORMAL
+		));
+	}
+
+	private void addNextGenWarningButtons() {
+		int gap = 8;
+		int buttonWidth = Math.min(168, Math.max(1, (this.warningWidth - 28 - gap) / 2));
+		int y = this.warningY + this.warningHeight - 32;
+		int startX = this.warningX + (this.warningWidth - buttonWidth * 2 - gap) / 2;
+		this.addRenderableWidget(new GlassButton(
+			startX,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.next_gen.warning.continue"),
+			button -> {
+				this.modal = Modal.NONE;
+				this.rebuildWidgets();
+				this.minecraft.gui.setScreen(new NextGenInventoriesScreen(this));
+			},
+			GlassButton.Variant.DANGER
 		));
 		this.addRenderableWidget(new GlassButton(
 			startX + buttonWidth + gap,
@@ -1840,6 +1908,14 @@ public final class InventoryTweaksScreen extends Screen {
 			this.customizationOptionsWidth - 6,
 			contentY + CUSTOM_BACKGROUND_CARD_Y
 		);
+		this.drawCustomizationNavigationCard(
+			graphics,
+			this.customizationOptionsX + 2,
+			this.customizationOptionsWidth - 6,
+			contentY + CUSTOM_INTERFACE_CARD_Y,
+			"screen.kohs_inventory_tweaks.advanced.tab.interface",
+			"screen.kohs_inventory_tweaks.advanced.interface.description"
+		);
 		this.drawBackdropCard(
 			graphics,
 			this.customizationOptionsX + 2,
@@ -1850,7 +1926,9 @@ public final class InventoryTweaksScreen extends Screen {
 			graphics,
 			this.customizationOptionsX + 2,
 			this.customizationOptionsWidth - 6,
-			contentY + CUSTOM_PLAYER_GLOW_CARD_Y
+			contentY + CUSTOM_PLAYER_GLOW_CARD_Y,
+			"screen.kohs_inventory_tweaks.advanced.tab.player_glow",
+			"screen.kohs_inventory_tweaks.advanced.access.player_glow.description"
 		);
 		graphics.disableScissor();
 
@@ -2033,12 +2111,14 @@ public final class InventoryTweaksScreen extends Screen {
 		final GuiGraphicsExtractor graphics,
 		final int x,
 		final int width,
-		final int y
+		final int y,
+		final String titleKey,
+		final String descriptionKey
 	) {
 		graphics.fill(x + 6, y, x + width - 6, y + 1, UiTheme.BORDER_SOFT);
 		graphics.text(
 			this.font,
-			Component.translatable("screen.kohs_inventory_tweaks.advanced.tab.player_glow"),
+			Component.translatable(titleKey),
 			x + 8,
 			y + 8,
 			UiTheme.TEXT
@@ -2046,7 +2126,7 @@ public final class InventoryTweaksScreen extends Screen {
 		graphics.text(
 			this.font,
 			this.font.plainSubstrByWidth(
-				Component.translatable("screen.kohs_inventory_tweaks.advanced.access.player_glow.description").getString(),
+				Component.translatable(descriptionKey).getString(),
 				Math.max(1, width - 16)
 			),
 			x + 8,
@@ -2185,7 +2265,7 @@ public final class InventoryTweaksScreen extends Screen {
 		this.mainCardHeight = this.compactMain ? 22 : 28;
 		int cardGap = this.compactMain ? 5 : 7;
 		int leftRailContentHeight = this.mainCardHeight * 4 + cardGap * 3;
-		int rightRailContentHeight = this.mainCardHeight * 3 + cardGap * 2;
+		int rightRailContentHeight = this.mainCardHeight * 4 + cardGap * 3;
 		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 30);
 		this.mainLeftMaxScroll = Math.max(0, leftRailContentHeight - railVisibleHeight);
 		this.mainRightMaxScroll = Math.max(0, rightRailContentHeight - railVisibleHeight);
@@ -2209,6 +2289,8 @@ public final class InventoryTweaksScreen extends Screen {
 		this.itemHighlighterCardY = this.customizationCardY + this.mainCardHeight + cardGap;
 		this.guiScalerCardX = this.customizationCardX;
 		this.guiScalerCardY = this.itemHighlighterCardY + this.mainCardHeight + cardGap;
+		this.nextGenCardX = this.customizationCardX;
+		this.nextGenCardY = this.guiScalerCardY + this.mainCardHeight + cardGap;
 	}
 
 	/**
@@ -2231,6 +2313,7 @@ public final class InventoryTweaksScreen extends Screen {
 			"screen.kohs_inventory_tweaks.customization",
 			"screen.kohs_inventory_tweaks.item_highlighter",
 			"screen.kohs_inventory_tweaks.gui_scaler",
+			"screen.kohs_inventory_tweaks.next_gen",
 		};
 		int widest = 0;
 		for (String key : keys) {

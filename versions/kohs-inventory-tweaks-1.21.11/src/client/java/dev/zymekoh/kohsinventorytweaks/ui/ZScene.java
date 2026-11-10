@@ -24,7 +24,7 @@ public enum ZScene {
 	TWEAKS, CURSOR, ISSUES, CUSTOMIZATION, HIGHLIGHTER, SCALER, VISIBILITY, PERFORMANCE, SAFETY,
 	INVENTORY, CHEST, SHULKER, ENDER_CHEST, BARREL, KEYBIND,
 	FAST, CENTER, POINTER, LEAVE, STEADY, BOOK, MOTION, MASCOT, KOHS,
-	ADAPTED, WARNING, CRITICAL;
+	ADAPTED, WARNING, CRITICAL, NEXT_GEN;
 
 	private static final float TAU = (float) (Math.PI * 2.0);
 
@@ -58,6 +58,7 @@ public enum ZScene {
 		static final ItemStack AMETHYST = stack(Items.AMETHYST_CLUSTER);
 		static final ItemStack BOOTS = stack(Items.NETHERITE_BOOTS);
 		static final ItemStack RECIPE_BOOK = stack(Items.KNOWLEDGE_BOOK);
+		static final ItemStack HELMET = stack(Items.NETHERITE_HELMET);
 
 		private static ItemStack stack(final Item item) {
 			return new ItemStack(item);
@@ -186,6 +187,14 @@ public enum ZScene {
 				item(graphics, Stacks.ICE, cx, cy, 0.76F * k, 0.0F);
 			}
 			case MASCOT -> ZMascot.drawPortrait(graphics, x, y, size, e);
+			case NEXT_GEN -> {
+				float pulse = 0.5F + 0.5F * (float) Math.sin(t * 3.0F);
+				ZDraw.brackets(graphics, x, y, size, size, Math.max(2, Math.round(4 * k)),
+					ZTheme.fade(ZTheme.CYAN, 0.45F + 0.55F * Math.max(pulse * 0.6F, e)));
+				item(graphics, Stacks.HELMET, cx, cy, 0.8F * k, 0.0F);
+				int scan = y + Math.round((t * (0.5F + e) % 1.0F) * (size - 1));
+				graphics.fill(x + 1, scan, x + size - 1, scan + 1, ZTheme.alpha(ZTheme.CYAN, 110 + Math.round(90 * e)));
+			}
 			case KOHS -> {
 				// An amethyst cluster in an orbit of enchanting glyphs: the creator's tab.
 				for (int index = 0; index < 3; index++) {

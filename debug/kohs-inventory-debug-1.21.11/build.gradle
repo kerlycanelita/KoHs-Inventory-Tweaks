@@ -51,6 +51,10 @@ dependencies {
 	// named development runtime, which a plain runtime file never is.
 	modRuntimeOnly files(project.hasProperty('inventoryTweaksJar') ? file(project.property('inventoryTweaksJar')) : inventoryTweaksJar)
 	clientCompileOnly files(inventoryTweaksDevJar)
+	// Loom remaps that jar for this run but leaves out the jars nested in it, so jcodec,
+	// which the release jar carries inside, goes on this run's classpath directly.
+	clientRuntimeOnly 'org.jcodec:jcodec:0.2.5'
+	clientRuntimeOnly 'org.jcodec:jcodec-javase:0.2.5'
 }
 
 // Translated copies of tools/qa, rebuilt from there by the port script; edit the labs in tools/qa.

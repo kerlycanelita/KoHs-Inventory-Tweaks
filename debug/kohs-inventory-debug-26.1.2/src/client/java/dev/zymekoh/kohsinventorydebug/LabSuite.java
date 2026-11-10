@@ -30,6 +30,7 @@ public final class LabSuite {
 		new Entry("cursor-contract", CursorContractLab::run),
 		new Entry("pvp-input", PvpInputRegressionLab::run),
 		new Entry("features", FeatureLab::run),
+		new Entry("interface-theme", InterfaceThemeLab::run),
 		new Entry("sfi-value", FastOpenValueLab::run)
 	);
 
@@ -48,6 +49,8 @@ public final class LabSuite {
 		int ran = 0;
 		int failed = 0;
 		long suiteStart = System.nanoTime();
+		// A world saved with a dead player opens on the death screen: every suite starts alive.
+		settle(minecraft);
 		for (Entry entry : LABS) {
 			if (wanted != null && !wanted.contains(entry.name())) {
 				continue;
@@ -79,6 +82,18 @@ public final class LabSuite {
 	/** Between labs: no screen open, no key held, and a moment for the server to answer. */
 	private static void settle(final Minecraft minecraft) {
 		try {
+			// A lab that ends with the player dead would start the next one on the death screen.
+			boolean[] dead = new boolean[1];
+			CloseHotbarRegressionLab.atPoll(minecraft, () -> {
+				dead[0] = minecraft.player != null && minecraft.player.isDeadOrDying();
+				if (dead[0]) {
+					minecraft.player.respawn();
+				}
+			});
+			for (int wait = 0; dead[0] && wait < 40; wait++) {
+				Thread.sleep(100);
+				CloseHotbarRegressionLab.atPoll(minecraft, () -> dead[0] = minecraft.player == null || minecraft.player.isDeadOrDying());
+			}
 			CloseHotbarRegressionLab.atPoll(minecraft, () -> {
 				if (minecraft.screen != null) {
 					minecraft.screen.onClose();

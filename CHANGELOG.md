@@ -1,5 +1,78 @@
 # Changelog
 
+## 1.4.0 — Minecraft 26.3, 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
+
+New languages: **Russian**, and pre-reform Russian written from it.
+
+Minecraft 26.3 is supported. It moved from GLFW to SDL, so on 26.3 the background and
+configuration pickers open the system file dialog through SDL.
+
+Customization page, new **Tabs, tooltips and buttons**:
+
+- The creative tabs no longer stay Vanilla grey beside a customized inventory.
+  **Match all** gives them the inventory's colour and background image, **Match
+  colour** only its colour, **Custom** a colour and opacity of your own, and
+  **Vanilla** leaves them alone. Switches choose what follows: creative tabs,
+  recipe book tabs, scrollbars with Fabric's page arrows, and effect panels.
+- Container titles turn light by themselves on a dark panel.
+- **Item tooltips** (on): the box and frame follow a customized inventory or your
+  own colours. An item with its own tooltip style keeps it, and text colours stay
+  as they are, because they tell rarity and enchantments apart.
+- **Menu buttons** (off): colours Minecraft's own buttons in every menu.
+
+New page, **Next Gen KoHs Inventories**, behind a warning: these inventories move
+your slots, some servers may ban that, and Cursor Landing and mods that center the
+mouse may not work with them. The page shows the inventory in the middle and the
+style selector below it. Every style stays around the middle of the screen, and each
+has its own version in the Creative inventory.
+
+| Style | Looks like | Recipe book |
+| --- | --- | --- |
+| **Broken** | Split in half, each half pulled aside with its slots | No |
+| **Visor** | Only the slots, floating over the world | No |
+| **Vertical** | Tall columns of slots beside the player and crafting | Yes |
+| **Compact** | The smallest panel, without the player model | Yes |
+| **Ring** | Two rings of slots around the player | No |
+| **Honeycomb** | Staggered hexagon slots | Yes |
+| **Fan** | Rows opening like a fan, with no panel behind them | No |
+| **Hotbar Up** | The hotbar above the inventory | Yes |
+| **Mirror** | Crafting on the left, the player and armor on the right | Yes |
+| **Flipped** | The inventory on top, the player and crafting below | Yes |
+| **Wide** | The player beside the inventory | No |
+| **Side Hotbar** | The hotbar as a column | Yes |
+| **Custom** | Wherever you put each slot | No |
+
+**Custom** opens an editor: drag the hotbar as one piece and the other slots one by
+one, or hold Shift for the opposite. The player model and the status effects can be
+placed too; the effects are simulated in the editor so they can be placed when none
+is active. A slot dropped on top of another goes back.
+
+The Visor draws only the outline of each slot, so the world stays in full view. The
+slot Opacity slider in Customization fades the outlines, and they take your colours.
+
+Styles with a recipe book open it beside the panel, as Vanilla does; the others keep
+it shut. Only the screen changes: a slot keeps its index, so the server gets what a
+Vanilla inventory sends for the same clicks. A window too small for a style keeps
+Vanilla.
+
+The same page changes the hotbar on the HUD:
+
+- **Hotbar** type: Vanilla, Visor (a curved row of floating slots), Ghost (plain
+  outlines), Split or Vertical.
+- **Movement** (off): the hotbar leans and sways as you move, turn and fall.
+- **Reactions** (off): it answers a popped totem, hearts lost or healed, low health,
+  and hits taken or landed.
+- **Bars** (on): health, armor, food and the XP bar move with the hotbar while
+  Movement or Reactions is on. A mod that also moves these elements may cause
+  crashes or instability, which its description says and a warning repeats when it
+  is turned back on.
+
+Status effect panels now fit the room they really have: with the GUI Scaler or a wide
+style they shrink to icons instead of running out of the window, and when not even
+the icons fit, the HUD shows them as it does on a small window.
+
+Lab: `interface-theme`, also part of `suite`.
+
 ## 1.3.1 — Minecraft 26.2, 26.1.2, 26.1.1, 26.1 and 1.21.11
 
 - Removed **Faster enchanted items**. Minecraft draws enchanted and animated items

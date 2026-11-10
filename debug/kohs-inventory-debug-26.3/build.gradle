@@ -1,0 +1,146 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		'kohs_inventory_debug' {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+repositories {
+	maven {
+		name = 'Terraformers'
+		url = 'https://maven.terraformersmc.com/releases/'
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	compileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") {
+		transitive = false
+	}
+	include implementation('net.java.dev.jna:jna:5.17.0')
+
+	// Development-runtime only: validates this companion against the exact local
+	// KoHs build. These dependencies are not nested into the debug JAR.
+	clientRuntimeOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// Recording overlay hooks only; the companion still ships without Fabric API inside.
+	clientCompileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	clientRuntimeOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	def inventoryTweaksProperties = new Properties()
+	file('../../versions/kohs-inventory-tweaks-26.3/gradle.properties').withInputStream { inventoryTweaksProperties.load(it) }
+	def inventoryTweaksJar = file("../../versions/kohs-inventory-tweaks-26.3/build/libs/kohs-inventory-tweaks-${inventoryTweaksProperties.mod_version}.jar")
+	// -PinventoryTweaksJar=<path> runs the labs against another build (A/B); they still compile against this tree.
+	clientRuntimeOnly files(project.hasProperty('inventoryTweaksJar') ? file(project.property('inventoryTweaksJar')) : inventoryTweaksJar)
+	clientCompileOnly files(inventoryTweaksJar)
+}
+
+// Translated copies of tools/qa, rebuilt from there by the port script; edit the labs in tools/qa.
+sourceSets.client.java.srcDir('src/qa/cursor-contract')
+sourceSets.client.java.srcDir('src/qa/pvp-input')
+sourceSets.client.java.srcDir('src/qa/showcase')
+
+processResources {
+	inputs.property 'version', project.version
+	inputs.property 'minecraft_version', project.minecraft_version
+
+	filesMatching('fabric.mod.json') {
+		expand(
+			version: project.version,
+			minecraft_version: project.minecraft_version
+		)
+	}
+
+	['es_ar', 'es_cl', 'es_ec', 'es_mx', 'es_uy', 'es_ve'].each { spanishLocale ->
+		from('src/main/resources/assets/kohs_inventory_debug/lang/es_es.json') {
+			into 'assets/kohs_inventory_debug/lang'
+			rename { "${spanishLocale}.json" }
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+	options.release = 25
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+// Both QA source roots carry a README of their own, and the sources jar copies
+// every source root into one tree, so the second one lands on the first.
+tasks.named('sourcesJar').configure {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+
+tasks.named('runClient').configure {
+	if (project.hasProperty('debugMacro')) {
+		jvmArgs "-Dkohs.inventory.debug.autorun=${project.property('debugMacro')}"
+		if (project.property('debugMacro') in ['cursor-contract', 'cursor-weight', 'pvp-input', 'slot-shortcuts', 'inventory-order', 'suite', 'inventory-feel', 'sfi-value', 'features', 'interface-theme', 'hover-agreement', 'mascot', 'mascot-body', 'ui-showcase', 'ui-media', 'ui-review', 'record-all', 'record-fast', 'record-center', 'record-animations']) {
+			args '--width', '1440', '--height', '1000'
+		} else if (project.property('debugMacro') == 'trailer') {
+			args '--width', '1920', '--height', '1080'
+			if (project.hasProperty('ffmpeg')) {
+				jvmArgs "-Dkohs.ffmpeg=${project.property('ffmpeg')}"
+			}
+		}
+	}
+	if (project.hasProperty('debugCreateWorld')) {
+		jvmArgs '-Dkohs.inventory.debug.createLabWorld=true'
+	}
+	if (project.hasProperty('labPings')) {
+		jvmArgs "-Dkohs.lab.pings=${project.property('labPings')}"
+	}
+	if (project.hasProperty('labTrials')) {
+		jvmArgs "-Dkohs.lab.trials=${project.property('labTrials')}"
+	}
+	if (project.hasProperty('debugServer')) {
+		args '--quickPlayMultiplayer', project.property('debugServer').toString()
+	}
+	if (project.hasProperty('labQuick')) {
+		jvmArgs '-Dkohs.lab.quick=true'
+	}
+	if (project.hasProperty('labOnly')) {
+		jvmArgs "-Dkohs.lab.only=${project.property('labOnly')}"
+	}
+	if (project.hasProperty('debugWorld')) {
+		args '--quickPlaySingleplayer', project.property('debugWorld').toString()
+	}
+	if (project.hasProperty('debugExit')) {
+		jvmArgs '-Dkohs.inventory.debug.exitAfterMacro=true'
+	}
+}
+
+jar {
+	from('../../LICENSE') {
+		rename { 'LICENSE_kohs_inventory_debug' }
+	}
+	manifest {
+		attributes(
+			'Implementation-Title': 'KoHs Inventory Debug',
+			'Implementation-Version': project.version,
+			'Implementation-Vendor': 'zymekoh'
+		)
+	}
+}

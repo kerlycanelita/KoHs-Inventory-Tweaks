@@ -1,5 +1,6 @@
 package dev.zymekoh.kohsinventorytweaks.mixin;
 
+import dev.zymekoh.kohsinventorytweaks.inventory.NextGenInventory;
 import dev.zymekoh.kohsinventorytweaks.inventory.SteadyInventory;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
@@ -85,5 +86,6 @@ public abstract class AbstractContainerScreenMixin {
 	@Inject(method = "removed", at = @At("RETURN"))
 	private void kohsInventoryTweaks$clearHighlightedHover(final CallbackInfo callbackInfo) {
 		ItemHighlighterController.onContainerClosed();
+		NextGenInventory.restore((AbstractContainerScreen<?>) (Object) this);
 	}
 }

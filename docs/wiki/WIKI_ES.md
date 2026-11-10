@@ -4,7 +4,7 @@
 
 # Wiki de KoHs Inventory Tweaks
 
-Esta guía corresponde a **KoHs Inventory Tweaks 1.0.x para Minecraft 26.2, 26.1.2, 26.1.1, 26.1 y 1.21.11**. El mod es el sucesor de **KoHs Inv Cursor**.
+Esta guía corresponde a **KoHs Inventory Tweaks 1.4.x para Minecraft 26.3, 26.2, 26.1.2, 26.1.1, 26.1 y 1.21.11**. El mod es el sucesor de **KoHs Inv Cursor**.
 
 Desde el 26 de septiembre de 2026 el mod da soporte a Minecraft 1.21.11 y posteriores. Las versiones para 1.21.10 siguen disponibles en Modrinth como versiones archivadas, pero ya no reciben correcciones.
 
@@ -19,6 +19,7 @@ Desde el 26 de septiembre de 2026 el mod da soporte a Minecraft 1.21.11 y poster
 - [Fondos personalizados](#fondos-personalizados)
 - [GUI Scaler](#gui-scaler)
 - [Item Highlighter](#item-highlighter)
+- [Next Gen KoHs Inventories](#next-gen-kohs-inventories)
 - [Resource packs](#resource-packs)
 - [Visibilidad de jugadores](#visibilidad-de-jugadores)
 - [Guardado y archivos](#guardado-y-archivos)
@@ -26,13 +27,15 @@ Desde el 26 de septiembre de 2026 el mod da soporte a Minecraft 1.21.11 y poster
 
 ## Requisitos
 
-- Minecraft Java Edition 26.2, 26.1.2, 26.1.1, 26.1 o 1.21.11.
+- Minecraft Java Edition 26.3, 26.2, 26.1.2, 26.1.1, 26.1 o 1.21.11.
 - Fabric Loader 0.19.3 o superior.
 - Fabric API correspondiente a la versión de Minecraft seleccionada.
 - Java 25 o superior para Minecraft 26.x; Java 21 o superior para Minecraft 1.21.11.
 - Mod Menu es opcional, pero recomendado para acceder a la configuración.
 
 El mod funciona del lado del cliente. Un servidor Vanilla no necesita instalarlo.
+
+La interfaz está en inglés, español y ruso, también en ruso prerreforma. La elige el idioma de Minecraft.
 
 ## Abrir la configuración
 
@@ -49,7 +52,7 @@ La configuración no se abre desde el menú principal. En ese caso se muestra un
 El inventario real del jugador aparece en el centro. Los grupos de funciones están separados en dos paneles desplazables:
 
 - **Behavior:** Cursor Landing e Inventory Tweaks.
-- **Appearance:** Customization, Item Highlighter y GUI Scaler.
+- **Appearance:** Customization, Item Highlighter, GUI Scaler y Next Gen KoHs Inventories.
 
 El selector inferior permite escoger la textura base:
 
@@ -169,6 +172,16 @@ Esta capa modifica la apariencia del slot sin recolorear el modelo del objeto qu
 
 **Reset** devuelve colores, opacidades, fuente de textura y fondo personalizado a sus valores iniciales.
 
+### Pestañas, descripciones y botones
+
+Esta página lleva el aspecto del inventario a lo que lo rodea.
+
+- **Pestañas:** **Igualar todo** da a las pestañas del creativo, las del libro de recetas, las barras de desplazamiento (con las flechas de página de Fabric) y los paneles de efectos el color y la imagen de fondo del inventario. **Igualar color** solo su color, **Propio** un color y una opacidad tuyos, y **Vanilla** las deja como están. Un interruptor por cada parte decide cuáles lo siguen.
+- **Descripciones de ítems** (activadas de serie): el fondo y el marco de las descripciones siguen a un inventario personalizado o a tus colores. Un ítem con un estilo de descripción propio lo conserva, y los colores del texto no cambian, porque distinguen rareza y encantamientos. **En todos los menús** las cambia también fuera de los contenedores.
+- **Botones de menús** (desactivados de serie): da color a los botones de Minecraft en todos los menús.
+
+Los títulos de los contenedores se aclaran solos cuando el panel de detrás es oscuro.
+
 ## Fondos personalizados
 
 Selecciona **Choose file** dentro de **Custom inventory background**. Antes de importar cualquier archivo se abre una pantalla de recorte obligatorio con proporción **176:166**.
@@ -245,6 +258,56 @@ La detección usa el `hoveredSlot` calculado por Minecraft antes de renderizar l
 - **Remove item:** elimina ese objeto del resaltador.
 - **Reset All:** elimina toda la lista de objetos configurados.
 
+## Next Gen KoHs Inventories
+
+Estos inventarios mueven tus slots por la pantalla. Antes de abrir la página, un aviso te recuerda que algunos servidores pueden considerarlo una ventaja injusta y banearte por ello, y que Cursor Landing y los mods que centran el ratón pueden no funcionar bien con ellos. Úsalos bajo tu responsabilidad.
+
+La página muestra tu inventario en el centro y el selector de estilo debajo. El estilo se aplica en cuanto lo eliges.
+
+| Estilo | Cómo se ve | Libro de recetas |
+| --- | --- | --- |
+| **Roto** | Partido por la mitad, cada mitad apartada con sus slots | No |
+| **Visor** | Solo los slots, flotando sobre el mundo | No |
+| **Vertical** | Columnas altas de slots junto al jugador y el crafteo | Sí |
+| **Compacto** | El panel más pequeño, sin el modelo del jugador | Sí |
+| **Anillo** | Dos anillos de slots alrededor del jugador | No |
+| **Panal** | Slots hexagonales escalonados | Sí |
+| **Abanico** | Filas que se abren como un abanico, sin panel detrás | No |
+| **Hotbar arriba** | La hotbar encima del inventario | Sí |
+| **Espejo** | El crafteo a la izquierda, el jugador y la armadura a la derecha | Sí |
+| **Invertido** | El inventario arriba, el jugador y el crafteo abajo | Sí |
+| **Ancho** | El jugador al lado del inventario | No |
+| **Hotbar lateral** | La hotbar en columna | Sí |
+| **Custom** | Cada slot donde tú lo pongas | No |
+
+Todos los estilos quedan cerca del centro de la pantalla y tienen su versión en el inventario creativo, donde las pestañas y la barra de desplazamiento siguen a mano. Los estilos con libro de recetas lo abren al lado del panel, como Vanilla; los demás lo mantienen cerrado. Si la ventana es demasiado pequeña para un estilo, el inventario sigue siendo Vanilla.
+
+Solo cambia la pantalla. Cada slot conserva su índice, así que el servidor recibe exactamente lo mismo que con un inventario Vanilla para los mismos clics.
+
+### Custom
+
+Elige **Custom** y pulsa **Editar posiciones**:
+
+- Arrastra la hotbar para moverla entera, y cualquier otro slot para moverlo solo. Mantén **Shift** para lo contrario.
+- También puedes colocar el modelo del jugador y los efectos. Los efectos se simulan en el editor, así que puedes colocarlos aunque no tengas ninguno activo.
+- **Ajuste** ayuda a alinear las piezas mientras las arrastras. Un slot que sueltas encima de otro vuelve a su sitio.
+- **Restablecer** devuelve cada pieza a su posición inicial.
+
+Cada cambio se guarda al soltar la pieza. El GUI Scaler no cambia el tamaño de una distribución Custom, así que los slots quedan justo donde los pusiste.
+
+### El Visor
+
+El Visor dibuja solo el contorno de cada slot, flotando sobre el mundo. La **Opacidad** de **Marcos de los slots** en Customization atenúa los contornos, y estos toman tus colores.
+
+### Hotbar
+
+La misma página cambia la hotbar del HUD:
+
+- **Hotbar:** Vanilla, Visor (una fila curva de slots flotantes), Fantasma (solo contornos), Partida o Vertical.
+- **Movimiento** (desactivado de serie): la hotbar se inclina y se balancea cuando te mueves, giras y caes.
+- **Reacciones** (desactivado de serie): reacciona a un tótem que explota, a los corazones que pierdes o recuperas, a la vida baja y a los golpes que recibes o das.
+- **Barras** (activado de serie): la vida, la armadura, la comida y la barra de experiencia se mueven con la hotbar mientras Movimiento o Reacciones está activado. Si otro mod también mueve estos elementos, puede haber cierres o inestabilidad; al volver a activar Barras aparece ese aviso.
+
 ## Resource packs
 
 Las previews y los objetos utilizan los recursos actualmente activos:
@@ -303,6 +366,10 @@ El límite se adapta a la ventana para evitar que slots o botones queden fuera d
 ### Dynamic no aparece
 
 Confirma que el objeto fue añadido, que Dynamic está activado en su editor y que el cursor está sobre un slot que contiene exactamente ese objeto.
+
+### Un estilo Next Gen se ve como el inventario Vanilla
+
+La ventana es demasiado pequeña para ese estilo. Agranda la ventana o baja la escala de interfaz de Minecraft.
 
 ### Reportar un error
 

@@ -13,7 +13,7 @@
 
 KoHs Inventory Tweaks is a Fabric client-side mod that hooks into inventory-screen preparation and rendering without replacing server inventory logic. It provides deterministic cursor placement, guarded rapid input, configurable visuals, and a responsive interface while preserving vanilla interactions.
 
-This repository contains released implementations for **Minecraft 26.2, 26.1.2, 26.1.1, 26.1, and 1.21.11**. The Minecraft 26.1.2 implementation is the repository root; every additional target lives in its own directory under `versions/`.
+This repository contains released implementations for **Minecraft 26.3, 26.2, 26.1.2, 26.1.1, 26.1, and 1.21.11**. The Minecraft 26.1.2 implementation is the repository root; every additional target lives in its own directory under `versions/`.
 
 ## Screenshots
 
@@ -46,6 +46,7 @@ Modrinth only offers the latest version. Earlier releases stay on the [GitHub Re
 
 | Minecraft | Fabric API | Java | Source |
 |---|---|---:|---|
+| **26.3** | **0.161.0+26.3** | **25+** | `versions/kohs-inventory-tweaks-26.3` |
 | **26.2** | **0.157.0+26.2** | **25+** | `versions/kohs-inventory-tweaks-26.2` |
 | **26.1.2** | **0.155.2+26.1.2** | **25+** | Repository root |
 | **26.1.1** | **0.145.4+26.1.1** | **25+** | `versions/kohs-inventory-tweaks-26.1.1` |
@@ -53,6 +54,8 @@ Modrinth only offers the latest version. Earlier releases stay on the [GitHub Re
 | **1.21.11** | **0.141.6+1.21.11** | **21+** | `versions/kohs-inventory-tweaks-1.21.11` |
 
 All builds require Fabric Loader 0.19.3 or newer. Mod Menu is optional and recommended.
+
+The interface is translated into English, Spanish (every Spanish variant Minecraft offers) and Russian, with pre-reform Russian written from the Russian file.
 
 The mod does not need to be installed on the server.
 
@@ -109,9 +112,13 @@ This checks every source tree against the exact Minecraft jar it compiles agains
 
 This reports any translation key the client asks for that is missing from a language file, and any key present in English but absent from a translation.
 
+    python tools/lang/make_rpr.py
+
+Run this after editing `ru_ru.json`: it writes pre-reform Russian (`rpr.json`) from it.
+
     python tools/verify-release-artifacts.py --release 1.2.1
 
-After building all five targets, this checks each release JAR's metadata, mixin classes, Java target and bundled translations, and prints its size and hashes.
+After building all six targets, this checks each release JAR's metadata, mixin classes, Java target and bundled translations, and prints its size and hashes.
 
 [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) documents which hooks run in the frame loop and what they are allowed to do.
 

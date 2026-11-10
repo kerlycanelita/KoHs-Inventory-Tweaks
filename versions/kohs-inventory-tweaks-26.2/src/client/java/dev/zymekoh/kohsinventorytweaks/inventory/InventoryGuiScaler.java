@@ -271,8 +271,15 @@ public final class InventoryGuiScaler {
 			|| config == null || !config.inventoryGuiScalerEnabled) {
 			return 1.0;
 		}
-		boolean recipeBookVisible = recipeBookOpen(screen);
-		double maximum = maximumScaleFor(screenWidth, screenHeight);
+		InventoryTweaksConfig.NextGenStyle nextGen = NextGenInventory.styleFor(config, screenWidth, screenHeight);
+		if (nextGen == InventoryTweaksConfig.NextGenStyle.CUSTOM) {
+			// Slots placed by hand stay exactly where they were placed.
+			return 1.0;
+		}
+		boolean recipeBookVisible = NextGenInventory.allowsRecipeBook(nextGen) && recipeBookOpen(screen);
+		double maximum = nextGen == InventoryTweaksConfig.NextGenStyle.OFF
+			? maximumScaleFor(screenWidth, screenHeight)
+			: maximumScaleFor(screenWidth, screenHeight, NextGenInventory.footprintWidth(nextGen), NextGenInventory.footprintHeight(nextGen));
 		if (recipeBookVisible) {
 			double recipeBookFit = Math.max(1, screenWidth - SCREEN_MARGIN * 2)
 				/ (double) INVENTORY_WITH_RECIPE_BOOK_WIDTH;

@@ -5,8 +5,11 @@ import dev.zymekoh.kohsinventorytweaks.ui.ZChrome;
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
+import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.PartStyle;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.ProfilePreset;
+import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.TabStyle;
 import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
+import dev.zymekoh.kohsinventorytweaks.render.InterfaceTheme;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
 import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
@@ -24,12 +27,16 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -42,9 +49,13 @@ public final class AdvancedSettingsScreen extends Screen {
 	private static final int CARD_GAP = 4;
 	private static final int SLIDER_CARD_HEIGHT = 46;
 	private static final int PALETTE_CARD_HEIGHT = 88;
+	private static final Item[] INTERFACE_TAB_ICONS = {
+		Items.BRICKS, Items.PEONY, Items.REDSTONE, Items.COMPASS, Items.GOLDEN_APPLE, Items.IRON_SWORD
+	};
 
 	private enum Tab {
 		PLAYER_GLOW("player_glow"),
+		INTERFACE("interface"),
 		ACCESSIBILITY("accessibility"),
 		CONTAINERS("containers"),
 		PERFORMANCE("performance"),
@@ -67,6 +78,7 @@ public final class AdvancedSettingsScreen extends Screen {
 				case SAFETY -> KohsTabIcon.SAFETY;
 				case PLAYER_GLOW, ACCESSIBILITY -> KohsTabIcon.ACCESSIBILITY;
 				case CONTAINERS -> KohsTabIcon.SCALER;
+				case INTERFACE -> KohsTabIcon.CUSTOMIZATION;
 				case KEYBINDS -> KohsTabIcon.TWEAKS;
 			};
 		}
@@ -149,6 +161,10 @@ public final class AdvancedSettingsScreen extends Screen {
 		}
 	}
 
+	public static AdvancedSettingsScreen interfaceTheme(final Screen parent) {
+		return new AdvancedSettingsScreen(parent, Tab.INTERFACE, true, false, true);
+	}
+
 	public static AdvancedSettingsScreen playerGlow(final Screen parent) {
 		return new AdvancedSettingsScreen(parent, Tab.PLAYER_GLOW, true, false, true);
 	}
@@ -163,6 +179,7 @@ public final class AdvancedSettingsScreen extends Screen {
 		if (this.editing) {
 			next = switch (this.tab) {
 				case PLAYER_GLOW -> this.addPlayerGlowOptions();
+				case INTERFACE -> this.addInterfaceOptions();
 				case ACCESSIBILITY -> this.addAccessibilityOptions();
 				case CONTAINERS -> this.addContainerOptions();
 				case PERFORMANCE -> this.addPerformanceOptions();
@@ -389,6 +406,7 @@ public final class AdvancedSettingsScreen extends Screen {
 
 	private boolean needsLivePreview() {
 		return this.tab == Tab.PLAYER_GLOW
+			|| this.tab == Tab.INTERFACE
 			|| this.tab == Tab.ACCESSIBILITY
 			|| this.tab == Tab.CONTAINERS;
 	}
@@ -466,6 +484,69 @@ public final class AdvancedSettingsScreen extends Screen {
 				value -> this.working.accessibilitySlotFocusColor = value);
 		}
 		return y;
+	}
+
+	private int addInterfaceOptions() {
+		int y = 8;
+		y = this.addAction(y, 0,
+			Component.translatable(interfaceKey("tabs")),
+			Component.translatable(interfaceKey("tabs.description")),
+			Component.translatable(interfaceKey("tabs." + this.working.tabStyle.name().toLowerCase(Locale.ROOT))),
+			button -> this.mutate(config -> config.tabStyle = next(config.tabStyle), true, true));
+		if (this.working.tabStyle != TabStyle.VANILLA) {
+			y = this.addToggle(y, 1, interfaceKey("creative_tabs"), interfaceKey("creative_tabs.description"), this.working.themeCreativeTabs,
+				config -> config.themeCreativeTabs = !config.themeCreativeTabs);
+			y = this.addToggle(y, 1, interfaceKey("recipe_tabs"), interfaceKey("recipe_tabs.description"), this.working.themeRecipeBookTabs,
+				config -> config.themeRecipeBookTabs = !config.themeRecipeBookTabs);
+			y = this.addToggle(y, 1, interfaceKey("scrollbars"), interfaceKey("scrollbars.description"), this.working.themeScrollbars,
+				config -> config.themeScrollbars = !config.themeScrollbars);
+			y = this.addToggle(y, 1, interfaceKey("effects"), interfaceKey("effects.description"), this.working.themeEffects,
+				config -> config.themeEffects = !config.themeEffects);
+		}
+		if (this.working.tabStyle == TabStyle.CUSTOM) {
+			y = this.addColorPalette(y, 1, interfaceKey("tab_color"), "screen.kohs_inventory_tweaks.advanced.color.description",
+				() -> this.working.tabColor, value -> this.working.tabColor = value);
+			y = this.addIntSlider(y, 1, interfaceKey("tab_opacity"), "screen.kohs_inventory_tweaks.advanced.opacity.description",
+				0, 255, this.working.tabOpacity, value -> this.working.tabOpacity = value,
+				"screen.kohs_inventory_tweaks.advanced.value");
+		}
+		y = this.addAction(y, 0,
+			Component.translatable(interfaceKey("tooltips")),
+			Component.translatable(interfaceKey("tooltips.description")),
+			Component.translatable(interfaceKey("part." + this.working.tooltipStyle.name().toLowerCase(Locale.ROOT))),
+			button -> this.mutate(config -> config.tooltipStyle = next(config.tooltipStyle), true, true));
+		if (this.working.tooltipStyle != PartStyle.VANILLA) {
+			y = this.addToggle(y, 1, interfaceKey("tooltip_everywhere"), interfaceKey("tooltip_everywhere.description"), this.working.tooltipEverywhere,
+				config -> config.tooltipEverywhere = !config.tooltipEverywhere);
+		}
+		if (this.working.tooltipStyle == PartStyle.CUSTOM) {
+			y = this.addColorPalette(y, 1, interfaceKey("tooltip_background"), "screen.kohs_inventory_tweaks.advanced.color.description",
+				() -> this.working.tooltipBackgroundColor, value -> this.working.tooltipBackgroundColor = value);
+			y = this.addColorPalette(y, 1, interfaceKey("tooltip_frame"), "screen.kohs_inventory_tweaks.advanced.color.description",
+				() -> this.working.tooltipFrameColor, value -> this.working.tooltipFrameColor = value);
+			y = this.addIntSlider(y, 1, interfaceKey("tooltip_opacity"), "screen.kohs_inventory_tweaks.advanced.opacity.description",
+				0, 255, this.working.tooltipOpacity, value -> this.working.tooltipOpacity = value,
+				"screen.kohs_inventory_tweaks.advanced.value");
+		}
+		y = this.addAction(y, 0,
+			Component.translatable(interfaceKey("buttons")),
+			Component.translatable(interfaceKey("buttons.description")),
+			Component.translatable(interfaceKey("part." + this.working.buttonStyle.name().toLowerCase(Locale.ROOT))),
+			button -> this.mutate(config -> config.buttonStyle = next(config.buttonStyle), true, true));
+		if (this.working.buttonStyle == PartStyle.CUSTOM) {
+			y = this.addColorPalette(y, 1, interfaceKey("button_color"), "screen.kohs_inventory_tweaks.advanced.color.description",
+				() -> this.working.buttonColor, value -> this.working.buttonColor = value);
+		}
+		return y;
+	}
+
+	private static String interfaceKey(final String suffix) {
+		return "screen.kohs_inventory_tweaks.advanced.interface." + suffix;
+	}
+
+	private static <T extends Enum<T>> T next(final T value) {
+		T[] values = value.getDeclaringClass().getEnumConstants();
+		return values[(value.ordinal() + 1) % values.length];
 	}
 
 	private int addPlayerGlowOptions() {
@@ -1019,13 +1100,55 @@ public final class AdvancedSettingsScreen extends Screen {
 			this.previewY + 7,
 			UiTheme.TEXT_MUTED
 		);
-		if (this.tab == Tab.CONTAINERS) {
+		if (this.tab == Tab.INTERFACE) {
+			this.drawInterfacePreview(graphics);
+		} else if (this.tab == Tab.CONTAINERS) {
 			this.drawContainerScalePreview(graphics);
 		} else if (this.tab == Tab.PLAYER_GLOW) {
 			this.drawPlayerGlowPreview(graphics, mouseX, mouseY);
 		} else {
 			this.drawInventoryPreview(graphics, mouseX, mouseY);
 		}
+	}
+
+	/** The creative inventory with its tabs, a tooltip and a menu button, as the game will draw them. */
+	private void drawInterfacePreview(final GuiGraphics graphics) {
+		int areaX = this.previewX + 6;
+		int areaY = this.previewY + 21;
+		int areaWidth = Math.max(1, this.previewWidth - 12);
+		int areaHeight = Math.max(1, this.previewHeight - 27);
+		float scale = Math.max(0.3F, Math.min(1.5F, Math.min(areaWidth / 195.0F, areaHeight / 246.0F)));
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(areaX + (areaWidth - Math.round(195 * scale)) / 2.0F, areaY + (areaHeight - Math.round(246 * scale)) / 2.0F);
+		graphics.pose().scale(scale, scale);
+		int panelTop = 28;
+		String tabs = "container/creative_inventory/tab_";
+		for (int column = 1; column < INTERFACE_TAB_ICONS.length; column++) {
+			graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.withDefaultNamespace(tabs + "top_unselected_" + (column + 1)), column * 27, 0, 26, 32);
+			graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.withDefaultNamespace(tabs + "bottom_unselected_" + (column + 1)), column * 27, panelTop + 132, 26, 32);
+		}
+		graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.withDefaultNamespace(tabs + "bottom_unselected_1"), 0, panelTop + 132, 26, 32);
+		InventoryPreviewRenderer.drawSurfacePreview(graphics, this.font, 0, panelTop, 1.0F, CustomizationPreview.CREATIVE, this.working);
+		graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.withDefaultNamespace(tabs + "top_selected_1"), 0, 0, 26, 32);
+		graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.withDefaultNamespace("container/creative_inventory/scroller"), 175, panelTop + 18, 12, 15);
+		for (int column = 0; column < INTERFACE_TAB_ICONS.length; column++) {
+			graphics.renderItem(new ItemStack(INTERFACE_TAB_ICONS[column]), column * 27 + 5, 9);
+		}
+		graphics.drawString(this.font, Component.translatable("itemGroup.buildingBlocks"), 8, panelTop + 6,
+			InventoryTextureManager.customizesContainerSurfaces(this.working) ? InterfaceTheme.previewLabelColor(this.working) : 0xFF404040, false);
+
+		int rowY = panelTop + 136 + 42;
+		Component sample = Component.translatable("item.minecraft.totem_of_undying");
+		int tooltipWidth = this.font.width(sample);
+		if (!InterfaceTheme.tooltipThemed(this.working)) {
+			TooltipRenderUtil.renderTooltipBackground(graphics, 12, rowY + 12, tooltipWidth, 9, null);
+		} else {
+			InterfaceTheme.drawTooltipBox(graphics, 12, rowY + 12, tooltipWidth, 9, this.working);
+		}
+		graphics.drawString(this.font, sample, 12, rowY + 12, 0xFFFFFFFF, true);
+		graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.withDefaultNamespace("widget/button"), 125, rowY + 7, 70, 20, InterfaceTheme.buttonColor(-1));
+		graphics.drawCenteredString(this.font, Component.translatable("gui.done"), 160, rowY + 13, 0xFFFFFFFF);
+		graphics.pose().popMatrix();
 	}
 
 	private void drawInventoryPreview(final GuiGraphics graphics, final int mouseX, final int mouseY) {
@@ -1285,6 +1408,7 @@ public final class AdvancedSettingsScreen extends Screen {
 				this.working.visiblePlayerGlowPulse = true;
 				this.working.visiblePlayerGlowColor = 0xB86BFF;
 			}
+			case INTERFACE -> this.working.resetInterfaceTheme();
 			case CONTAINERS -> {
 				this.working.containerProfilesEnabled = false;
 				this.working.chestContainerScaleEnabled = true;

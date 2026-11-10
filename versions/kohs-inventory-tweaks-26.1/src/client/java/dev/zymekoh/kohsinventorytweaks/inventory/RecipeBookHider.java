@@ -19,7 +19,8 @@ public final class RecipeBookHider {
 
 	public static boolean hidden() {
 		return ConfigStore.get().hideRecipeBook
-			&& CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS);
+			&& CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.INVENTORY_TWEAKS)
+			|| NextGenInventory.hidesRecipeBook();
 	}
 
 	/** Whether the recipe book of this kind will show: the player's own book, unless it is hidden. */

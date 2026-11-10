@@ -4,11 +4,13 @@ import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
 import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
+import dev.zymekoh.kohsinventorytweaks.inventory.NextGenCreative;
 import dev.zymekoh.kohsinventorytweaks.render.VisiblePlayerBackdropController;
 import dev.zymekoh.kohsinventorytweaks.ui.ZMascot;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -54,6 +56,10 @@ public abstract class ScreenBackgroundMixin {
 		final CallbackInfo callbackInfo
 	) {
 		if (!((Object) this instanceof AbstractContainerScreen<?> screen)) {
+			return;
+		}
+		if (screen instanceof CreativeModeInventoryScreen creative && NextGenCreative.clearsBackdrop(creative)) {
+			callbackInfo.cancel();
 			return;
 		}
 		if (!CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CUSTOMIZATION)) {

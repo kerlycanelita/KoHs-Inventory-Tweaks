@@ -11,7 +11,7 @@ import struct
 import zipfile
 from pathlib import Path
 
-TARGETS = ("1.21.11", "26.1", "26.1.1", "26.1.2", "26.2")
+TARGETS = ("1.21.11", "26.1", "26.1.1", "26.1.2", "26.2", "26.3")
 PACKAGE = "src/client/java/dev/zymekoh/kohsinventorytweaks"
 
 

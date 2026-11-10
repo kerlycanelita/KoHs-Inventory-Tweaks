@@ -21,6 +21,7 @@ public enum KohsTabIcon {
 	ENDER_CHEST(ZScene.ENDER_CHEST),
 	BARREL(ZScene.BARREL),
 	KEYBIND(ZScene.KEYBIND),
+	NEXT_GEN(ZScene.NEXT_GEN),
 	KOHS(ZScene.KOHS);
 
 	private final ZScene scene;

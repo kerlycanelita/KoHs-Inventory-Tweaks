@@ -64,6 +64,7 @@ public final class MacroTestController {
 		PING_INVENTORY("ping-inventory", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		SUITE("suite", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		FEATURES("features", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
+		INTERFACE_THEME("interface-theme", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
 		HOVER_AGREEMENT("hover-agreement", "kohs_inventory_debug.lab.slot_shortcuts", "kohs_inventory_debug.lab.slot_shortcuts.desc", false, true),
 		MASCOT("mascot", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
 		MASCOT_BODY("mascot-body", "kohs_inventory_debug.lab.ui_showcase", "kohs_inventory_debug.lab.ui_showcase.desc", false, true),
@@ -247,7 +248,7 @@ public final class MacroTestController {
 		}
 		autorunAttempted = true;
 		DebugCollector.info("MACRO_AUTORUN", "Starting requested development macro=" + requested.id);
-		if (requested == MacroKind.FEATURES || requested == MacroKind.HOVER_AGREEMENT || requested == MacroKind.MASCOT
+		if (requested == MacroKind.FEATURES || requested == MacroKind.INTERFACE_THEME || requested == MacroKind.HOVER_AGREEMENT || requested == MacroKind.MASCOT
 			|| requested == MacroKind.MASCOT_BODY || requested == MacroKind.TRAILER) {
 			startObserverLab(minecraft, requested);
 			return;
@@ -293,6 +294,7 @@ public final class MacroTestController {
 				Thread.sleep(1_500);
 				switch (kind) {
 					case FEATURES -> FeatureLab.run(minecraft);
+					case INTERFACE_THEME -> InterfaceThemeLab.run(minecraft);
 					case MASCOT -> MascotLab.run(minecraft);
 					case MASCOT_BODY -> MascotLab.runBody(minecraft);
 					case TRAILER -> TrailerLab.run(minecraft);
@@ -355,6 +357,7 @@ public final class MacroTestController {
 			case SFI_VALUE -> FastOpenValueLab.run(minecraft);
 			case SUITE -> LabSuite.run(minecraft);
 			case FEATURES -> FeatureLab.run(minecraft);
+			case INTERFACE_THEME -> InterfaceThemeLab.run(minecraft);
 			case HOVER_AGREEMENT -> HoverAgreementLab.run(minecraft);
 			case MASCOT -> MascotLab.run(minecraft);
 			case MASCOT_BODY -> MascotLab.runBody(minecraft);

@@ -15,6 +15,7 @@ versions/*
 !versions/kohs-inventory-tweaks-26.1/
 !versions/kohs-inventory-tweaks-26.1.1/
 !versions/kohs-inventory-tweaks-26.2/
+!versions/kohs-inventory-tweaks-26.3/
 builds/
 modrinth/
 scripts/

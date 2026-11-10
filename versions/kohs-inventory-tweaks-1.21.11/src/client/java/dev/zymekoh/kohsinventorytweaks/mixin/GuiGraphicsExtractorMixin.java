@@ -3,6 +3,7 @@ package dev.zymekoh.kohsinventorytweaks.mixin;
 import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
 import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
 import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
+import dev.zymekoh.kohsinventorytweaks.render.InterfaceTheme;
 import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -30,6 +31,10 @@ public abstract class GuiGraphicsExtractorMixin {
 		final int height,
 		final CallbackInfo callbackInfo
 	) {
+		if (InterfaceTheme.drawSprite((GuiGraphics) (Object) this, pipeline, sprite, x, y, width, height)) {
+			callbackInfo.cancel();
+			return;
+		}
 		InventoryTweaksConfig config = ConfigStore.get();
 		if (!(Minecraft.getInstance().screen instanceof AbstractContainerScreen<?>)
 			|| !InventoryTextureManager.hasColorCustomization(config)
@@ -131,6 +136,39 @@ public abstract class GuiGraphicsExtractorMixin {
 			accessor.kohsInventoryTweaks$getImageWidth(),
 			accessor.kohsInventoryTweaks$getImageHeight()
 		);
+	}
+
+	@Inject(
+		method = "blit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIFFIIII)V",
+		at = @At("HEAD"),
+		cancellable = true
+	)
+	private void kohsInventoryTweaks$themeFabricArrows(
+		final com.mojang.blaze3d.pipeline.RenderPipeline pipeline,
+		final Identifier texture,
+		final int x,
+		final int y,
+		final float u,
+		final float v,
+		final int width,
+		final int height,
+		final int textureWidth,
+		final int textureHeight,
+		final CallbackInfo callbackInfo
+	) {
+		if (InterfaceTheme.drawFabricArrows((GuiGraphics) (Object) this, pipeline, texture, x, y, u, v, width, height, textureWidth, textureHeight)) {
+			callbackInfo.cancel();
+		}
+	}
+
+	@ModifyVariable(
+		method = "drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/util/FormattedCharSequence;IIIZ)V",
+		at = @At("HEAD"),
+		argsOnly = true,
+		ordinal = 2
+	)
+	private int kohsInventoryTweaks$readableLabel(final int color) {
+		return InterfaceTheme.labelColor(color);
 	}
 
 	// A scaled inventory keeps its hover maths in surface coordinates, but the

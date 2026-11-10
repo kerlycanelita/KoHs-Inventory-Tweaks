@@ -45,6 +45,16 @@ public final class InventoryTextureManager {
 	private static final int TEXTURE_SIZE = 256;
 	private static final int INVENTORY_WIDTH = 176;
 	private static final int INVENTORY_HEIGHT = 166;
+	/** The grey of Vanilla's panels and of the selected tabs. */
+	private static final int PANEL_GREY = 0xFFC6C6C6;
+	private static final int CREATIVE_WIDTH = 195;
+	private static final int CREATIVE_HEIGHT = 136;
+	private static final int TAB_WIDTH = 26;
+	private static final int TAB_HEIGHT = 32;
+	private static final int TAB_SPACING = 27;
+	/** The rows of a tab sprite that lie on the panel's edge, top and bottom row of tabs. */
+	private static final int TAB_TOP_SEAM = 28;
+	private static final int TAB_BOTTOM_SEAM = 4;
 	private static @Nullable DynamicTexture dynamicTexture;
 	private static @Nullable int[] basePixels;
 	private static final DynamicTexture[] containerTextures = new DynamicTexture[7];
@@ -72,6 +82,13 @@ public final class InventoryTextureManager {
 	private static int resourceGeneration;
 	private static long animationStartedAt;
 	private static int nextSurfaceTextureId;
+	private static final Map<Identifier, CreativeTabSkin> creativeTabSkins = new HashMap<>();
+	private static @Nullable AnimationFrame averagedFrame;
+	private static final Identifier PLAIN_SURFACE = Identifier.fromNamespaceAndPath(KoHsInventoryTweaksClient.MOD_ID, "dynamic/plain_surface");
+	private static @Nullable DynamicTexture plainTexture;
+	private static @Nullable AnimationFrame plainFrame;
+	private static String plainKey = "";
+	private static int averagedImage;
 
 	public record SlotRegion(int x, int y) {
 	}
@@ -335,6 +352,119 @@ public final class InventoryTextureManager {
 		return state.texture == null ? original : state.generated;
 	}
 
+	/** The colour the inventory's panel shows, as one RGB value: frame colour under the background image. */
+	public static int panelColor(final InventoryTweaksConfig config) {
+		int frame = tint(PANEL_GREY, config.frameColor, 255) & 0xFFFFFF;
+		String backgroundKey = backgroundKey(config);
+		if (!backgroundKey.equals(loadedBackgroundKey)) {
+			rebuildBackground(config, backgroundKey);
+		}
+		if (background == null) {
+			return frame;
+		}
+		int image = averageBackgroundImage();
+		int alpha = channel(image, 24) * clampByte(config.backgroundOpacity) / 255;
+		return mixChannel(image, frame, alpha, 16) << 16 | mixChannel(image, frame, alpha, 8) << 8 | mixChannel(image, frame, alpha, 0);
+	}
+
+	/** The tint that turns the panel's Vanilla grey into the colour the panel shows, with the frame's opacity. */
+	public static int inventoryTint(final InventoryTweaksConfig config) {
+		int panel = panelColor(config);
+		int grey = channel(PANEL_GREY, 0);
+		return clampByte(config.frameOpacity) << 24
+			| Math.min(255, channel(panel, 16) * 255 / grey) << 16
+			| Math.min(255, channel(panel, 8) * 255 / grey) << 8
+			| Math.min(255, channel(panel, 0) * 255 / grey);
+	}
+
+	/** The panel's surface with no slots on it, for panels built in other shapes; null without an image. */
+	public static @Nullable Identifier plainSurface(final InventoryTweaksConfig config) {
+		String backgroundKey = backgroundKey(config);
+		if (!backgroundKey.equals(loadedBackgroundKey)) {
+			rebuildBackground(config, backgroundKey);
+		}
+		AnimationFrame frame = backgroundFrame(config);
+		if (frame == null) {
+			return null;
+		}
+		String key = backgroundKey + ':' + config.frameColor + ':' + config.frameOpacity + ':' + config.backgroundOpacity;
+		Minecraft minecraft = Minecraft.getInstance();
+		if (plainTexture == null) {
+			NativeImage image = new NativeImage(INVENTORY_WIDTH, INVENTORY_HEIGHT, true);
+			plainTexture = new DynamicTexture(() -> "KoHs plain inventory surface", image);
+			minecraft.getTextureManager().register(PLAIN_SURFACE, plainTexture);
+			plainFrame = null;
+		}
+		if (frame != plainFrame || !key.equals(plainKey)) {
+			NativeImage output = plainTexture.getPixels();
+			int base = tint(PANEL_GREY, config.frameColor, config.frameOpacity);
+			int[] pixels = frame.pixels();
+			for (int y = 0; y < INVENTORY_HEIGHT; y++) {
+				for (int x = 0; x < INVENTORY_WIDTH; x++) {
+					output.setPixel(x, y, blend(withOpacity(pixels[x + y * INVENTORY_WIDTH], config.backgroundOpacity), base));
+				}
+			}
+			plainTexture.upload();
+			plainFrame = frame;
+			plainKey = key;
+		}
+		return PLAIN_SURFACE;
+	}
+
+	/** The first frame stands for the whole animation, so parts tinted from it do not flicker with a GIF. */
+	private static int averageBackgroundImage() {
+		AnimationFrame frame = background.frameAt(0L);
+		if (frame != averagedFrame) {
+			long red = 0L;
+			long green = 0L;
+			long blue = 0L;
+			long weight = 0L;
+			for (int pixel : frame.pixels()) {
+				int alpha = channel(pixel, 24);
+				red += (long) channel(pixel, 16) * alpha;
+				green += (long) channel(pixel, 8) * alpha;
+				blue += (long) channel(pixel, 0) * alpha;
+				weight += alpha;
+			}
+			long divisor = Math.max(1L, weight);
+			averagedImage = (int) (weight / Math.max(1, frame.pixels().length)) << 24
+				| (int) (red / divisor) << 16 | (int) (green / divisor) << 8 | (int) (blue / divisor);
+			averagedFrame = frame;
+		}
+		return averagedImage;
+	}
+
+	private static int mixChannel(final int over, final int under, final int alpha, final int shift) {
+		return (channel(over, shift) * alpha + channel(under, shift) * (255 - alpha)) / 255;
+	}
+
+	/**
+	 * A creative tab in the inventory's material: the background image continues past the panel's
+	 * edge, mirrored at the seam, and the sprite keeps its own bevels. Null without an image.
+	 */
+	public static @Nullable Identifier creativeTabTexture(final InventoryTweaksConfig config, final Identifier sprite) {
+		String backgroundKey = backgroundKey(config);
+		if (!backgroundKey.equals(loadedBackgroundKey)) {
+			rebuildBackground(config, backgroundKey);
+		}
+		if (background == null) {
+			return null;
+		}
+		CreativeTabSkin skin = creativeTabSkins.computeIfAbsent(sprite, CreativeTabSkin::new);
+		Minecraft minecraft = Minecraft.getInstance();
+		String baseKey = resourceGeneration + ":tab:" + config.inventoryTextureSource;
+		if (!baseKey.equals(skin.loadedBaseKey) || skin.basePixels == null) {
+			skin.loadBase(minecraft, config.inventoryTextureSource, baseKey);
+		}
+		AnimationFrame nextFrame = backgroundFrame(config);
+		String styleKey = styleKey(config, baseKey, backgroundKey);
+		if (skin.texture == null || nextFrame != skin.renderedFrame || !styleKey.equals(skin.styleKey)) {
+			skin.composeAndUpload(minecraft, config, nextFrame);
+			skin.styleKey = styleKey;
+		}
+		return skin.texture == null ? null : skin.generated;
+	}
+
 	private static boolean isContainerSurface(final Identifier texture) {
 		if (!"minecraft".equals(texture.getNamespace()) || !texture.getPath().endsWith(".png")) {
 			return false;
@@ -374,6 +504,11 @@ public final class InventoryTextureManager {
 			state.styleKey = "";
 			state.basePixels = null;
 		}
+		for (CreativeTabSkin skin : creativeTabSkins.values()) {
+			skin.loadedBaseKey = "";
+			skin.styleKey = "";
+			skin.basePixels = null;
+		}
 	}
 
 	public static void invalidateConfiguration() {
@@ -385,6 +520,10 @@ public final class InventoryTextureManager {
 		for (SurfaceTextureState state : surfaceTextures.values()) {
 			state.styleKey = "";
 		}
+		for (CreativeTabSkin skin : creativeTabSkins.values()) {
+			skin.styleKey = "";
+		}
+		averagedFrame = null;
 	}
 
 	private static boolean isUnmodifiedAppliedTexture(final InventoryTweaksConfig config) {
@@ -683,6 +822,99 @@ public final class InventoryTextureManager {
 				mask[x + y * TEXTURE_SIZE] = true;
 			}
 		}
+	}
+
+	/** One creative tab sprite, recomposed in the material of the panel it belongs to. */
+	private static final class CreativeTabSkin {
+		private final Identifier sprite;
+		private final Identifier generated;
+		private @Nullable DynamicTexture texture;
+		private @Nullable int[] basePixels;
+		private int physicalWidth;
+		private int physicalHeight;
+		private String loadedBaseKey = "";
+		private String styleKey = "";
+		private @Nullable AnimationFrame renderedFrame;
+
+		private CreativeTabSkin(final Identifier sprite) {
+			this.sprite = sprite;
+			this.generated = Identifier.fromNamespaceAndPath(
+				KoHsInventoryTweaksClient.MOD_ID,
+				"dynamic/creative_tab_" + nextSurfaceTextureId++
+			);
+		}
+
+		private void loadBase(final Minecraft minecraft, final TextureSource source, final String key) {
+			Identifier file = this.sprite.withPath(path -> "textures/gui/sprites/" + path + ".png");
+			try (InputStream input = openBaseTexture(minecraft, source, file); NativeImage image = NativeImage.read(input)) {
+				this.physicalWidth = image.getWidth();
+				this.physicalHeight = Math.min(image.getHeight(), Math.max(1, this.physicalWidth * TAB_HEIGHT / TAB_WIDTH));
+				this.basePixels = new int[this.physicalWidth * this.physicalHeight];
+				for (int y = 0; y < this.physicalHeight; y++) {
+					for (int x = 0; x < this.physicalWidth; x++) {
+						this.basePixels[x + y * this.physicalWidth] = image.getPixel(x, y);
+					}
+				}
+				this.texture = null;
+				this.renderedFrame = null;
+				this.styleKey = "";
+			} catch (Exception exception) {
+				KoHsInventoryTweaksClient.LOGGER.error("Could not load creative tab sprite {}", file, exception);
+				this.basePixels = null;
+			}
+			this.loadedBaseKey = key;
+		}
+
+		private void composeAndUpload(
+			final Minecraft minecraft,
+			final InventoryTweaksConfig config,
+			final @Nullable AnimationFrame frame
+		) {
+			if (this.basePixels == null || this.physicalWidth <= 0 || this.physicalHeight <= 0) {
+				return;
+			}
+			if (this.texture == null) {
+				NativeImage image = new NativeImage(this.physicalWidth, this.physicalHeight, true);
+				this.texture = new DynamicTexture(() -> "KoHs customized creative tab", image);
+				minecraft.getTextureManager().register(this.generated, this.texture);
+			}
+			String path = this.sprite.getPath();
+			boolean top = path.contains("tab_top_");
+			int column = Math.max(0, Character.digit(path.charAt(path.length() - 1), 10) - 1);
+			int seam = top ? TAB_TOP_SEAM : TAB_BOTTOM_SEAM;
+			NativeImage output = this.texture.getPixels();
+			for (int physicalY = 0; physicalY < this.physicalHeight; physicalY++) {
+				int logicalY = physicalY * TAB_HEIGHT / this.physicalHeight;
+				int distance = Math.abs(logicalY - seam);
+				int panelY = Math.max(0, Math.min(CREATIVE_HEIGHT - 1, top ? distance : CREATIVE_HEIGHT - 1 - distance));
+				for (int physicalX = 0; physicalX < this.physicalWidth; physicalX++) {
+					int pixel = this.basePixels[physicalX + physicalY * this.physicalWidth];
+					int framePixel = tint(pixel, config.frameColor, config.frameOpacity);
+					if (frame != null && channel(pixel, 24) != 0) {
+						int logicalX = physicalX * TAB_WIDTH / this.physicalWidth;
+						int panelX = Math.min(CREATIVE_WIDTH - 1, column * TAB_SPACING + logicalX);
+						int image = frame.pixels()[
+							panelX * INVENTORY_WIDTH / CREATIVE_WIDTH
+								+ panelY * INVENTORY_HEIGHT / CREATIVE_HEIGHT * INVENTORY_WIDTH
+						];
+						framePixel = blend(shaded(withOpacity(image, config.backgroundOpacity), pixel), framePixel);
+					}
+					output.setPixel(physicalX, physicalY, framePixel);
+				}
+			}
+			this.texture.upload();
+			this.renderedFrame = frame;
+		}
+	}
+
+	/** The image under the sprite's own light and shadow, inside the sprite's shape. */
+	private static int shaded(final int image, final int sprite) {
+		int light = (channel(sprite, 16) * 3 + channel(sprite, 8) * 6 + channel(sprite, 0)) / 10;
+		int grey = channel(PANEL_GREY, 0);
+		return channel(image, 24) * channel(sprite, 24) / 255 << 24
+			| Math.min(255, channel(image, 16) * light / grey) << 16
+			| Math.min(255, channel(image, 8) * light / grey) << 8
+			| Math.min(255, channel(image, 0) * light / grey);
 	}
 
 	private static final class SurfaceTextureState {

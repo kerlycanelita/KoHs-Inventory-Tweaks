@@ -16,11 +16,29 @@ public interface AbstractContainerScreenAccessor {
 	@Accessor("topPos")
 	int kohsInventoryTweaks$getTopPos();
 
+	@Accessor("leftPos")
+	void kohsInventoryTweaks$setLeftPos(int value);
+
+	@Accessor("topPos")
+	void kohsInventoryTweaks$setTopPos(int value);
+
 	@Accessor("imageWidth")
 	int kohsInventoryTweaks$getImageWidth();
 
 	@Accessor("imageHeight")
 	int kohsInventoryTweaks$getImageHeight();
+
+	@Accessor("titleLabelX")
+	int kohsInventoryTweaks$getTitleLabelX();
+
+	@Accessor("titleLabelX")
+	void kohsInventoryTweaks$setTitleLabelX(int value);
+
+	@Accessor("titleLabelY")
+	int kohsInventoryTweaks$getTitleLabelY();
+
+	@Accessor("titleLabelY")
+	void kohsInventoryTweaks$setTitleLabelY(int value);
 
 	@Accessor("hoveredSlot")
 	@Nullable Slot kohsInventoryTweaks$getHoveredSlot();

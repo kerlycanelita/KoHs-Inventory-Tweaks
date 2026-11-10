@@ -218,6 +218,33 @@ public final class ConfigStore {
 		sanitized.slotOpacity = clampByte(candidate.slotOpacity);
 		sanitized.backgroundOpacity = clampByte(candidate.backgroundOpacity);
 		sanitized.inventoryBackdropOpacity = clampByte(candidate.inventoryBackdropOpacity);
+		sanitized.tabStyle = candidate.tabStyle == null ? InventoryTweaksConfig.TabStyle.FOLLOW : candidate.tabStyle;
+		sanitized.themeCreativeTabs = candidate.themeCreativeTabs;
+		sanitized.themeRecipeBookTabs = candidate.themeRecipeBookTabs;
+		sanitized.themeScrollbars = candidate.themeScrollbars;
+		sanitized.themeEffects = candidate.themeEffects;
+		sanitized.tabColor = candidate.tabColor & 0xFFFFFF;
+		sanitized.tabOpacity = clampByte(candidate.tabOpacity);
+		sanitized.tooltipStyle = candidate.tooltipStyle == null ? InventoryTweaksConfig.PartStyle.VANILLA : candidate.tooltipStyle;
+		sanitized.tooltipEverywhere = candidate.tooltipEverywhere;
+		sanitized.tooltipBackgroundColor = candidate.tooltipBackgroundColor & 0xFFFFFF;
+		sanitized.tooltipFrameColor = candidate.tooltipFrameColor & 0xFFFFFF;
+		sanitized.tooltipOpacity = clampByte(candidate.tooltipOpacity);
+		sanitized.buttonStyle = candidate.buttonStyle == null ? InventoryTweaksConfig.PartStyle.VANILLA : candidate.buttonStyle;
+		sanitized.buttonColor = candidate.buttonColor & 0xFFFFFF;
+		sanitized.nextGenStyle = candidate.nextGenStyle == null ? InventoryTweaksConfig.NextGenStyle.OFF : candidate.nextGenStyle;
+		sanitized.hotbarStyle = candidate.hotbarStyle == null ? InventoryTweaksConfig.HotbarStyle.VANILLA : candidate.hotbarStyle;
+		sanitized.hotbarMotion = candidate.hotbarMotion;
+		sanitized.hotbarReactions = candidate.hotbarReactions;
+		sanitized.hotbarStatusFollow = candidate.hotbarStatusFollow;
+		boolean customComplete = candidate.customSlotX != null && candidate.customSlotY != null
+			&& candidate.customSlotX.length == 46 && candidate.customSlotY.length == 46;
+		sanitized.customSlotX = customComplete ? candidate.customSlotX.clone() : new int[0];
+		sanitized.customSlotY = customComplete ? candidate.customSlotY.clone() : new int[0];
+		sanitized.customModelX = candidate.customModelX;
+		sanitized.customModelY = candidate.customModelY;
+		sanitized.customEffectsX = candidate.customEffectsX;
+		sanitized.customEffectsY = candidate.customEffectsY;
 		sanitized.visiblePlayerDepthIntensity = clampByte(candidate.visiblePlayerDepthIntensity);
 		// Smart Highlighter was removed; keep old JSON readable but never execute it.
 		sanitized.smartHighlighterEnabled = false;

@@ -1,0 +1,2884 @@
+package dev.zymekoh.kohsinventorytweaks.screen;
+
+import com.mojang.blaze3d.platform.InputConstants;
+
+import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.platform.InputConstants;
+import dev.zymekoh.kohsinventorytweaks.config.ConfigStore;
+import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig;
+import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.CursorPoint;
+import dev.zymekoh.kohsinventorytweaks.config.InventoryTweaksConfig.TextureSource;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityFeature;
+import dev.zymekoh.kohsinventorytweaks.compat.CompatibilityIssueManager;
+import dev.zymekoh.kohsinventorytweaks.cursor.CursorTarget;
+import dev.zymekoh.kohsinventorytweaks.inventory.InventoryGuiScaler;
+import dev.zymekoh.kohsinventorytweaks.input.ConfigMenuKeyBinding;
+import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager;
+import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.CropSettings;
+import dev.zymekoh.kohsinventorytweaks.media.BackgroundMediaManager.PreparedMedia;
+import dev.zymekoh.kohsinventorytweaks.render.InventoryTextureManager;
+import dev.zymekoh.kohsinventorytweaks.render.AccessibilityRenderController;
+import dev.zymekoh.kohsinventorytweaks.render.ItemHighlighterController;
+import dev.zymekoh.kohsinventorytweaks.ui.ZBackdrop;
+import dev.zymekoh.kohsinventorytweaks.ui.ZChrome;
+import dev.zymekoh.kohsinventorytweaks.ui.ZDraw;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMascot;
+import dev.zymekoh.kohsinventorytweaks.ui.ZScene;
+import dev.zymekoh.kohsinventorytweaks.ui.ZMotion;
+import dev.zymekoh.kohsinventorytweaks.ui.ZTheme;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import dev.zymekoh.kohsinventorytweaks.inventory.SuperFastInventoryController;
+import net.minecraft.world.item.Item;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.Mth;
+import net.minecraft.util.Util;
+import net.minecraft.world.inventory.Slot;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.system.MemoryStack;
+import dev.zymekoh.kohsinventorytweaks.platform.SdlFileDialog;
+
+public final class InventoryTweaksScreen extends Screen {
+	/** How far a sub-option's card sits in from its parent's. */
+	private static final int TREE_INDENT = 22;
+	private static final Identifier CROP_PREVIEW_TEXTURE = Identifier.fromNamespaceAndPath(
+		"kohs_inventory_tweaks",
+		"dynamic/background_crop_preview"
+	);
+	private static final int INVENTORY_WIDTH = InventoryPreviewRenderer.INVENTORY_WIDTH;
+	private static final int INVENTORY_HEIGHT = InventoryPreviewRenderer.INVENTORY_HEIGHT;
+	private static final int SCREEN_MARGIN = 8;
+	private static final long ENTRANCE_DURATION_NANOS = 320_000_000L;
+	private static final long MODAL_ENTRANCE_DURATION_NANOS = 240_000_000L;
+	private static final int CUSTOM_LAYER_CARD_HEIGHT = 114;
+	private static final int CUSTOM_SLOT_CARD_Y = CUSTOM_LAYER_CARD_HEIGHT + 8;
+	private static final int CUSTOM_BACKGROUND_CARD_Y = CUSTOM_SLOT_CARD_Y + CUSTOM_LAYER_CARD_HEIGHT + 8;
+	private static final int CUSTOM_BACKGROUND_CARD_HEIGHT = 126;
+	private static final int CUSTOM_INTERFACE_CARD_Y = CUSTOM_BACKGROUND_CARD_Y + CUSTOM_BACKGROUND_CARD_HEIGHT + 8;
+	private static final int CUSTOM_INTERFACE_CARD_HEIGHT = 64;
+	private static final int CUSTOM_BACKDROP_CARD_Y = CUSTOM_INTERFACE_CARD_Y + CUSTOM_INTERFACE_CARD_HEIGHT + 8;
+	private static final int CUSTOM_BACKDROP_CARD_HEIGHT = 108;
+	private static final int CUSTOM_PLAYER_GLOW_CARD_Y = CUSTOM_BACKDROP_CARD_Y + CUSTOM_BACKDROP_CARD_HEIGHT + 8;
+	private static final int CUSTOM_PLAYER_GLOW_CARD_HEIGHT = 64;
+	private static final int CUSTOM_CONTENT_HEIGHT = CUSTOM_PLAYER_GLOW_CARD_Y + CUSTOM_PLAYER_GLOW_CARD_HEIGHT;
+	private static final CustomizationPreview[] CUSTOMIZATION_PREVIEWS = CustomizationPreview.values();
+
+	private final Screen parent;
+	private final ZBackdrop backdrop = new ZBackdrop();
+	private final List<AbstractWidget> mainLeftScrollingWidgets = new ArrayList<>();
+	private final List<AbstractWidget> mainRightScrollingWidgets = new ArrayList<>();
+	private final List<AbstractWidget> customizationScrollingWidgets = new ArrayList<>();
+	private final long entranceStartedAtNanos = System.nanoTime();
+	private InventoryTweaksConfig working;
+	private Modal modal = Modal.NONE;
+	private Modal animatedModal = Modal.NONE;
+	private long modalOpenedAtNanos = System.nanoTime();
+	private Modal warningReturnModal = Modal.NONE;
+	private CursorTarget selectedTarget = CursorTarget.INVENTORY;
+	private boolean selectingPosition;
+
+	private int mainPreviewX;
+	private int mainPreviewY;
+	private int mainPreviewWidth;
+	private int mainPreviewHeight;
+	private float mainPreviewScale;
+	private int mainKeybindX;
+	private int mainKeybindY;
+	private int mainKeybindWidth;
+	private GlassButton menuKeyButton;
+	private boolean awaitingMenuKey;
+	private int cursorCardX;
+	private int cursorCardY;
+	private int tweakCardX;
+	private int tweakCardY;
+	private int issuesCardX;
+	private int issuesCardY;
+	private int customizationCardX;
+	private int customizationCardY;
+	private int itemHighlighterCardX;
+	private int itemHighlighterCardY;
+	private int guiScalerCardX;
+	private int nextGenCardX;
+	private int nextGenCardY;
+	private int kohsCardX;
+	private int kohsCardY;
+	private int guiScalerCardY;
+	private int mainCardWidth;
+	private int mainCardHeight;
+	private int textureSelectorX;
+	private int textureSelectorY;
+	private int textureSelectorWidth;
+	private boolean compactMain;
+	private int mainLeftRailX;
+	private int mainLeftRailY;
+	private int mainLeftRailWidth;
+	private int mainLeftRailHeight;
+	private int mainRightRailX;
+	private int mainRightRailY;
+	private int mainRightRailWidth;
+	private int mainRightRailHeight;
+	private final SmoothScroll mainLeftSmoothScroll = new SmoothScroll();
+	private final SmoothScroll mainRightSmoothScroll = new SmoothScroll();
+	private int mainLeftScroll;
+	private int mainRightScroll;
+	private int mainLeftMaxScroll;
+	private int mainRightMaxScroll;
+
+	private int panelX;
+	private int panelY;
+	private int panelWidth;
+	private int panelHeight;
+	private int panelPadding;
+	private int headerHeight;
+	private int footerHeight;
+	private int contentTop;
+	private int contentBottom;
+	private int sidebarX;
+	private int sidebarWidth;
+	private int targetTabY;
+	private int targetTabHeight;
+	private int targetTabGap;
+	private int chestSelectorY;
+	private int previewX;
+	private int previewY;
+	private int previewWidth;
+	private int previewHeight;
+	private float previewScale;
+	private int cursorToggleX;
+	private int cursorToggleY;
+	private int cursorToggleWidth;
+	private int cursorToggleHeight;
+	private boolean compactModal;
+	private int tweakOptionsX;
+	private int tweakOptionsWidth;
+	private int tweakFirstCardY;
+	private int tweakCardHeight;
+	private int tweakCardGap;
+	private int tweakStatusY;
+	private int tweakScroll;
+	private int tweakMaxScroll;
+	private int tweakViewportTop;
+	private int tweakViewportBottom;
+	private InventoryTweakOption tweakWarning = InventoryTweakOption.ANIMATIONS;
+	private final List<GlassButton> tweakScrollingWidgets = new ArrayList<>();
+	private List<InventoryTweakOption> visibleTweaks = List.of();
+	private final HoverDescription tweakHover = new HoverDescription();
+	private int customizationPreviewX;
+	private int customizationPreviewY;
+	private int customizationPreviewWidth;
+	private int customizationPreviewHeight;
+	private float customizationPreviewScale;
+	private int customizationOptionsX;
+	private int customizationOptionsY;
+	private int customizationOptionsWidth;
+	private int customizationOptionsHeight;
+	private final SmoothScroll customizationSmoothScroll = new SmoothScroll();
+	private int customizationScroll;
+	private int customizationMaxScroll;
+	private int customizationSelectorX;
+	private int customizationSelectorY;
+	private int customizationSelectorWidth;
+	private CustomizationPreview customizationPreviewTarget = CustomizationPreview.INVENTORY;
+	private boolean customizationPreviewVisible;
+	private boolean backgroundBusy;
+	private Component backgroundStatus = Component.empty();
+	private PreparedMedia cropMedia;
+	private DynamicTexture cropPreviewTexture;
+	private double cropFocusX = 0.5;
+	private double cropFocusY = 0.5;
+	private double cropZoom = 1.0;
+	private boolean cropDragging;
+	private Component cropStatus = Component.empty();
+	private int cropWorkspaceX;
+	private int cropWorkspaceY;
+	private int cropWorkspaceWidth;
+	private int cropWorkspaceHeight;
+	private int cropFrameX;
+	private int cropFrameY;
+	private int cropFrameWidth;
+	private int cropFrameHeight;
+	private int cropControlsY;
+
+	private int warningX;
+	private int warningY;
+	private int warningWidth;
+	private int warningHeight;
+	private int guiScalerToggleX;
+	private int guiScalerToggleY;
+	private int guiScalerToggleWidth;
+	private int guiScalerSliderX;
+	private int guiScalerSliderY;
+	private int guiScalerSliderWidth;
+	private int guiScalerPreviewX;
+	private int guiScalerPreviewY;
+	private int guiScalerPreviewWidth;
+	private int guiScalerPreviewHeight;
+	private float guiScalerPreviewScale;
+	private double guiScalerActualScale = 1.0;
+	private boolean guiScalerPreviewFitted;
+
+	private enum Modal {
+		NONE,
+		CURSOR,
+		TWEAKS,
+		CUSTOMIZATION,
+		CROP,
+		GUI_SCALER,
+		GUI_SCALER_WARNING,
+		CUSTOMIZATION_WARNING,
+		NEXT_GEN_WARNING,
+		TWEAK_WARNING,
+		WARNING
+	}
+
+	public InventoryTweaksScreen(final Screen parent) {
+		super(Component.translatable("screen.kohs_inventory_tweaks.title"));
+		this.parent = parent;
+		// The main preview and child screens must start from the persisted values.
+		// Previously Item Highlighter could receive a fresh default config when it
+		// was the first feature opened, making saved items look missing and later
+		// overwriting unrelated settings with defaults.
+		this.working = ConfigStore.get().copy();
+		// Force the first preview frame to be composed from the values loaded from
+		// disk instead of reusing a dynamic texture left by another inventory pass.
+		InventoryTextureManager.invalidateConfiguration();
+	}
+
+	@Override
+	protected void init() {
+		this.mainLeftScrollingWidgets.clear();
+		this.mainRightScrollingWidgets.clear();
+		this.customizationScrollingWidgets.clear();
+		this.tweakScrollingWidgets.clear();
+		this.calculateMainLayout();
+		this.calculateModalLayout();
+		Modal visibleModal = this.modal == Modal.TWEAK_WARNING ? Modal.TWEAKS : this.modal;
+		if (visibleModal != this.animatedModal) {
+			this.animatedModal = visibleModal;
+			this.modalOpenedAtNanos = System.nanoTime();
+		}
+		switch (this.modal) {
+			case NONE -> this.addMainButtons();
+			case CURSOR -> this.addCursorModalButtons();
+			case TWEAKS -> this.addTweaksModalButtons();
+			case CUSTOMIZATION -> this.addCustomizationModalButtons();
+			case CROP -> this.addCropModalButtons();
+			case GUI_SCALER -> this.addGuiScalerModalButtons();
+			case GUI_SCALER_WARNING -> this.addGuiScalerWarningButtons();
+			case CUSTOMIZATION_WARNING -> this.addCustomizationWarningButtons();
+			case NEXT_GEN_WARNING -> this.addNextGenWarningButtons();
+			case TWEAK_WARNING -> this.addTweakWarningButtons();
+			case WARNING -> this.addWarningButtons();
+		}
+	}
+
+	@Override
+	public void extractBackground(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		this.backdrop.draw(graphics, this.width, this.height, mouseX, mouseY);
+	}
+
+	@Override
+	public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+		this.updateSmoothWidgetPositions();
+		// Nothing interactive is ever transformed: the openings below are light laid
+		// over fixed controls, so every hitbox matches what is drawn from frame one.
+		this.drawMainScreen(graphics, mouseX, mouseY);
+
+		if (this.modal != Modal.NONE) {
+			graphics.fill(0, 0, this.width, this.height, UiTheme.MODAL_DIM);
+			Modal visibleModal = this.modal == Modal.WARNING
+				? this.warningReturnModal
+				: this.modal == Modal.TWEAK_WARNING ? Modal.TWEAKS : this.modal;
+			if (visibleModal == Modal.CURSOR) {
+				this.drawCursorModal(graphics);
+			} else if (visibleModal == Modal.TWEAKS) {
+				this.drawTweaksModal(graphics, mouseX, mouseY);
+			} else if (visibleModal == Modal.CUSTOMIZATION) {
+				this.drawCustomizationModal(graphics, mouseX, mouseY);
+			} else if (visibleModal == Modal.CROP) {
+				this.drawCropModal(graphics);
+			} else if (visibleModal == Modal.GUI_SCALER) {
+				this.drawGuiScalerModal(graphics, mouseX, mouseY);
+			}
+			boolean warning = true;
+			if (this.modal == Modal.WARNING) {
+				graphics.fill(0, 0, this.width, this.height, 0x70000000);
+				this.drawWarningPanel(graphics, Component.translatable("screen.kohs_inventory_tweaks.unsaved.title"),
+					Component.translatable("screen.kohs_inventory_tweaks.unsaved.description"));
+			} else if (this.modal == Modal.GUI_SCALER_WARNING) {
+				this.drawWarningPanel(graphics, Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.warning.title"),
+					Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.warning.description"));
+			} else if (this.modal == Modal.CUSTOMIZATION_WARNING) {
+				this.drawWarningPanel(graphics, Component.translatable("screen.kohs_inventory_tweaks.customization.warning.title"),
+					Component.translatable("screen.kohs_inventory_tweaks.customization.warning.description"));
+			} else if (this.modal == Modal.NEXT_GEN_WARNING) {
+				this.drawWarningPanel(graphics, Component.translatable("screen.kohs_inventory_tweaks.next_gen.warning.title"),
+					Component.translatable("screen.kohs_inventory_tweaks.next_gen.warning.description"));
+			} else if (this.modal == Modal.TWEAK_WARNING) {
+				this.drawWarningPanel(graphics, Component.translatable(this.tweakWarning.key + ".warning.title"),
+					Component.translatable(this.tweakWarning.key + ".warning.description"));
+			} else {
+				warning = false;
+			}
+			if (warning) {
+				ZMascot.react(ZMascot.Mood.ALERT);
+			}
+			super.extractRenderState(graphics, mouseX, mouseY, a);
+			this.drawActiveScrollFades(graphics);
+			float opening = this.modalEntranceProgress();
+			if (warning) {
+				ZChrome.panelOpening(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, opening);
+			} else {
+				ZChrome.panelOpening(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, opening);
+			}
+		} else {
+			super.extractRenderState(graphics, mouseX, mouseY, a);
+			this.drawActiveScrollFades(graphics);
+		}
+
+		InventoryTweakOption hoveredTweak = this.modal == Modal.TWEAKS ? this.tweakCardAt(mouseX, mouseY) : null;
+		if (this.tweakHover.settled(hoveredTweak) && hoveredTweak != null) {
+			List<FormattedCharSequence> lines = new java.util.ArrayList<>();
+			lines.add(Component.translatable(hoveredTweak.key).withStyle(net.minecraft.ChatFormatting.BOLD).getVisualOrderText());
+			lines.addAll(this.font.split(this.tweakDescription(hoveredTweak), Math.min(260, this.width / 2)));
+			graphics.setTooltipForNextFrame(lines, mouseX, mouseY);
+		}
+
+		ZChrome.openingVeil(graphics, this.width, this.height, this.entranceProgress());
+	}
+
+	@Override
+	public boolean mouseClicked(final MouseButtonEvent event, final boolean doubleClick) {
+		if (super.mouseClicked(event, doubleClick)) {
+			return true;
+		}
+		if (this.modal == Modal.CURSOR
+			&& event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT
+			&& this.isSelectedCursorEnabled()
+			&& this.isInsidePreview(event.x(), event.y())) {
+			this.selectingPosition = true;
+			this.updateSelectedPosition(event.x(), event.y());
+			return true;
+		}
+		if (this.modal == Modal.CROP
+			&& !this.backgroundBusy
+			&& event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT
+			&& this.isInsideCropFrame(event.x(), event.y())) {
+			this.cropDragging = true;
+			return true;
+		}
+		return false;
+	}
+
+	@Override
+	public boolean mouseDragged(final MouseButtonEvent event, final double dx, final double dy) {
+		if (this.modal == Modal.CURSOR && this.selectingPosition && event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) {
+			this.updateSelectedPosition(event.x(), event.y());
+			return true;
+		}
+		if (this.modal == Modal.CROP && this.cropDragging && !this.backgroundBusy && event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) {
+			this.moveCropBy(dx, dy);
+			return true;
+		}
+		return super.mouseDragged(event, dx, dy);
+	}
+
+	@Override
+	public boolean mouseReleased(final MouseButtonEvent event) {
+		boolean persistCursorPosition = this.selectingPosition;
+		this.selectingPosition = false;
+		this.cropDragging = false;
+		boolean handled = super.mouseReleased(event);
+		boolean persistCustomizationSlider = this.modal == Modal.CUSTOMIZATION
+			&& !this.working.sameValues(ConfigStore.get());
+		if (persistCursorPosition || persistCustomizationSlider) {
+			this.persistWorking();
+		}
+		return persistCursorPosition || handled;
+	}
+
+	@Override
+	public boolean mouseScrolled(final double x, final double y, final double scrollX, final double scrollY) {
+		if (this.modal == Modal.NONE) {
+			if (this.isInsideMainRail(x, y, true) && this.mainLeftMaxScroll > 0) {
+				this.mainLeftSmoothScroll.scroll(scrollY, 20.0);
+				return true;
+			}
+			if (this.isInsideMainRail(x, y, false) && this.mainRightMaxScroll > 0) {
+				this.mainRightSmoothScroll.scroll(scrollY, 20.0);
+				return true;
+			}
+		}
+		if (this.modal == Modal.CUSTOMIZATION
+			&& this.isInsideCustomizationOptions(x, y)
+			&& this.customizationMaxScroll > 0) {
+			this.customizationSmoothScroll.scroll(scrollY, 18.0);
+			return true;
+		}
+		if (this.modal == Modal.TWEAKS && x >= this.tweakOptionsX && x < this.tweakOptionsX + this.tweakOptionsWidth
+			&& y >= this.tweakViewportTop && y < this.tweakViewportBottom && this.tweakMaxScroll > 0) {
+			this.tweakScroll = Mth.clamp(this.tweakScroll - (int) Math.round(scrollY * 28), 0, this.tweakMaxScroll);
+			this.updateTweakWidgetPositions();
+			return true;
+		}
+		return super.mouseScrolled(x, y, scrollX, scrollY);
+	}
+
+	@Override
+	public boolean keyPressed(final KeyEvent event) {
+		if (this.awaitingMenuKey) {
+			this.awaitingMenuKey = false;
+			if (!event.isEscape()) {
+				ConfigMenuKeyBinding.assign(this.minecraft, InputConstants.getKey(event));
+			}
+			if (this.menuKeyButton != null) {
+				this.menuKeyButton.setMessage(this.menuKeybindLabel());
+			}
+			return true;
+		}
+		if (this.modal == Modal.TWEAKS && (event.key() == InputConstants.KEY_DOWN || event.key() == InputConstants.KEY_UP)) {
+			this.tweakScroll = Mth.clamp(this.tweakScroll + (event.key() == InputConstants.KEY_DOWN ? 28 : -28), 0, this.tweakMaxScroll);
+			this.updateTweakWidgetPositions();
+			return true;
+		}
+		if (!event.isEscape()) {
+			boolean handled = super.keyPressed(event);
+			if (handled
+				&& this.modal == Modal.CUSTOMIZATION
+				&& !this.working.sameValues(ConfigStore.get())) {
+				this.persistWorking();
+			}
+			return handled;
+		}
+		if (this.modal == Modal.NONE) {
+			this.onClose();
+		} else if (this.modal == Modal.WARNING) {
+			this.modal = this.warningReturnModal;
+			this.rebuildWidgets();
+		} else if (this.modal == Modal.GUI_SCALER_WARNING) {
+			this.modal = Modal.NONE;
+			this.rebuildWidgets();
+		} else if (this.modal == Modal.CUSTOMIZATION_WARNING || this.modal == Modal.NEXT_GEN_WARNING) {
+			this.modal = Modal.NONE;
+			this.rebuildWidgets();
+		} else if (this.modal == Modal.TWEAK_WARNING) {
+			this.modal = Modal.TWEAKS;
+			this.rebuildWidgets();
+		} else if (this.modal == Modal.TWEAKS || this.modal == Modal.CURSOR
+			|| this.modal == Modal.CUSTOMIZATION || this.modal == Modal.GUI_SCALER) {
+			this.attemptCloseModal();
+		}
+		return true;
+	}
+
+	@Override
+	public void onClose() {
+		this.releaseCropPreview();
+		this.minecraft.gui.setScreen(this.parent);
+	}
+
+	@Override
+	public boolean isPauseScreen() {
+		return false;
+	}
+
+	@Override
+	public boolean isInGameUi() {
+		return true;
+	}
+
+	private void addMainButtons() {
+		this.menuKeyButton = this.addRenderableWidget(new GlassButton(
+			this.mainKeybindX,
+			this.mainKeybindY,
+			this.mainKeybindWidth,
+			20,
+			this.menuKeybindLabel(),
+			button -> {
+				this.awaitingMenuKey = true;
+				button.setMessage(Component.translatable("screen.kohs_inventory_tweaks.keybind.prompt"));
+			},
+			GlassButton.Variant.TAB
+		));
+		this.menuKeyButton.setTooltip(Tooltip.create(Component.translatable(
+			"screen.kohs_inventory_tweaks.keybind.description"
+		)));
+		this.menuKeyButton.setTooltipDelay(Duration.ofMillis(220));
+		this.addMainFeatureButton(
+			this.cursorCardX,
+			this.cursorCardY,
+			true,
+			CompatibilityFeature.CURSOR_LANDING,
+			"screen.kohs_inventory_tweaks.cursor_landing",
+			"screen.kohs_inventory_tweaks.cursor_landing.description",
+			button -> this.openModal(Modal.CURSOR),
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.CURSOR
+		);
+		this.addMainFeatureButton(
+			this.tweakCardX,
+			this.tweakCardY,
+			true,
+			CompatibilityFeature.INVENTORY_TWEAKS,
+			"screen.kohs_inventory_tweaks.inventory_tweaks",
+			"screen.kohs_inventory_tweaks.inventory_tweaks.description",
+			button -> this.openModal(Modal.TWEAKS),
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.TWEAKS
+		);
+		this.addMainFeatureButton(
+			this.issuesCardX,
+			this.issuesCardY,
+			true,
+			null,
+			"screen.kohs_inventory_tweaks.issues_tracker",
+			"screen.kohs_inventory_tweaks.issues_tracker.description",
+			button -> this.minecraft.gui.setScreen(new IssuesTrackerScreen(this)),
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.ISSUES
+		);
+		this.addMainFeatureButton(
+			this.kohsCardX,
+			this.kohsCardY,
+			true,
+			null,
+			"screen.kohs_inventory_tweaks.kohs",
+			"screen.kohs_inventory_tweaks.kohs.description",
+			button -> this.minecraft.gui.setScreen(new KohsScreen(this)),
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.KOHS
+		);
+		this.addMainFeatureButton(
+			this.customizationCardX,
+			this.customizationCardY,
+			false,
+			CompatibilityFeature.CUSTOMIZATION,
+			"screen.kohs_inventory_tweaks.customization",
+			"screen.kohs_inventory_tweaks.customization.description",
+			button -> this.openCustomizationWarning(),
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.CUSTOMIZATION
+		);
+		this.addMainFeatureButton(
+			this.itemHighlighterCardX,
+			this.itemHighlighterCardY,
+			false,
+			CompatibilityFeature.ITEM_HIGHLIGHTER,
+			"screen.kohs_inventory_tweaks.item_highlighter",
+			"screen.kohs_inventory_tweaks.item_highlighter.description",
+			button -> this.minecraft.gui.setScreen(new ItemHighlighterScreen(
+				this,
+				this.working,
+				updated -> {
+					this.working = updated.copy();
+					ConfigStore.replaceAndSave(updated);
+					}
+			)),
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.HIGHLIGHTER
+		);
+		this.addMainFeatureButton(
+			this.guiScalerCardX,
+			this.guiScalerCardY,
+			false,
+			CompatibilityFeature.GUI_SCALER,
+			"screen.kohs_inventory_tweaks.gui_scaler",
+			"screen.kohs_inventory_tweaks.gui_scaler.description",
+			button -> this.openGuiScaler(),
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.SCALER
+		);
+		this.addMainFeatureButton(
+			this.nextGenCardX,
+			this.nextGenCardY,
+			false,
+			CompatibilityFeature.INVENTORY_TWEAKS,
+			"screen.kohs_inventory_tweaks.next_gen",
+			"screen.kohs_inventory_tweaks.next_gen.description",
+			button -> {
+				this.modal = Modal.NEXT_GEN_WARNING;
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.NORMAL,
+			KohsTabIcon.NEXT_GEN
+		);
+		int textureGap = 4;
+		int textureButtonWidth = Math.max(1, (this.textureSelectorWidth - textureGap) / 2);
+		this.addRenderableWidget(new GlassButton(
+			this.textureSelectorX,
+			this.textureSelectorY,
+			textureButtonWidth,
+			19,
+			Component.translatable("screen.kohs_inventory_tweaks.texture.applied"),
+			button -> this.setTextureSource(TextureSource.APPLIED),
+			GlassButton.Variant.TOGGLE,
+			() -> ConfigStore.get().inventoryTextureSource == TextureSource.APPLIED
+		));
+		this.addRenderableWidget(new GlassButton(
+			this.textureSelectorX + textureButtonWidth + textureGap,
+			this.textureSelectorY,
+			this.textureSelectorWidth - textureButtonWidth - textureGap,
+			19,
+			Component.translatable("screen.kohs_inventory_tweaks.texture.vanilla"),
+			button -> this.setTextureSource(TextureSource.VANILLA),
+			GlassButton.Variant.TOGGLE,
+			() -> ConfigStore.get().inventoryTextureSource == TextureSource.VANILLA
+		));
+		this.addRenderableWidget(new GlassButton(
+			Math.max(SCREEN_MARGIN, this.width - SCREEN_MARGIN - 70),
+			Math.max(SCREEN_MARGIN, this.height - SCREEN_MARGIN - 20),
+			70,
+			20,
+			Component.translatable("gui.done"),
+			button -> this.onClose(),
+			GlassButton.Variant.PRIMARY
+		));
+	}
+
+	private void addMainFeatureButton(
+		final int x,
+		final int y,
+		final boolean leftRail,
+		final CompatibilityFeature feature,
+		final String titleKey,
+		final String descriptionKey,
+		final Button.OnPress onPress,
+		final GlassButton.Variant variant,
+		final KohsTabIcon icon
+	) {
+		int railY = leftRail ? this.mainLeftRailY : this.mainRightRailY;
+		int railHeight = leftRail ? this.mainLeftRailHeight : this.mainRightRailHeight;
+		int railX = leftRail ? this.mainLeftRailX : this.mainRightRailX;
+		int railWidth = leftRail ? this.mainLeftRailWidth : this.mainRightRailWidth;
+		int visibleTop = railY + 22;
+		int visibleBottom = railY + railHeight - 5;
+		boolean available = feature == null || CompatibilityIssueManager.isFeatureAvailable(feature);
+		Component description = Component.translatable(available
+			? descriptionKey
+			: "screen.kohs_inventory_tweaks.compatibility.feature_disabled");
+		GlassButton button = new GlassButton(
+			x,
+			y,
+			this.mainCardWidth,
+			this.mainCardHeight,
+			Component.translatable(titleKey),
+			onPress,
+			variant
+		).setIcon(icon)
+			.setClipBounds(railX + 2, visibleTop, railX + railWidth - 2, visibleBottom);
+		button.active = available;
+		button.setTooltip(Tooltip.create(description));
+		button.setTooltipDelay(Duration.ofMillis(220));
+		button.visible = y + this.mainCardHeight > visibleTop && y < visibleBottom;
+		this.addRenderableWidget(button);
+		(leftRail ? this.mainLeftScrollingWidgets : this.mainRightScrollingWidgets).add(button);
+	}
+
+	private void addCursorModalButtons() {
+		CursorTarget[] tabs = {
+			CursorTarget.INVENTORY,
+			CursorTarget.CHEST_SINGLE,
+			CursorTarget.SHULKER,
+			CursorTarget.ENDER_CHEST,
+			CursorTarget.BARREL
+		};
+		for (int i = 0; i < tabs.length; i++) {
+			CursorTarget target = tabs[i];
+			int y = this.targetTabY + i * (this.targetTabHeight + this.targetTabGap);
+			this.addRenderableWidget(new GlassButton(
+				this.sidebarX,
+				y,
+				this.sidebarWidth,
+				this.targetTabHeight,
+				Component.translatable(target == CursorTarget.CHEST_SINGLE
+					? "screen.kohs_inventory_tweaks.target.chest"
+					: target.translationKey()),
+				button -> this.selectTarget(target),
+				GlassButton.Variant.TAB,
+				() -> target == CursorTarget.CHEST_SINGLE ? this.isChestTarget() : this.selectedTarget == target
+			).setIcon(switch (target) {
+				case INVENTORY -> KohsTabIcon.INVENTORY;
+				case CHEST_SINGLE, CHEST_DOUBLE -> KohsTabIcon.CHEST;
+				case SHULKER -> KohsTabIcon.SHULKER;
+				case ENDER_CHEST -> KohsTabIcon.ENDER_CHEST;
+				case BARREL -> KohsTabIcon.BARREL;
+			}));
+		}
+
+		if (this.isChestTarget()) {
+			int gap = 3;
+			int width = (this.sidebarWidth - gap) / 2;
+			this.addRenderableWidget(new GlassButton(
+				this.sidebarX,
+				this.chestSelectorY,
+				width,
+				19,
+				Component.translatable("screen.kohs_inventory_tweaks.chest.single"),
+				button -> this.selectTarget(CursorTarget.CHEST_SINGLE),
+				GlassButton.Variant.TOGGLE,
+				() -> this.selectedTarget == CursorTarget.CHEST_SINGLE
+			));
+			this.addRenderableWidget(new GlassButton(
+				this.sidebarX + width + gap,
+				this.chestSelectorY,
+				this.sidebarWidth - width - gap,
+				19,
+				Component.translatable("screen.kohs_inventory_tweaks.chest.double"),
+				button -> this.selectTarget(CursorTarget.CHEST_DOUBLE),
+				GlassButton.Variant.TOGGLE,
+				() -> this.selectedTarget == CursorTarget.CHEST_DOUBLE
+			));
+		}
+
+		if (this.selectedTarget != CursorTarget.INVENTORY) {
+			this.addRenderableWidget(new GlassButton(
+				this.cursorToggleX,
+				this.cursorToggleY,
+				this.cursorToggleWidth,
+				this.cursorToggleHeight,
+				this.cursorToggleLabel(),
+				button -> {
+					this.working.setCursorEnabled(this.selectedTarget, !this.isSelectedCursorEnabled());
+					button.setMessage(this.cursorToggleLabel());
+					this.persistWorking();
+				},
+				GlassButton.Variant.SWITCH,
+				this::isSelectedCursorEnabled
+			));
+		}
+
+		this.addFooterButtons(Modal.CURSOR);
+	}
+
+	private void addTweaksModalButtons() {
+		int toggleWidth = this.tweakToggleWidth();
+		for (var option : this.visibleTweaks) {
+			Component state = this.tweakStateLabel(option);
+			GlassButton button = new GlassButton(this.tweakOptionsX + this.tweakOptionsWidth - toggleWidth - 10,
+				0, toggleWidth, 24, state, pressed -> {
+					if (!option.enabled(this.working) && option.warnsOnEnable()) {
+						this.tweakWarning = option;
+						this.modal = Modal.TWEAK_WARNING;
+						this.rebuildWidgets();
+					} else {
+						option.set(this.working, !option.enabled(this.working));
+						this.persistWorking();
+						if (option != InventoryTweakOption.MASCOT) {
+							boolean on = option.enabled(this.working);
+							ZMascot.react(!on ? ZMascot.Mood.MEH
+								: option == InventoryTweakOption.FAST || option == InventoryTweakOption.CENTER
+								|| option == InventoryTweakOption.POINTER || option == InventoryTweakOption.LEAVE
+								|| option == InventoryTweakOption.STEADY ? ZMascot.Mood.ZOOM : ZMascot.Mood.HAPPY);
+						}
+						// Keep focus and positions stable when a switch is pressed.
+						this.updateTweakButtonStates();
+					}
+				}, GlassButton.Variant.SWITCH, () -> option.enabled(this.working));
+			button.active = option.usable(this.working);
+			button.setNarrationLabel(Component.translatable(option.key));
+			this.addRenderableWidget(button);
+			this.tweakScrollingWidgets.add(button);
+		}
+		this.updateTweakButtonStates();
+		this.updateTweakWidgetPositions();
+		this.addFooterButtons(Modal.TWEAKS);
+	}
+
+	private int tweakToggleWidth() {
+		return Mth.clamp(this.tweakOptionsWidth / 3, 96, 132);
+	}
+
+	private Component tweakStateLabel(final InventoryTweakOption option) {
+		return Component.translatable(option.enabled(this.working)
+			? "screen.kohs_inventory_tweaks.enabled" : "screen.kohs_inventory_tweaks.disabled");
+	}
+
+	private void updateTweakButtonStates() {
+		for (int index = 0; index < this.tweakScrollingWidgets.size(); index++) {
+			var option = this.visibleTweaks.get(index);
+			var button = this.tweakScrollingWidgets.get(index);
+			// A sub-option wakes and sleeps with its parent.
+			button.active = option.usable(this.working);
+			button.setMessage(this.tweakStateLabel(option));
+		}
+	}
+
+	private void updateTweakWidgetPositions() {
+		for (int index = 0; index < this.tweakScrollingWidgets.size(); index++) {
+			var button = this.tweakScrollingWidgets.get(index);
+			int y = this.tweakFirstCardY + index * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
+			button.setY(y + (this.tweakCardHeight - 24) / 2);
+			button.setClipBounds(this.tweakOptionsX, this.tweakViewportTop,
+				this.tweakOptionsX + this.tweakOptionsWidth, this.tweakViewportBottom);
+			button.visible = button.getY() + button.getHeight() > this.tweakViewportTop && button.getY() < this.tweakViewportBottom;
+		}
+	}
+
+	private void addCustomizationModalButtons() {
+		int arrowWidth = Math.min(24, Math.max(18, this.customizationSelectorWidth / 6));
+		int selectorGap = 3;
+		int labelWidth = Math.max(1, this.customizationSelectorWidth - arrowWidth * 2 - selectorGap * 2);
+		GlassButton previousButton = new GlassButton(
+			this.customizationSelectorX,
+			this.customizationSelectorY,
+			arrowWidth,
+			20,
+			Component.literal("\u2190"),
+			button -> {
+				this.cycleCustomizationPreview(-1);
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.TAB
+		);
+		previousButton.setTooltip(Tooltip.create(Component.translatable(
+			"screen.kohs_inventory_tweaks.customization.preview.previous"
+		)));
+		previousButton.setTooltipDelay(Duration.ofMillis(220));
+		this.addRenderableWidget(previousButton);
+
+		GlassButton previewButton = new GlassButton(
+			this.customizationSelectorX + arrowWidth + selectorGap,
+			this.customizationSelectorY,
+			labelWidth,
+			20,
+			this.customizationPreviewLabel(),
+			button -> {
+				this.cycleCustomizationPreview(1);
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.TAB
+		);
+		previewButton.setTooltip(Tooltip.create(Component.translatable(
+			"screen.kohs_inventory_tweaks.customization.preview.tooltip"
+		)));
+		previewButton.setTooltipDelay(Duration.ofMillis(220));
+		this.addRenderableWidget(previewButton);
+
+		GlassButton nextButton = new GlassButton(
+			this.customizationSelectorX + arrowWidth + selectorGap + labelWidth + selectorGap,
+			this.customizationSelectorY,
+			arrowWidth,
+			20,
+			Component.literal("\u2192"),
+			button -> {
+				this.cycleCustomizationPreview(1);
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.TAB
+		);
+		nextButton.setTooltip(Tooltip.create(Component.translatable(
+			"screen.kohs_inventory_tweaks.customization.preview.next"
+		)));
+		nextButton.setTooltipDelay(Duration.ofMillis(220));
+		this.addRenderableWidget(nextButton);
+
+		int contentY = this.customizationOptionsY + 22 - this.customizationScroll;
+		int controlX = this.customizationOptionsX + 8;
+		int controlWidth = Math.max(24, this.customizationOptionsWidth - 16);
+
+		this.addCustomizationPalette(
+			contentY + 22,
+			controlX,
+			controlWidth,
+			() -> this.working.frameColor,
+			value -> this.working.frameColor = value
+		);
+		this.addCustomizationSlider(contentY + 90, controlX, controlWidth, "screen.kohs_inventory_tweaks.color.opacity", this.working.frameOpacity,
+			value -> this.working.frameOpacity = value);
+
+		int slotY = contentY + CUSTOM_SLOT_CARD_Y;
+		this.addCustomizationPalette(
+			slotY + 22,
+			controlX,
+			controlWidth,
+			() -> this.working.slotColor,
+			value -> this.working.slotColor = value
+		);
+		this.addCustomizationSlider(slotY + 90, controlX, controlWidth, "screen.kohs_inventory_tweaks.color.opacity", this.working.slotOpacity,
+			value -> this.working.slotOpacity = value);
+
+		int backgroundY = contentY + CUSTOM_BACKGROUND_CARD_Y;
+		int gap = 5;
+		int buttonWidth = Math.max(1, (controlWidth - gap) / 2);
+		this.addCustomizationButton(
+			controlX,
+			backgroundY + 25,
+			buttonWidth,
+			Component.translatable(this.backgroundBusy
+				? "screen.kohs_inventory_tweaks.background.importing"
+				: "screen.kohs_inventory_tweaks.background.choose"),
+			button -> this.chooseBackgroundFile(),
+			!this.backgroundBusy,
+			GlassButton.Variant.PRIMARY
+		);
+		this.addCustomizationButton(
+			controlX + buttonWidth + gap,
+			backgroundY + 25,
+			Math.max(1, controlWidth - buttonWidth - gap),
+			Component.translatable("screen.kohs_inventory_tweaks.background.remove"),
+			button -> {
+				this.working.customBackgroundFile = null;
+				this.backgroundStatus = Component.translatable("screen.kohs_inventory_tweaks.background.none");
+				this.persistWorking();
+				this.rebuildWidgets();
+			},
+			!this.backgroundBusy && this.working.customBackgroundFile != null,
+			GlassButton.Variant.DANGER
+		);
+		this.addCustomizationSlider(
+			backgroundY + 51,
+			controlX,
+			controlWidth,
+			"screen.kohs_inventory_tweaks.background.opacity",
+			this.working.backgroundOpacity,
+			value -> this.working.backgroundOpacity = value
+		);
+
+		this.addCustomizationButton(
+			controlX,
+			contentY + CUSTOM_INTERFACE_CARD_Y + 35,
+			controlWidth,
+			Component.translatable("screen.kohs_inventory_tweaks.advanced.configure"),
+			button -> {
+				this.persistWorking();
+				this.minecraft.gui.setScreen(AdvancedSettingsScreen.interfaceTheme(this));
+			},
+			true,
+			GlassButton.Variant.PRIMARY
+		);
+
+		int backdropY = contentY + CUSTOM_BACKDROP_CARD_Y;
+		this.addCustomizationSlider(
+			backdropY + 49,
+			controlX,
+			controlWidth,
+			"screen.kohs_inventory_tweaks.backdrop.opacity",
+			this.working.inventoryBackdropOpacity,
+			value -> this.working.inventoryBackdropOpacity = value
+		);
+		if (this.working.visiblePlayerGlowEnabled) {
+			this.addCustomizationSlider(
+				backdropY + 78,
+				controlX,
+				controlWidth,
+				"screen.kohs_inventory_tweaks.backdrop.player_depth_intensity",
+				this.working.visiblePlayerDepthIntensity,
+				value -> this.working.visiblePlayerDepthIntensity = value
+			);
+		}
+
+		int playerGlowY = contentY + CUSTOM_PLAYER_GLOW_CARD_Y;
+		this.addCustomizationButton(
+			controlX,
+			playerGlowY + 35,
+			controlWidth,
+			Component.translatable("screen.kohs_inventory_tweaks.advanced.configure"),
+			button -> {
+				this.persistWorking();
+				this.minecraft.gui.setScreen(AdvancedSettingsScreen.playerGlow(this));
+			},
+			true,
+			GlassButton.Variant.PRIMARY
+		);
+		this.addFooterButtons(Modal.CUSTOMIZATION);
+	}
+
+	private void addCustomizationPalette(
+		final int y,
+		final int x,
+		final int width,
+		final java.util.function.IntSupplier color,
+		final java.util.function.IntConsumer consumer
+	) {
+		ColorPaletteWidget palette = new ColorPaletteWidget(
+			x,
+			y,
+			width,
+			64,
+			Component.translatable("screen.kohs_inventory_tweaks.palette"),
+			color,
+			value -> {
+				consumer.accept(value);
+				this.persistWorking();
+			}
+		).setClipBounds(
+			this.customizationOptionsX,
+			this.customizationOptionsY + 21,
+			this.customizationOptionsX + this.customizationOptionsWidth,
+			this.customizationOptionsY + this.customizationOptionsHeight
+		);
+		palette.visible = y + 64 > this.customizationOptionsY + 21
+			&& y < this.customizationOptionsY + this.customizationOptionsHeight;
+		this.addRenderableWidget(palette);
+		this.customizationScrollingWidgets.add(palette);
+	}
+
+	private void addCropModalButtons() {
+		int available = Math.max(1, this.panelWidth - this.panelPadding * 2);
+		int gap = available < 120 ? 2 : 6;
+		int centerWidth = Math.min(86, Math.max(1, available / 4));
+		int sliderWidth = Math.max(1, available - centerWidth - gap);
+		CropZoomSlider zoomSlider = new CropZoomSlider(
+			this.panelX + this.panelPadding,
+			this.cropControlsY,
+			sliderWidth,
+			this.cropZoom,
+			value -> {
+				this.cropZoom = value;
+				this.clampCropFocus();
+			}
+		);
+		zoomSlider.active = !this.backgroundBusy;
+		this.addRenderableWidget(zoomSlider);
+
+		GlassButton centerButton = new GlassButton(
+			this.panelX + this.panelPadding + sliderWidth + gap,
+			this.cropControlsY,
+			Math.max(1, available - sliderWidth - gap),
+			20,
+			Component.translatable("screen.kohs_inventory_tweaks.crop.center"),
+			button -> {
+				this.cropFocusX = 0.5;
+				this.cropFocusY = 0.5;
+			},
+			GlassButton.Variant.NORMAL
+		);
+		centerButton.active = !this.backgroundBusy;
+		this.addRenderableWidget(centerButton);
+
+		int footerY = this.panelY + this.panelHeight - this.footerHeight + 5;
+		int buttonWidth = Math.min(150, Math.max(1, (available - gap) / 2));
+		GlassButton applyButton = new GlassButton(
+			this.panelX + this.panelPadding,
+			footerY,
+			buttonWidth,
+			22,
+			Component.translatable(this.backgroundBusy
+				? "screen.kohs_inventory_tweaks.crop.processing"
+				: "screen.kohs_inventory_tweaks.crop.apply"),
+			button -> this.applyCrop(),
+			GlassButton.Variant.PRIMARY
+		);
+		applyButton.active = !this.backgroundBusy && this.cropMedia != null;
+		this.addRenderableWidget(applyButton);
+
+		GlassButton cancelButton = new GlassButton(
+			this.panelX + this.panelPadding + buttonWidth + gap,
+			footerY,
+			buttonWidth,
+			22,
+			Component.translatable("gui.cancel"),
+			button -> this.cancelCrop(),
+			GlassButton.Variant.NORMAL
+		);
+		cancelButton.active = !this.backgroundBusy;
+		this.addRenderableWidget(cancelButton);
+	}
+
+	private void addGuiScalerModalButtons() {
+		this.addRenderableWidget(new GlassButton(
+			this.guiScalerToggleX,
+			this.guiScalerToggleY,
+			this.guiScalerToggleWidth,
+			22,
+			this.guiScalerToggleLabel(),
+			button -> {
+				this.working.inventoryGuiScalerEnabled = !this.working.inventoryGuiScalerEnabled;
+				this.persistWorking();
+				this.calculateGuiScalerLayout();
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.SWITCH,
+			() -> this.working.inventoryGuiScalerEnabled
+		));
+
+		double maximumScale = InventoryGuiScaler.maximumScaleFor(this.width, this.height);
+		this.addRenderableWidget(new InventoryScaleSlider(
+			this.guiScalerSliderX,
+			this.guiScalerSliderY,
+			this.guiScalerSliderWidth,
+			maximumScale,
+			this.working.inventoryGuiScale,
+			value -> {
+				this.working.inventoryGuiScale = value;
+				this.persistWorking();
+				this.calculateGuiScalerLayout();
+			}
+		));
+		this.addGuiScalerActions();
+	}
+
+	private void addGuiScalerActions() {
+		int gap = 6;
+		int available = this.panelWidth - this.panelPadding * 2;
+		int buttonWidth = Math.min(150, Math.max(1, (available - gap) / 2));
+		int actionY = this.panelY + this.panelHeight - this.footerHeight + 5;
+		int startX = this.panelX + (this.panelWidth - buttonWidth * 2 - gap) / 2;
+		this.addRenderableWidget(new GlassButton(
+			startX,
+			actionY,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.save_exit"),
+			button -> this.saveAndCloseModal(),
+			GlassButton.Variant.PRIMARY
+		));
+		this.addRenderableWidget(new GlassButton(
+			startX + buttonWidth + gap,
+			actionY,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.reset"),
+			button -> {
+				this.working.resetGuiScaler();
+				this.persistWorking();
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.DANGER
+		));
+	}
+
+	private void addGuiScalerWarningButtons() {
+		int gap = 8;
+		int buttonWidth = Math.min(168, Math.max(1, (this.warningWidth - 28 - gap) / 2));
+		int y = this.warningY + this.warningHeight - 32;
+		int startX = this.warningX + (this.warningWidth - buttonWidth * 2 - gap) / 2;
+		this.addRenderableWidget(new GlassButton(
+			startX,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.warning.accept"),
+			button -> {
+				this.openGuiScalerCalibration();
+			},
+			GlassButton.Variant.PRIMARY
+		));
+		this.addRenderableWidget(new GlassButton(
+			startX + buttonWidth + gap,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.warning.dismiss"),
+			button -> {
+				InventoryTweaksConfig saved = ConfigStore.get().copy();
+				saved.guiScalerWarningDismissed = true;
+				ConfigStore.replaceAndSave(saved);
+				this.working.guiScalerWarningDismissed = true;
+				this.openGuiScalerCalibration();
+			},
+			GlassButton.Variant.NORMAL
+		));
+	}
+
+	private void addCustomizationWarningButtons() {
+		int gap = 8;
+		int buttonWidth = Math.min(168, Math.max(1, (this.warningWidth - 28 - gap) / 2));
+		int y = this.warningY + this.warningHeight - 32;
+		int startX = this.warningX + (this.warningWidth - buttonWidth * 2 - gap) / 2;
+		this.addRenderableWidget(new GlassButton(
+			startX,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.customization.warning.continue"),
+			button -> this.openModal(Modal.CUSTOMIZATION),
+			GlassButton.Variant.PRIMARY
+		));
+		this.addRenderableWidget(new GlassButton(
+			startX + buttonWidth + gap,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("gui.back"),
+			button -> {
+				this.modal = Modal.NONE;
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.NORMAL
+		));
+	}
+
+	private void addNextGenWarningButtons() {
+		int gap = 8;
+		int buttonWidth = Math.min(168, Math.max(1, (this.warningWidth - 28 - gap) / 2));
+		int y = this.warningY + this.warningHeight - 32;
+		int startX = this.warningX + (this.warningWidth - buttonWidth * 2 - gap) / 2;
+		this.addRenderableWidget(new GlassButton(
+			startX,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.next_gen.warning.continue"),
+			button -> {
+				this.modal = Modal.NONE;
+				this.rebuildWidgets();
+				this.minecraft.gui.setScreen(new NextGenInventoriesScreen(this));
+			},
+			GlassButton.Variant.DANGER
+		));
+		this.addRenderableWidget(new GlassButton(
+			startX + buttonWidth + gap,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("gui.back"),
+			button -> {
+				this.modal = Modal.NONE;
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.NORMAL
+		));
+	}
+
+	private void addTweakWarningButtons() {
+		int gap = 8;
+		int buttonWidth = Math.min(168, Math.max(1, (this.warningWidth - 28 - gap) / 2));
+		int y = this.warningY + this.warningHeight - 32;
+		int startX = this.warningX + (this.warningWidth - buttonWidth * 2 - gap) / 2;
+		this.addRenderableWidget(new GlassButton(
+			startX,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.remove_animations.warning.enable"),
+			button -> {
+				this.tweakWarning.set(this.working, true);
+				this.persistWorking();
+				this.modal = Modal.TWEAKS;
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.PRIMARY
+		));
+		this.addRenderableWidget(new GlassButton(
+			startX + buttonWidth + gap,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("gui.cancel"),
+			button -> {
+				this.modal = Modal.TWEAKS;
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.NORMAL
+		));
+	}
+
+	private void addCustomizationSlider(
+		final int y,
+		final int x,
+		final int width,
+		final String translationKey,
+		final int initialValue,
+		final java.util.function.IntConsumer consumer
+	) {
+		GlassSlider slider = new GlassSlider(x, y, width, translationKey, initialValue, value -> {
+			consumer.accept(value);
+			// Keep the live preview immediate, but leave the synchronous JSON write
+			// to mouseReleased (or a keyboard adjustment). Dragging a 0..255 slider
+			// must never perform hundreds of atomic file replacements on the render
+			// and input thread.
+			InventoryTextureManager.invalidateConfiguration();
+		});
+		slider.setClipBounds(
+			this.customizationOptionsX,
+			this.customizationOptionsY + 21,
+			this.customizationOptionsX + this.customizationOptionsWidth,
+			this.customizationOptionsY + this.customizationOptionsHeight
+		);
+		slider.visible = y + 20 > this.customizationOptionsY + 21
+			&& y < this.customizationOptionsY + this.customizationOptionsHeight;
+		this.addRenderableWidget(slider);
+		this.customizationScrollingWidgets.add(slider);
+	}
+
+	private void addCustomizationButton(
+		final int x,
+		final int y,
+		final int width,
+		final Component label,
+		final Button.OnPress onPress,
+		final boolean active,
+		final GlassButton.Variant variant
+	) {
+		GlassButton button = new GlassButton(x, y, width, 20, label, onPress, variant);
+		button.active = active;
+		button.setClipBounds(
+			this.customizationOptionsX,
+			this.customizationOptionsY + 21,
+			this.customizationOptionsX + this.customizationOptionsWidth,
+			this.customizationOptionsY + this.customizationOptionsHeight
+		);
+		button.visible = y + 20 > this.customizationOptionsY + 21
+			&& y < this.customizationOptionsY + this.customizationOptionsHeight;
+		this.addRenderableWidget(button);
+		this.customizationScrollingWidgets.add(button);
+	}
+
+	private void addFooterButtons(final Modal modalType) {
+		int footerY = this.panelY + this.panelHeight - this.footerHeight + 5;
+		int available = this.panelWidth - this.panelPadding * 2;
+		int gap = 6;
+		int buttonWidth = Math.min(126, (available - gap) / 2);
+		this.addRenderableWidget(new GlassButton(
+			this.panelX + this.panelPadding,
+			footerY,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.save_exit"),
+			button -> this.saveAndCloseModal(),
+			GlassButton.Variant.PRIMARY
+		));
+		this.addRenderableWidget(new GlassButton(
+			this.panelX + this.panelPadding + buttonWidth + gap,
+			footerY,
+			buttonWidth,
+			22,
+			Component.translatable(modalType == Modal.CURSOR
+				? "screen.kohs_inventory_tweaks.reset_all"
+				: "screen.kohs_inventory_tweaks.reset"),
+			button -> {
+				switch (modalType) {
+					case CURSOR -> this.working.resetCursorPositions();
+					case TWEAKS -> {
+						ZMascot.react(ZMascot.Mood.SURPRISED);
+						InventoryTweaksConfig defaults = new InventoryTweaksConfig();
+						for (var option : InventoryTweakOption.values()) {
+							option.set(this.working, option.enabled(defaults));
+						}
+					}
+					case CUSTOMIZATION -> {
+						this.working.resetCustomization();
+						this.backgroundStatus = Component.translatable("screen.kohs_inventory_tweaks.background.none");
+						InventoryTextureManager.invalidateConfiguration();
+					}
+					case GUI_SCALER -> this.working.resetGuiScaler();
+					default -> {
+					}
+				}
+				this.persistWorking();
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.DANGER
+		));
+		this.addRenderableWidget(new GlassButton(
+			this.panelX + this.panelWidth - this.panelPadding - 72,
+			this.panelY + 6,
+			72,
+			20,
+			Component.translatable("gui.back"),
+			button -> this.attemptCloseModal(),
+			GlassButton.Variant.NORMAL
+		));
+	}
+
+	private void addWarningButtons() {
+		int gap = 8;
+		int buttonWidth = Math.min(150, (this.warningWidth - 28 - gap) / 2);
+		int y = this.warningY + this.warningHeight - 32;
+		int startX = this.warningX + (this.warningWidth - buttonWidth * 2 - gap) / 2;
+		this.addRenderableWidget(new GlassButton(
+			startX,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.exit_anyway"),
+			button -> {
+				this.working = ConfigStore.get().copy();
+				InventoryTextureManager.invalidateConfiguration();
+				this.modal = Modal.NONE;
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.DANGER
+		));
+		this.addRenderableWidget(new GlassButton(
+			startX + buttonWidth + gap,
+			y,
+			buttonWidth,
+			22,
+			Component.translatable("screen.kohs_inventory_tweaks.go_back"),
+			button -> {
+				this.modal = this.warningReturnModal;
+				this.rebuildWidgets();
+			},
+			GlassButton.Variant.NORMAL
+		));
+	}
+
+	private void drawMainScreen(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY) {
+		if (this.modal == Modal.NONE) {
+			ZChrome.screenTitle(
+				graphics,
+				this.font,
+				this.title,
+				!this.compactMain && this.height >= 230 ? Component.translatable("screen.kohs_inventory_tweaks.subtitle") : null,
+				this.width / 2,
+				9,
+				this.width - 16
+			);
+		}
+		this.drawMainRail(
+			graphics,
+			this.mainLeftRailX,
+			this.mainLeftRailY,
+			this.mainLeftRailWidth,
+			this.mainLeftRailHeight,
+			Component.translatable("screen.kohs_inventory_tweaks.section.behavior"),
+			this.mainLeftScroll,
+			this.mainLeftMaxScroll
+		);
+		this.drawMainRail(
+			graphics,
+			this.mainRightRailX,
+			this.mainRightRailY,
+			this.mainRightRailWidth,
+			this.mainRightRailHeight,
+			Component.translatable("screen.kohs_inventory_tweaks.section.appearance"),
+			this.mainRightScroll,
+			this.mainRightMaxScroll
+		);
+
+		this.drawPreviewFrame(graphics, this.mainPreviewX, this.mainPreviewY, this.mainPreviewWidth, this.mainPreviewHeight);
+
+		InventoryPreviewRenderer.drawPlayerInventory(
+			graphics,
+			this.font,
+			this.mainPreviewX,
+			this.mainPreviewY,
+			this.mainPreviewScale,
+			mouseX,
+			mouseY,
+			true,
+			this.working
+		);
+		String label = Component.translatable("screen.kohs_inventory_tweaks.texture_source").getString();
+		if (this.font.width(label) > this.textureSelectorWidth) {
+			label = this.font.plainSubstrByWidth(label, Math.max(1, this.textureSelectorWidth - this.font.width("\u2026"))) + "\u2026";
+		}
+		graphics.centeredText(
+			this.font,
+			label,
+			this.textureSelectorX + this.textureSelectorWidth / 2,
+			this.textureSelectorY - 11,
+			UiTheme.TEXT_MUTED
+		);
+	}
+
+	private void drawMainRail(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int y,
+		final int width,
+		final int height,
+		final Component title,
+		final int scroll,
+		final int maxScroll
+	) {
+		UiRender.panel(graphics, x, y, width, height, 8, ZTheme.alpha(ZTheme.SURFACE, 150), UiTheme.BORDER_SOFT);
+		ZChrome.sectionTitle(graphics, this.font, title, x + width / 2, y + 5, width);
+		ZDraw.scrollbar(graphics, x + width - 4, y + 24, Math.max(8, height - 31), scroll, maxScroll);
+	}
+
+	/**
+	 * The preview's frame: a halo that leaves the inside untouched, viewfinder corners
+	 * and a line of current along the top. The backing stays transparent, because an
+	 * opaque panel here made a correctly transparent frame or slot layer look filled.
+	 */
+	private void drawPreviewFrame(final GuiGraphicsExtractor graphics, final int x, final int y, final int width, final int height) {
+		int frameX = x - 6;
+		int frameY = y - 6;
+		int frameWidth = width + 12;
+		int frameHeight = height + 12;
+		ZDraw.halo(graphics, frameX, frameY, frameWidth, frameHeight, ZTheme.VIOLET_BRIGHT, Math.round(34 + 18 * ZMotion.pulse(4.2F)));
+		graphics.outline(frameX, frameY, frameWidth, frameHeight, UiTheme.BORDER_SOFT);
+		ZDraw.brackets(graphics, frameX - 2, frameY - 2, frameWidth + 4, frameHeight + 4, 12, ZTheme.LILAC);
+		ZDraw.energyLine(graphics, frameX + 12, frameY, Math.max(0, frameWidth - 24),
+			ZTheme.alpha(ZTheme.BORDER_SOFT, 0), ZTheme.fade(ZTheme.CYAN, 0.9F), 5.0F);
+	}
+
+	private void drawActiveScrollFades(final GuiGraphicsExtractor graphics) {
+		if (this.modal == Modal.NONE) {
+			UiRender.scrollFade(
+				graphics,
+				this.mainLeftRailX + 3,
+				this.mainLeftRailY + 21,
+				this.mainLeftRailWidth - 7,
+				this.mainLeftRailHeight - 25,
+				this.mainLeftScroll > 0,
+				this.mainLeftScroll < this.mainLeftMaxScroll
+			);
+			UiRender.scrollFade(
+				graphics,
+				this.mainRightRailX + 3,
+				this.mainRightRailY + 21,
+				this.mainRightRailWidth - 7,
+				this.mainRightRailHeight - 25,
+				this.mainRightScroll > 0,
+				this.mainRightScroll < this.mainRightMaxScroll
+			);
+		} else if (this.modal == Modal.CUSTOMIZATION) {
+			UiRender.scrollFade(
+				graphics,
+				this.customizationOptionsX + 2,
+				this.customizationOptionsY + 21,
+				this.customizationOptionsWidth - 5,
+				this.customizationOptionsHeight - 23,
+				this.customizationScroll > 0,
+				this.customizationScroll < this.customizationMaxScroll
+			);
+		}
+	}
+
+	private void drawCursorModal(final GuiGraphicsExtractor graphics) {
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.cursor_landing"));
+
+		UiRender.panel(
+			graphics,
+			this.previewX - 5,
+			this.previewY - 5,
+			this.previewWidth + 10,
+			this.previewHeight + 10,
+			7,
+			UiTheme.PREVIEW_GLASS,
+			UiTheme.BORDER_SOFT
+		);
+		if (this.selectedTarget == CursorTarget.INVENTORY) {
+			InventoryPreviewRenderer.drawPlayerInventory(graphics, this.font, this.previewX, this.previewY, this.previewScale, -1000, -1000, false, this.working);
+		} else {
+			InventoryPreviewRenderer.drawContainerPreview(graphics, this.font, this.previewX, this.previewY, this.previewScale, this.selectedTarget, this.working);
+		}
+
+		boolean cursorEnabled = this.isSelectedCursorEnabled();
+		CursorPoint point = cursorEnabled ? this.working.getPosition(this.selectedTarget) : null;
+		double x = point == null ? 0.5 : point.x();
+		double y = point == null ? 0.5 : point.y();
+		int markerX = this.previewX + (int) Math.round(x * Math.max(0, this.previewWidth - 1));
+		int markerY = this.previewY + (int) Math.round(y * Math.max(0, this.previewHeight - 1));
+		UiRender.crosshair(graphics, markerX, markerY, point != null);
+
+		if (!this.compactModal) {
+			String coordinates = !cursorEnabled
+				? Component.translatable("screen.kohs_inventory_tweaks.cursor_disabled_vanilla").getString()
+				: point == null
+				? Component.translatable("screen.kohs_inventory_tweaks.vanilla_center").getString()
+				: String.format(Locale.ROOT, "X %.3f  ·  Y %.3f", point.x(), point.y());
+			graphics.centeredText(this.font, coordinates, this.previewX + this.previewWidth / 2, this.previewY + this.previewHeight + 9, UiTheme.TEXT_MUTED);
+		}
+	}
+
+	private void drawTweaksModal(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY) {
+		InventoryTweakOption hovered = this.modal == Modal.TWEAKS ? this.tweakCardAt(mouseX, mouseY) : null;
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.inventory_tweaks"));
+		int textWidth = Math.max(36, this.tweakOptionsWidth - this.tweakToggleWidth() - 52);
+		graphics.enableScissor(this.tweakOptionsX, this.tweakViewportTop,
+			this.tweakOptionsX + this.tweakOptionsWidth, this.tweakViewportBottom);
+		for (int index = 0; index < this.visibleTweaks.size(); index++) {
+			var option = this.visibleTweaks.get(index);
+			int y = this.tweakFirstCardY + index * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
+			if (y + this.tweakCardHeight <= this.tweakViewportTop || y >= this.tweakViewportBottom) continue;
+			int indent = option.parent() == null ? 0 : TREE_INDENT;
+			if (indent > 0) {
+				this.drawTreeBranch(graphics, y, option);
+			}
+			this.drawTweakCard(graphics, this.tweakOptionsX + indent, y, this.tweakOptionsWidth - indent, this.tweakCardHeight,
+				textWidth - indent, option, option == hovered);
+		}
+		graphics.disableScissor();
+		this.drawPixelScrollbar(graphics, this.tweakOptionsX + this.tweakOptionsWidth + 3,
+			this.tweakViewportTop, this.tweakViewportBottom, this.tweakScroll, this.tweakMaxScroll,
+			this.tweakMaxScroll + this.tweakViewportBottom - this.tweakViewportTop);
+		this.drawFastOpenStatus(graphics);
+	}
+
+	/** Names why the last inventory press did not open before the client tick. */
+	private void drawFastOpenStatus(final GuiGraphicsExtractor graphics) {
+		Component status;
+		int color;
+		if (!this.working.superFastInventory) {
+			return;
+		}
+		if (SuperFastInventoryController.lastOpenWasImmediate()) {
+			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.immediate");
+			color = UiTheme.SPEED;
+		} else if (SuperFastInventoryController.lastPressSettledAPair()) {
+			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.settled_pair");
+			color = UiTheme.SPEED;
+		} else if (SuperFastInventoryController.lastOpenHadInputConflict()) {
+			List<String> mappings = SuperFastInventoryController.lastConflictMappings();
+			MutableComponent names = Component.empty();
+			for (int index = 0; index < mappings.size(); index++) {
+				if (index > 0) {
+					names.append(", ");
+				}
+				names.append(Component.translatable(mappings.get(index)));
+			}
+			status = Component.translatable("screen.kohs_inventory_tweaks.fast_open.conflict", names);
+			color = UiTheme.WARNING;
+		} else {
+			String code = SuperFastInventoryController.lastFallbackCode();
+			if (code.isEmpty()) {
+				return;
+			}
+			status = Component.translatable(fastOpenReasonKey(code));
+			color = UiTheme.WARNING;
+		}
+		List<FormattedCharSequence> lines = this.font.split(status, this.tweakOptionsWidth - 20);
+		for (int index = 0; index < Math.min(3, lines.size()); index++) {
+			graphics.text(this.font, lines.get(index), this.tweakOptionsX + 10, this.tweakStatusY + index * 10, color);
+		}
+	}
+
+	/**
+	 * The message naming why the last press waited for the client tick.
+	 *
+	 * <p>Only the reasons a player can act on earn their own line. The rest share
+	 * one message, because this readout exists to explain a slow open rather than
+	 * to enumerate internal state.</p>
+	 */
+	private static String fastOpenReasonKey(final String code) {
+		return switch (code) {
+			case "item-in-use" -> "screen.kohs_inventory_tweaks.fast_open.reason.item_in_use";
+			case "block-breaking" -> "screen.kohs_inventory_tweaks.fast_open.reason.block_breaking";
+			case "window-not-active" -> "screen.kohs_inventory_tweaks.fast_open.reason.window_not_active";
+			case "multiple-inventory-clicks" -> "screen.kohs_inventory_tweaks.fast_open.reason.multiple_clicks";
+			case "inventory-click-already-consumed" -> "screen.kohs_inventory_tweaks.fast_open.reason.already_consumed";
+			default -> "screen.kohs_inventory_tweaks.fast_open.reason.other";
+		};
+	}
+
+	private InventoryTweakOption tweakCardAt(final int mouseX, final int mouseY) {
+		if (mouseX < this.tweakOptionsX || mouseX >= this.tweakOptionsX + this.tweakOptionsWidth
+			|| mouseY < this.tweakViewportTop || mouseY >= this.tweakViewportBottom) {
+			return null;
+		}
+		for (int index = 0; index < this.visibleTweaks.size(); index++) {
+			int y = this.tweakFirstCardY + index * (this.tweakCardHeight + this.tweakCardGap) - this.tweakScroll;
+			if (mouseY >= y && mouseY < y + this.tweakCardHeight) {
+				return this.visibleTweaks.get(index);
+			}
+		}
+		return null;
+	}
+
+	private Component tweakDescription(final InventoryTweakOption option) {
+		if (!option.available()) {
+			return Component.translatable("screen.kohs_inventory_tweaks.compatibility.feature_disabled");
+		}
+		InventoryTweakOption parent = option.parent();
+		if (parent != null && !parent.enabled(this.working)) {
+			return Component.translatable(option.key + ".description").append(" ")
+				.append(Component.translatable("screen.kohs_inventory_tweaks.needs_parent", Component.translatable(parent.key)));
+		}
+		return Component.translatable(option.key + ".description");
+	}
+
+	/** The branch from a parent down to its sub-option, lit while the sub-option works. */
+	private void drawTreeBranch(final GuiGraphicsExtractor graphics, final int y, final InventoryTweakOption option) {
+		int color = option.usable(this.working) ? ZTheme.fade(ZTheme.CYAN, 0.7F) : ZTheme.alpha(ZTheme.CYAN, 55);
+		int x = this.tweakOptionsX + 9;
+		int middle = y + this.tweakCardHeight / 2;
+		graphics.fill(x, y - this.tweakCardGap, x + 2, middle + 1, color);
+		graphics.fill(x, middle - 1, this.tweakOptionsX + TREE_INDENT, middle + 1, color);
+	}
+
+	private void drawTweakCard(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int y,
+		final int width,
+		final int height,
+		final int textWidth,
+		final InventoryTweakOption option,
+		final boolean hovered
+	) {
+		boolean usable = option.usable(this.working);
+		// Lit only when it acts: a sub-option under a parent that is off stays dark.
+		boolean lit = usable && option.enabled(this.working);
+		// Speed and precision wear cyan; what you see keeps the violet of the house.
+		int accent = option == InventoryTweakOption.ANIMATIONS || option == InventoryTweakOption.MASCOT
+			? ZTheme.VIOLET_BRIGHT : ZTheme.CYAN;
+		UiRender.panel(graphics, x, y, width, height, 8, UiTheme.GLASS_LIGHT,
+			lit ? ZTheme.fade(accent, 0.6F) : UiTheme.BORDER_SOFT);
+		graphics.fill(x + 3, y + 6, x + 5, y + height - 6, lit ? accent : ZTheme.alpha(accent, 60));
+		ZScene scene = switch (option) {
+			case FAST -> ZScene.FAST;
+			case POINTER -> ZScene.POINTER;
+			case CENTER -> ZScene.CENTER;
+			case LEAVE -> ZScene.LEAVE;
+			case STEADY -> ZScene.STEADY;
+			case BOOK -> ZScene.BOOK;
+			case ANIMATIONS -> ZScene.MOTION;
+			case MASCOT -> ZScene.MASCOT;
+		};
+		// A switched-on tweak idles awake; the pointer wakes it fully.
+		int iconY = y + (height - 16) / 2;
+		scene.draw(graphics, x + 10, iconY, 16, !usable ? 0.0F : hovered ? 1.0F : lit ? 0.35F : 0.0F);
+		if (!usable) {
+			graphics.fill(x + 10, iconY, x + 26, iconY + 16, ZTheme.alpha(ZTheme.SURFACE, 150));
+		}
+		// The whole title, on two lines when it needs them. The description is the hover.
+		List<FormattedCharSequence> titleLines = this.font.split(Component.translatable(option.key), textWidth);
+		int drawnTitleLines = Math.min(titleLines.size(), Math.max(1, Math.min(2, (height - 6) / 10)));
+		int titleY = y + (height - drawnTitleLines * 10 + 2) / 2;
+		for (int index = 0; index < drawnTitleLines; index++) {
+			graphics.text(this.font, titleLines.get(index), x + 32, titleY + index * 10, usable ? UiTheme.TEXT : UiTheme.TEXT_MUTED);
+		}
+	}
+
+	private void drawGuiScalerModal(
+		final GuiGraphicsExtractor graphics,
+		final int mouseX,
+		final int mouseY
+	) {
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.gui_scaler"));
+		if (!this.compactModal) {
+			graphics.textWithWordWrap(
+				this.font,
+				Component.translatable("screen.kohs_inventory_tweaks.gui_scaler.description"),
+				this.panelX + this.panelPadding,
+				this.guiScalerToggleY + 28,
+				this.panelWidth - this.panelPadding * 2,
+				UiTheme.TEXT_MUTED
+			);
+		}
+
+		UiRender.panel(
+			graphics,
+			this.guiScalerPreviewX - 5,
+			this.guiScalerPreviewY - 5,
+			this.guiScalerPreviewWidth + 10,
+			this.guiScalerPreviewHeight + 10,
+			7,
+			UiTheme.PREVIEW_GLASS,
+			this.working.inventoryGuiScalerEnabled ? UiTheme.ACCENT_SOFT : UiTheme.BORDER_SOFT
+		);
+		InventoryPreviewRenderer.drawPlayerInventory(
+			graphics,
+			this.font,
+			this.guiScalerPreviewX,
+			this.guiScalerPreviewY,
+			this.guiScalerPreviewScale,
+			mouseX,
+			mouseY,
+			true,
+			this.working
+		);
+		String previewLabelKey;
+		if (this.compactModal) {
+			previewLabelKey = this.guiScalerPreviewFitted
+				? "screen.kohs_inventory_tweaks.gui_scaler.preview_fitted_compact"
+				: "screen.kohs_inventory_tweaks.gui_scaler.preview_actual_compact";
+		} else {
+			previewLabelKey = this.guiScalerPreviewFitted
+				? "screen.kohs_inventory_tweaks.gui_scaler.preview_fitted"
+				: "screen.kohs_inventory_tweaks.gui_scaler.preview_actual";
+		}
+		graphics.centeredText(
+			this.font,
+			Component.translatable(previewLabelKey, (int) Math.round(this.guiScalerActualScale * 100.0)),
+			this.guiScalerSliderX + this.guiScalerSliderWidth / 2,
+			this.guiScalerSliderY - 11,
+			this.guiScalerPreviewFitted ? UiTheme.WARNING : UiTheme.TEXT_MUTED
+		);
+	}
+
+	private void drawCustomizationModal(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY) {
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.customization"));
+
+		this.drawCustomizationRail(
+			graphics,
+			this.customizationOptionsX,
+			this.customizationOptionsY,
+			this.customizationOptionsWidth,
+			this.customizationOptionsHeight,
+			Component.translatable("screen.kohs_inventory_tweaks.customization.right")
+		);
+
+		if (this.customizationPreviewVisible) {
+			UiRender.panel(
+				graphics,
+				this.customizationPreviewX - 5,
+				this.customizationPreviewY - 5,
+				this.customizationPreviewWidth + 10,
+				this.customizationPreviewHeight + 10,
+				7,
+				UiTheme.PREVIEW_GLASS,
+				UiTheme.ACCENT_SOFT
+			);
+			this.drawBackdropPreview(
+				graphics,
+				this.customizationPreviewX,
+				this.customizationPreviewY,
+				this.customizationPreviewWidth,
+				this.customizationPreviewHeight
+			);
+			switch (this.customizationPreviewTarget.kind()) {
+				case PLAYER -> InventoryPreviewRenderer.drawPlayerInventory(
+					graphics,
+					this.font,
+					this.customizationPreviewX,
+					this.customizationPreviewY,
+					this.customizationPreviewScale,
+					mouseX,
+					mouseY,
+					true,
+					this.working
+				);
+				case GENERIC -> InventoryPreviewRenderer.drawContainerPreview(
+					graphics,
+					this.font,
+					this.customizationPreviewX,
+					this.customizationPreviewY,
+					this.customizationPreviewScale,
+					this.customizationPreviewTarget,
+					this.working
+				);
+				case SURFACE -> InventoryPreviewRenderer.drawSurfacePreview(
+					graphics,
+					this.font,
+					this.customizationPreviewX,
+					this.customizationPreviewY,
+					this.customizationPreviewScale,
+					this.customizationPreviewTarget,
+					this.working
+				);
+				case BUNDLE -> InventoryPreviewRenderer.drawBundlePreview(
+					graphics,
+					this.font,
+					this.customizationPreviewX,
+					this.customizationPreviewY,
+					this.customizationPreviewScale,
+					this.working
+				);
+			}
+			graphics.centeredText(
+				this.font,
+				Component.translatable("screen.kohs_inventory_tweaks.customization.affects_all"),
+				this.customizationPreviewX + this.customizationPreviewWidth / 2,
+				this.customizationPreviewY + this.customizationPreviewHeight + 8,
+				UiTheme.TEXT_MUTED
+			);
+		}
+
+		graphics.enableScissor(
+			this.customizationOptionsX,
+			this.customizationOptionsY + 21,
+			this.customizationOptionsX + this.customizationOptionsWidth,
+			this.customizationOptionsY + this.customizationOptionsHeight
+		);
+		int contentY = this.customizationOptionsY + 22 - this.customizationScroll;
+		this.drawCustomizationLayerCard(
+			graphics,
+			this.customizationOptionsX + 2,
+			this.customizationOptionsWidth - 6,
+			contentY,
+			Component.translatable("screen.kohs_inventory_tweaks.frame_layer"),
+			this.working.frameColor,
+			this.working.frameOpacity
+		);
+		this.drawCustomizationLayerCard(
+			graphics,
+			this.customizationOptionsX + 2,
+			this.customizationOptionsWidth - 6,
+			contentY + CUSTOM_SLOT_CARD_Y,
+			Component.translatable("screen.kohs_inventory_tweaks.slot_layer"),
+			this.working.slotColor,
+			this.working.slotOpacity
+		);
+		this.drawBackgroundCard(
+			graphics,
+			this.customizationOptionsX + 2,
+			this.customizationOptionsWidth - 6,
+			contentY + CUSTOM_BACKGROUND_CARD_Y
+		);
+		this.drawCustomizationNavigationCard(
+			graphics,
+			this.customizationOptionsX + 2,
+			this.customizationOptionsWidth - 6,
+			contentY + CUSTOM_INTERFACE_CARD_Y,
+			"screen.kohs_inventory_tweaks.advanced.tab.interface",
+			"screen.kohs_inventory_tweaks.advanced.interface.description"
+		);
+		this.drawBackdropCard(
+			graphics,
+			this.customizationOptionsX + 2,
+			this.customizationOptionsWidth - 6,
+			contentY + CUSTOM_BACKDROP_CARD_Y
+		);
+		this.drawCustomizationNavigationCard(
+			graphics,
+			this.customizationOptionsX + 2,
+			this.customizationOptionsWidth - 6,
+			contentY + CUSTOM_PLAYER_GLOW_CARD_Y,
+			"screen.kohs_inventory_tweaks.advanced.tab.player_glow",
+			"screen.kohs_inventory_tweaks.advanced.access.player_glow.description"
+		);
+		graphics.disableScissor();
+
+		this.drawPixelScrollbar(
+			graphics,
+			this.customizationOptionsX + this.customizationOptionsWidth - 3,
+			this.customizationOptionsY + 22,
+			this.customizationOptionsY + this.customizationOptionsHeight - 3,
+			this.customizationScroll,
+			this.customizationMaxScroll,
+			CUSTOM_CONTENT_HEIGHT
+		);
+	}
+
+	private void drawCropModal(final GuiGraphicsExtractor graphics) {
+		this.drawModalFrame(graphics, Component.translatable("screen.kohs_inventory_tweaks.crop.title"));
+		graphics.text(
+			this.font,
+			Component.translatable("screen.kohs_inventory_tweaks.crop.ratio"),
+			this.panelX + this.panelWidth - this.panelPadding - 70,
+			this.panelY + 10,
+			UiTheme.TEXT_MUTED
+		);
+
+		UiRender.panel(
+			graphics,
+			this.cropWorkspaceX,
+			this.cropWorkspaceY,
+			this.cropWorkspaceWidth,
+			this.cropWorkspaceHeight,
+			7,
+			0xE5120821,
+			UiTheme.BORDER_SOFT
+		);
+
+		if (this.cropMedia != null && this.cropPreviewTexture != null) {
+			double scale = this.cropDisplayScale();
+			int imageWidth = Math.max(1, (int) Math.round(this.cropMedia.previewWidth() * scale));
+			int imageHeight = Math.max(1, (int) Math.round(this.cropMedia.previewHeight() * scale));
+			int imageX = (int) Math.round(this.cropFrameX + this.cropFrameWidth / 2.0 - this.cropFocusX * imageWidth);
+			int imageY = (int) Math.round(this.cropFrameY + this.cropFrameHeight / 2.0 - this.cropFocusY * imageHeight);
+
+			graphics.enableScissor(
+				this.cropWorkspaceX + 1,
+				this.cropWorkspaceY + 1,
+				this.cropWorkspaceX + this.cropWorkspaceWidth - 1,
+				this.cropWorkspaceY + this.cropWorkspaceHeight - 1
+			);
+			graphics.pose().pushMatrix();
+			graphics.pose().translate(imageX, imageY);
+			graphics.pose().scale((float) scale, (float) scale);
+			graphics.blit(
+				RenderPipelines.GUI_TEXTURED,
+				CROP_PREVIEW_TEXTURE,
+				0,
+				0,
+				0.0F,
+				0.0F,
+				this.cropMedia.previewWidth(),
+				this.cropMedia.previewHeight(),
+				this.cropMedia.previewWidth(),
+				this.cropMedia.previewHeight()
+			);
+			graphics.pose().popMatrix();
+			this.drawCropDim(graphics);
+			graphics.disableScissor();
+		}
+
+		graphics.outline(this.cropFrameX - 1, this.cropFrameY - 1, this.cropFrameWidth + 2, this.cropFrameHeight + 2, 0xD0000000);
+		graphics.outline(this.cropFrameX, this.cropFrameY, this.cropFrameWidth, this.cropFrameHeight, UiTheme.ACCENT);
+		this.drawCropCorners(graphics);
+
+		Component helper = this.cropStatus.getString().isBlank()
+			? Component.translatable("screen.kohs_inventory_tweaks.crop.drag_hint")
+			: this.cropStatus;
+		graphics.centeredText(
+			this.font,
+			helper,
+			this.panelX + this.panelWidth / 2,
+			this.cropControlsY - 11,
+			this.cropStatus.getString().isBlank() ? UiTheme.TEXT_MUTED : UiTheme.WARNING
+		);
+	}
+
+	private void drawCropDim(final GuiGraphicsExtractor graphics) {
+		int workspaceRight = this.cropWorkspaceX + this.cropWorkspaceWidth;
+		int workspaceBottom = this.cropWorkspaceY + this.cropWorkspaceHeight;
+		int frameRight = this.cropFrameX + this.cropFrameWidth;
+		int frameBottom = this.cropFrameY + this.cropFrameHeight;
+		int dim = 0xA8000000;
+		graphics.fill(this.cropWorkspaceX, this.cropWorkspaceY, workspaceRight, this.cropFrameY, dim);
+		graphics.fill(this.cropWorkspaceX, frameBottom, workspaceRight, workspaceBottom, dim);
+		graphics.fill(this.cropWorkspaceX, this.cropFrameY, this.cropFrameX, frameBottom, dim);
+		graphics.fill(frameRight, this.cropFrameY, workspaceRight, frameBottom, dim);
+	}
+
+	private void drawCropCorners(final GuiGraphicsExtractor graphics) {
+		int length = Math.max(5, Math.min(12, this.cropFrameWidth / 8));
+		int thickness = 2;
+		int right = this.cropFrameX + this.cropFrameWidth;
+		int bottom = this.cropFrameY + this.cropFrameHeight;
+		graphics.fill(this.cropFrameX, this.cropFrameY, this.cropFrameX + length, this.cropFrameY + thickness, UiTheme.TEXT);
+		graphics.fill(this.cropFrameX, this.cropFrameY, this.cropFrameX + thickness, this.cropFrameY + length, UiTheme.TEXT);
+		graphics.fill(right - length, this.cropFrameY, right, this.cropFrameY + thickness, UiTheme.TEXT);
+		graphics.fill(right - thickness, this.cropFrameY, right, this.cropFrameY + length, UiTheme.TEXT);
+		graphics.fill(this.cropFrameX, bottom - thickness, this.cropFrameX + length, bottom, UiTheme.TEXT);
+		graphics.fill(this.cropFrameX, bottom - length, this.cropFrameX + thickness, bottom, UiTheme.TEXT);
+		graphics.fill(right - length, bottom - thickness, right, bottom, UiTheme.TEXT);
+		graphics.fill(right - thickness, bottom - length, right, bottom, UiTheme.TEXT);
+	}
+
+	private void drawCustomizationLayerCard(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int width,
+		final int y,
+		final Component title,
+		final int color,
+		final int opacity
+	) {
+		graphics.fill(x + 6, y, x + width - 6, y + 1, UiTheme.BORDER_SOFT);
+		graphics.text(this.font, title, x + 8, y + 8, UiTheme.TEXT);
+		int swatchX = x + width - 27;
+		graphics.fill(swatchX, y + 6, swatchX + 19, y + 21, 0xFF303030);
+		graphics.fill(swatchX + 2, y + 8, swatchX + 17, y + 19, UiRender.withAlpha(color, opacity));
+	}
+
+	private void drawBackgroundCard(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int width,
+		final int y
+	) {
+		graphics.fill(x + 6, y, x + width - 6, y + 1, UiTheme.BORDER_SOFT);
+		graphics.text(
+			this.font,
+			Component.translatable("screen.kohs_inventory_tweaks.custom_background"),
+			x + 8,
+			y + 8,
+			UiTheme.TEXT
+		);
+		Component status = this.backgroundStatus.getString().isBlank()
+			? this.currentBackgroundStatus()
+			: this.backgroundStatus;
+		graphics.textWithWordWrap(this.font, status, x + 8, y + 76, Math.max(70, width - 16), UiTheme.TEXT_MUTED);
+		graphics.textWithWordWrap(
+			this.font,
+			Component.translatable("screen.kohs_inventory_tweaks.background.limits"),
+			x + 8,
+			y + 99,
+			Math.max(70, width - 16),
+			UiTheme.TEXT_DISABLED
+		);
+	}
+
+	private void drawBackdropCard(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int width,
+		final int y
+	) {
+		graphics.fill(x + 6, y, x + width - 6, y + 1, UiTheme.BORDER_SOFT);
+		graphics.text(
+			this.font,
+			Component.translatable("screen.kohs_inventory_tweaks.backdrop.title"),
+			x + 8,
+			y + 7,
+			UiTheme.TEXT
+		);
+		List<FormattedCharSequence> description = this.font.split(
+			Component.translatable("screen.kohs_inventory_tweaks.backdrop.description"),
+			Math.max(70, width - 16)
+		);
+		for (int line = 0; line < Math.min(2, description.size()); line++) {
+			graphics.text(this.font, description.get(line), x + 8, y + 20 + line * 10, UiTheme.TEXT_MUTED);
+		}
+	}
+
+	private void drawCustomizationNavigationCard(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int width,
+		final int y,
+		final String titleKey,
+		final String descriptionKey
+	) {
+		graphics.fill(x + 6, y, x + width - 6, y + 1, UiTheme.BORDER_SOFT);
+		graphics.text(
+			this.font,
+			Component.translatable(titleKey),
+			x + 8,
+			y + 8,
+			UiTheme.TEXT
+		);
+		graphics.text(
+			this.font,
+			this.font.plainSubstrByWidth(
+				Component.translatable(descriptionKey).getString(),
+				Math.max(1, width - 16)
+			),
+			x + 8,
+			y + 21,
+			UiTheme.TEXT_MUTED
+		);
+	}
+
+	private void drawBackdropPreview(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int y,
+		final int width,
+		final int height
+	) {
+		int opacity = Mth.clamp(this.working.inventoryBackdropOpacity, 0, 255);
+		int topAlpha = Math.min(255, opacity * 192 / 208);
+		graphics.fillGradient(
+			x,
+			y,
+			x + width,
+			y + height,
+			topAlpha << 24 | 0x101010,
+			opacity << 24 | 0x101010
+		);
+	}
+
+	private void drawCustomizationRail(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int y,
+		final int width,
+		final int height,
+		final Component title
+	) {
+		UiRender.panel(graphics, x, y, width, height, 8, UiTheme.PREVIEW_GLASS, UiTheme.BORDER_SOFT);
+		ZChrome.sectionTitle(graphics, this.font, title, x + width / 2, y + 6, width);
+	}
+
+	private void drawPixelScrollbar(
+		final GuiGraphicsExtractor graphics,
+		final int x,
+		final int top,
+		final int bottom,
+		final int scroll,
+		final int maximum,
+		final int contentHeight
+	) {
+		if (maximum <= 0 || bottom <= top) {
+			return;
+		}
+		ZDraw.scrollbar(graphics, x - 1, top, bottom - top, scroll, maximum);
+	}
+
+	/** The modal panel with its header and the line that sets the footer apart. */
+	private void drawModalFrame(final GuiGraphicsExtractor graphics, final Component title) {
+		UiRender.panel(graphics, this.panelX, this.panelY, this.panelWidth, this.panelHeight, 10, UiTheme.GLASS, UiTheme.BORDER);
+		int inner = this.panelWidth - this.panelPadding * 2;
+		ZChrome.panelHeader(graphics, this.font, title, this.panelX + this.panelPadding, this.panelY + 10, inner,
+			this.panelY + this.headerHeight - 3);
+		int footerLine = this.panelY + this.panelHeight - this.footerHeight + 1;
+		graphics.fill(this.panelX + this.panelPadding, footerLine, this.panelX + this.panelWidth - this.panelPadding,
+			footerLine + 1, ZTheme.alpha(ZTheme.BORDER_SOFT, 90));
+	}
+
+	/**
+	 * A warning: a slow magenta pulse, the warning rune beside the title, and the
+	 * explanation. The pulse breathes; it never flashes.
+	 */
+	private void drawWarningPanel(final GuiGraphicsExtractor graphics, final Component title, final Component description) {
+		ZDraw.glow(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, UiTheme.WARNING,
+			Math.round(22 + 20 * ZMotion.pulse(2.4F)));
+		UiRender.panel(graphics, this.warningX, this.warningY, this.warningWidth, this.warningHeight, 10, UiTheme.GLASS, UiTheme.WARNING);
+		int titleWidth = Math.min(this.font.width(title), Math.max(1, this.warningWidth - 50));
+		int left = this.warningX + (this.warningWidth - titleWidth - 22) / 2;
+		ZScene.WARNING.draw(graphics, left, this.warningY + 10, 16, 0.6F);
+		graphics.text(this.font, title, left + 22, this.warningY + 14, UiTheme.TEXT);
+		ZDraw.blade(graphics, this.warningX + this.warningWidth / 2, this.warningY + 30,
+			Math.min(64, this.warningWidth / 4), ZTheme.alpha(UiTheme.WARNING, 190));
+		graphics.textWithWordWrap(this.font, description, this.warningX + 14, this.warningY + 37, this.warningWidth - 28, UiTheme.TEXT);
+	}
+
+	private void calculateMainLayout() {
+		this.compactMain = this.width < 560 || this.height < 300;
+		int margin = this.width < 360 ? 4 : 8;
+		int gap = this.compactMain ? 5 : 12;
+		int titleSpace = this.height >= 230 ? 38 : 27;
+		// Room for the texture selector and its label under the rails.
+		int footerSpace = this.height >= 120 ? 46 : 24;
+		int absoluteMaxRail = Math.max(1, (this.width - margin * 2 - gap * 2 - 48) / 2);
+		int minimumRail = Math.min(this.compactMain ? 68 : 108, absoluteMaxRail);
+		int maximumRail = Math.max(minimumRail, Math.min(this.compactMain ? 126 : 184, absoluteMaxRail));
+		int preferredPreviewWidth = this.compactMain
+			? Mth.clamp((int) (this.width * 0.40F), 92, 150)
+			: INVENTORY_WIDTH;
+		int preferredRail = (this.width - margin * 2 - gap * 2 - preferredPreviewWidth) / 2;
+		int railWidth = Mth.clamp(preferredRail, minimumRail, maximumRail);
+		// A card title may wrap between words, never inside one: the rails take the
+		// width the longest word needs, and the preview, which is decoration, gives it up.
+		railWidth = Math.max(railWidth, Math.min(absoluteMaxRail, this.longestCardWordWidth() + 44));
+
+		this.mainLeftRailX = margin;
+		this.mainLeftRailY = titleSpace;
+		this.mainLeftRailWidth = railWidth;
+		this.mainLeftRailHeight = Math.max(28, this.height - titleSpace - footerSpace);
+		this.mainRightRailWidth = railWidth;
+		this.mainRightRailHeight = this.mainLeftRailHeight;
+		this.mainRightRailX = this.width - margin - railWidth;
+		this.mainRightRailY = titleSpace;
+
+		int centerLeft = this.mainLeftRailX + railWidth + gap;
+		int centerRight = this.mainRightRailX - gap;
+		int centerWidth = Math.max(24, centerRight - centerLeft);
+		this.textureSelectorWidth = railWidth;
+		this.textureSelectorX = this.mainLeftRailX;
+		this.textureSelectorY = Math.max(titleSpace + 24, this.height - margin - 19);
+
+		int previewTop = titleSpace + 4;
+		this.mainKeybindY = previewTop;
+		this.mainKeybindWidth = Math.max(20, Math.min(190, centerWidth - 10));
+		this.mainKeybindX = centerLeft + (centerWidth - this.mainKeybindWidth) / 2;
+		previewTop = this.mainKeybindY + 25;
+		int previewBottom = this.height - margin - 3;
+		int availableHeight = Math.max(24, previewBottom - previewTop);
+		int availableWidth = Math.max(24, centerWidth - 10);
+		this.mainPreviewScale = this.crispScale(Math.min(
+			availableHeight / (float) INVENTORY_HEIGHT,
+			availableWidth / (float) INVENTORY_WIDTH
+		), 2.0F, 0.18F);
+		this.mainPreviewWidth = Math.round(INVENTORY_WIDTH * this.mainPreviewScale);
+		this.mainPreviewHeight = Math.round(INVENTORY_HEIGHT * this.mainPreviewScale);
+		this.mainPreviewX = centerLeft + (centerWidth - this.mainPreviewWidth) / 2;
+		this.mainPreviewY = previewTop + Math.max(0, (availableHeight - this.mainPreviewHeight) / 2);
+
+		this.mainCardWidth = Math.max(1, railWidth - 10);
+		this.mainCardHeight = this.compactMain ? 22 : 28;
+		int cardGap = this.compactMain ? 5 : 7;
+		int leftRailContentHeight = this.mainCardHeight * 4 + cardGap * 3;
+		int rightRailContentHeight = this.mainCardHeight * 4 + cardGap * 3;
+		int railVisibleHeight = Math.max(1, this.mainLeftRailHeight - 30);
+		this.mainLeftMaxScroll = Math.max(0, leftRailContentHeight - railVisibleHeight);
+		this.mainRightMaxScroll = Math.max(0, rightRailContentHeight - railVisibleHeight);
+		this.mainLeftSmoothScroll.setMaximum(this.mainLeftMaxScroll);
+		this.mainRightSmoothScroll.setMaximum(this.mainRightMaxScroll);
+		this.mainLeftScroll = this.mainLeftSmoothScroll.roundedPosition();
+		this.mainRightScroll = this.mainRightSmoothScroll.roundedPosition();
+		// Cards start under the section title, like a navigation column.
+		int railContentTop = this.mainLeftRailY + 25;
+		this.cursorCardX = this.mainLeftRailX + 5;
+		this.cursorCardY = railContentTop - this.mainLeftScroll;
+		this.tweakCardX = this.cursorCardX;
+		this.tweakCardY = this.cursorCardY + this.mainCardHeight + cardGap;
+		this.issuesCardX = this.cursorCardX;
+		this.issuesCardY = this.tweakCardY + this.mainCardHeight + cardGap;
+		this.kohsCardX = this.cursorCardX;
+		this.kohsCardY = this.issuesCardY + this.mainCardHeight + cardGap;
+		this.customizationCardX = this.mainRightRailX + 5;
+		this.customizationCardY = railContentTop - this.mainRightScroll;
+		this.itemHighlighterCardX = this.customizationCardX;
+		this.itemHighlighterCardY = this.customizationCardY + this.mainCardHeight + cardGap;
+		this.guiScalerCardX = this.customizationCardX;
+		this.guiScalerCardY = this.itemHighlighterCardY + this.mainCardHeight + cardGap;
+		this.nextGenCardX = this.customizationCardX;
+		this.nextGenCardY = this.guiScalerCardY + this.mainCardHeight + cardGap;
+	}
+
+	/**
+	 * The largest scale up to {@code limit} that puts a whole number of screen pixels
+	 * under every texture pixel, so the pixel art stays sharp. When not even one fits,
+	 * the plain fit, never under {@code minimum}.
+	 */
+	private float crispScale(final float fit, final float limit, final float minimum) {
+		double gui = this.minecraft.getWindow().getGuiScale();
+		int pixels = (int) Math.floor(Math.min(fit, limit) * gui + 1.0E-4);
+		return pixels >= 1 ? (float) (pixels / gui) : Math.max(minimum, fit);
+	}
+
+	/** The widest single word among the main menu's card titles. */
+	private int longestCardWordWidth() {
+		String[] keys = {
+			"screen.kohs_inventory_tweaks.cursor_landing",
+			"screen.kohs_inventory_tweaks.inventory_tweaks",
+			"screen.kohs_inventory_tweaks.issues_tracker",
+			"screen.kohs_inventory_tweaks.customization",
+			"screen.kohs_inventory_tweaks.item_highlighter",
+			"screen.kohs_inventory_tweaks.gui_scaler",
+			"screen.kohs_inventory_tweaks.next_gen",
+		};
+		int widest = 0;
+		for (String key : keys) {
+			for (String word : Component.translatable(key).getString().split(" ")) {
+				widest = Math.max(widest, this.font.width(word));
+			}
+		}
+		return widest;
+	}
+
+	private boolean isInsideMainRail(final double x, final double y, final boolean left) {
+		int railX = left ? this.mainLeftRailX : this.mainRightRailX;
+		int railY = left ? this.mainLeftRailY : this.mainRightRailY;
+		int railWidth = left ? this.mainLeftRailWidth : this.mainRightRailWidth;
+		int railHeight = left ? this.mainLeftRailHeight : this.mainRightRailHeight;
+		return x >= railX && x < railX + railWidth && y >= railY && y < railY + railHeight;
+	}
+
+	private void calculateModalLayout() {
+		int margin = this.width < 420 || this.height < 260 ? 6 : 12;
+		int maxWidth = Math.max(1, this.width - margin * 2);
+		int maxHeight = Math.max(1, this.height - margin * 2);
+		this.panelWidth = Math.min(720, maxWidth);
+		this.panelHeight = Math.min(430, maxHeight);
+		this.panelX = (this.width - this.panelWidth) / 2;
+		this.panelY = (this.height - this.panelHeight) / 2;
+		this.compactModal = this.panelWidth < 500 || this.panelHeight < 300;
+		this.panelPadding = this.compactModal ? 8 : 14;
+		this.headerHeight = this.compactModal ? 30 : 38;
+		this.footerHeight = this.compactModal ? 34 : 40;
+		this.contentTop = this.panelY + this.headerHeight;
+		this.contentBottom = this.panelY + this.panelHeight - this.footerHeight;
+
+		int contentHeight = Math.max(60, this.contentBottom - this.contentTop);
+		this.sidebarX = this.panelX + this.panelPadding;
+		this.sidebarWidth = Mth.clamp(this.panelWidth / 4, 76, 146);
+		this.targetTabGap = this.compactModal ? 2 : 5;
+		int chestArea = 22;
+		this.targetTabHeight = Mth.clamp((contentHeight - chestArea - this.targetTabGap * 4) / 5, 16, 27);
+		this.targetTabY = this.contentTop;
+		this.chestSelectorY = this.targetTabY + 5 * this.targetTabHeight + 4 * this.targetTabGap + 3;
+
+		int previewAreaX = this.sidebarX + this.sidebarWidth + (this.compactModal ? 8 : 18);
+		int previewAreaRight = this.panelX + this.panelWidth - this.panelPadding;
+		int previewAreaWidth = Math.max(60, previewAreaRight - previewAreaX);
+		int nativeWidth = this.selectedTarget.previewWidth();
+		int nativeHeight = this.selectedTarget.previewHeight();
+		int toggleSpace = this.selectedTarget == CursorTarget.INVENTORY ? 0 : (this.compactModal ? 22 : 25);
+		int coordinateSpace = this.compactModal ? 0 : 17;
+		// Larger is more precise to click on, and whole pixels keep it sharp.
+		this.previewScale = this.crispScale(Math.min(
+			(previewAreaWidth - 10) / (float) nativeWidth,
+			(contentHeight - toggleSpace - coordinateSpace - 10) / (float) nativeHeight
+		), 2.0F, 0.28F);
+		this.previewWidth = Math.round(nativeWidth * this.previewScale);
+		this.previewHeight = Math.round(nativeHeight * this.previewScale);
+		this.previewX = previewAreaX + (previewAreaWidth - this.previewWidth) / 2;
+		this.previewY = this.contentTop + toggleSpace
+			+ Math.max(0, (contentHeight - toggleSpace - coordinateSpace - this.previewHeight) / 2);
+		this.cursorToggleWidth = Math.min(132, Math.max(88, previewAreaWidth));
+		this.cursorToggleHeight = this.compactModal ? 19 : 21;
+		this.cursorToggleX = previewAreaX + (previewAreaWidth - this.cursorToggleWidth) / 2;
+		this.cursorToggleY = this.contentTop;
+		this.calculateTweaksLayout();
+		this.calculateCustomizationLayout();
+		this.calculateCropLayout();
+		this.calculateGuiScalerLayout();
+
+		this.warningWidth = Math.min(420, Math.max(1, this.panelWidth - 36));
+		this.warningHeight = Math.min(this.compactModal ? 124 : 150, Math.max(1, this.panelHeight - 24));
+		this.warningX = (this.width - this.warningWidth) / 2;
+		this.warningY = (this.height - this.warningHeight) / 2;
+	}
+
+	private void calculateTweaksLayout() {
+		this.tweakOptionsWidth = Math.min(Math.max(1, this.panelWidth - this.panelPadding * 2 - 6), 620);
+		this.tweakOptionsX = this.panelX + (this.panelWidth - this.tweakOptionsWidth) / 2;
+		this.visibleTweaks = List.of(InventoryTweakOption.values());
+		this.tweakViewportTop = this.contentTop + 2;
+		this.tweakViewportBottom = Math.max(this.tweakViewportTop + 1, this.contentBottom - 36);
+		this.tweakCardGap = 8;
+		this.tweakCardHeight = this.compactModal ? 30 : 34;
+		this.tweakFirstCardY = this.tweakViewportTop;
+		int cardCount = this.visibleTweaks.size();
+		int cardsHeight = cardCount * (this.tweakCardHeight + this.tweakCardGap) - this.tweakCardGap;
+		this.tweakMaxScroll = Math.max(0, cardsHeight - (this.tweakViewportBottom - this.tweakViewportTop));
+		this.tweakScroll = Mth.clamp(this.tweakScroll, 0, this.tweakMaxScroll);
+		this.tweakStatusY = this.tweakViewportBottom + 5;
+	}
+
+	private void calculateGuiScalerLayout() {
+		int contentWidth = Math.max(1, this.panelWidth - this.panelPadding * 2);
+		this.guiScalerToggleWidth = Math.min(220, Math.max(116, contentWidth / 2));
+		this.guiScalerToggleX = this.panelX + (this.panelWidth - this.guiScalerToggleWidth) / 2;
+		this.guiScalerToggleY = this.contentTop;
+
+		this.guiScalerActualScale = this.working.inventoryGuiScalerEnabled
+			? InventoryGuiScaler.configuredPhysicalScale(this.width, this.height, this.working)
+			: 1.0;
+		double surfaceScale = this.working.inventoryGuiScalerEnabled
+			? InventoryGuiScaler.appliedScale(this.width, this.height, this.working)
+			: 1.0;
+		this.guiScalerSliderWidth = Math.min(390, Math.max(80, contentWidth - 32));
+		this.guiScalerSliderX = this.panelX + (this.panelWidth - this.guiScalerSliderWidth) / 2;
+		this.guiScalerSliderY = Math.max(this.guiScalerToggleY + 50, this.contentBottom - 22);
+		int previewTop = this.guiScalerToggleY + (this.compactModal ? 29 : 50);
+		int previewBottom = this.guiScalerSliderY - 17;
+		int previewAreaX = this.panelX + this.panelPadding;
+		int availableWidth = contentWidth;
+		availableWidth = Math.max(20, availableWidth);
+		int availableHeight = Math.max(20, previewBottom - previewTop);
+		float fittedScale = Math.min(
+			(float) surfaceScale,
+			Math.min(availableWidth / (float) INVENTORY_WIDTH, availableHeight / (float) INVENTORY_HEIGHT)
+		);
+		this.guiScalerPreviewScale = Math.max(0.12F, fittedScale);
+		this.guiScalerPreviewFitted = this.guiScalerPreviewScale + 0.001F < surfaceScale;
+		this.guiScalerPreviewWidth = Math.round(INVENTORY_WIDTH * this.guiScalerPreviewScale);
+		this.guiScalerPreviewHeight = Math.round(INVENTORY_HEIGHT * this.guiScalerPreviewScale);
+		this.guiScalerPreviewX = previewAreaX + (availableWidth - this.guiScalerPreviewWidth) / 2;
+		this.guiScalerPreviewY = previewTop + Math.max(0, (availableHeight - this.guiScalerPreviewHeight) / 2);
+	}
+
+	private void calculateCustomizationLayout() {
+		int contentWidth = Math.max(1, this.panelWidth - this.panelPadding * 2);
+		int contentHeight = Math.max(1, this.contentBottom - this.contentTop);
+		int gap = this.compactModal ? 7 : 14;
+		int minimumOptionsWidth = Math.min(this.compactModal ? 120 : 170, Math.max(48, contentWidth / 2));
+		int maximumPreviewArea = Math.max(1, contentWidth - gap - minimumOptionsWidth);
+		int preferredPreviewArea = (int) (contentWidth * 0.45F);
+		int previewAreaWidth = Math.min(maximumPreviewArea, Math.max(Math.min(90, maximumPreviewArea), preferredPreviewArea));
+		int previewAreaX = this.panelX + this.panelPadding;
+
+		this.customizationOptionsX = previewAreaX + previewAreaWidth + gap;
+		this.customizationOptionsY = this.contentTop;
+		this.customizationOptionsWidth = Math.max(1, contentWidth - previewAreaWidth - gap);
+		this.customizationOptionsHeight = contentHeight;
+
+		this.customizationSelectorWidth = Math.min(196, Math.max(1, previewAreaWidth - 4));
+		this.customizationSelectorX = previewAreaX + (previewAreaWidth - this.customizationSelectorWidth) / 2;
+		this.customizationSelectorY = this.contentTop;
+
+		int nativeWidth = this.customizationPreviewTarget.previewWidth();
+		int nativeHeight = this.customizationPreviewTarget.previewHeight();
+		int previewTop = this.contentTop + 27;
+		int previewAreaHeight = Math.max(18, contentHeight - 42);
+		this.customizationPreviewVisible = previewAreaWidth >= 48 && previewAreaHeight >= 28;
+		if (this.customizationPreviewVisible) {
+			this.customizationPreviewScale = Math.min(1.0F, Math.min(
+				Math.max(1, previewAreaWidth - 10) / (float) nativeWidth,
+				previewAreaHeight / (float) nativeHeight
+			));
+			this.customizationPreviewScale = Math.max(0.10F, this.customizationPreviewScale);
+			this.customizationPreviewWidth = Math.round(nativeWidth * this.customizationPreviewScale);
+			this.customizationPreviewHeight = Math.round(nativeHeight * this.customizationPreviewScale);
+			this.customizationPreviewX = previewAreaX + (previewAreaWidth - this.customizationPreviewWidth) / 2;
+			this.customizationPreviewY = previewTop
+				+ Math.max(0, (previewAreaHeight - this.customizationPreviewHeight) / 2);
+		} else {
+			this.customizationPreviewX = 0;
+			this.customizationPreviewY = 0;
+			this.customizationPreviewWidth = 0;
+			this.customizationPreviewHeight = 0;
+			this.customizationPreviewScale = 0.0F;
+		}
+
+		int visibleOptionsContent = Math.max(1, contentHeight - 25);
+		this.customizationMaxScroll = Math.max(0, CUSTOM_CONTENT_HEIGHT - visibleOptionsContent + 4);
+		this.customizationSmoothScroll.setMaximum(this.customizationMaxScroll);
+		this.customizationScroll = this.customizationSmoothScroll.roundedPosition();
+	}
+
+	private void calculateCropLayout() {
+		int availableWidth = Math.max(1, this.panelWidth - this.panelPadding * 2);
+		this.cropControlsY = Math.max(this.contentTop, this.contentBottom - 20);
+		this.cropWorkspaceX = this.panelX + this.panelPadding;
+		this.cropWorkspaceY = this.contentTop;
+		this.cropWorkspaceWidth = availableWidth;
+		this.cropWorkspaceHeight = Math.max(1, this.cropControlsY - this.cropWorkspaceY - 16);
+
+		int frameAvailableWidth = Math.max(1, this.cropWorkspaceWidth - (this.compactModal ? 12 : 28));
+		int frameAvailableHeight = Math.max(1, this.cropWorkspaceHeight - (this.compactModal ? 8 : 18));
+		double scale = Math.min(
+			frameAvailableWidth / (double) INVENTORY_WIDTH,
+			frameAvailableHeight / (double) INVENTORY_HEIGHT
+		);
+		this.cropFrameWidth = Math.max(1, (int) Math.floor(INVENTORY_WIDTH * scale));
+		this.cropFrameHeight = Math.max(1, (int) Math.floor(INVENTORY_HEIGHT * scale));
+		this.cropFrameX = this.cropWorkspaceX + (this.cropWorkspaceWidth - this.cropFrameWidth) / 2;
+		this.cropFrameY = this.cropWorkspaceY + (this.cropWorkspaceHeight - this.cropFrameHeight) / 2;
+		this.clampCropFocus();
+	}
+
+	private float entranceProgress() {
+		return ZMotion.progress(this.entranceStartedAtNanos, ENTRANCE_DURATION_NANOS);
+	}
+
+	private float modalEntranceProgress() {
+		return ZMotion.progress(this.modalOpenedAtNanos, MODAL_ENTRANCE_DURATION_NANOS);
+	}
+
+	private void updateSmoothWidgetPositions() {
+		if (this.modal == Modal.NONE) {
+			this.mainLeftSmoothScroll.update();
+			this.mainRightSmoothScroll.update();
+			int nextLeft = this.mainLeftSmoothScroll.roundedPosition();
+			int nextRight = this.mainRightSmoothScroll.roundedPosition();
+			moveWidgets(
+				this.mainLeftScrollingWidgets,
+				this.mainLeftScroll - nextLeft,
+				this.mainLeftRailY + 22,
+				this.mainLeftRailY + this.mainLeftRailHeight - 5
+			);
+			moveWidgets(
+				this.mainRightScrollingWidgets,
+				this.mainRightScroll - nextRight,
+				this.mainRightRailY + 22,
+				this.mainRightRailY + this.mainRightRailHeight - 5
+			);
+			this.mainLeftScroll = nextLeft;
+			this.mainRightScroll = nextRight;
+		} else if (this.modal == Modal.CUSTOMIZATION) {
+			this.customizationSmoothScroll.update();
+			int next = this.customizationSmoothScroll.roundedPosition();
+			moveWidgets(
+				this.customizationScrollingWidgets,
+				this.customizationScroll - next,
+				this.customizationOptionsY + 21,
+				this.customizationOptionsY + this.customizationOptionsHeight
+			);
+			this.customizationScroll = next;
+		}
+	}
+
+	private static void moveWidgets(
+		final List<AbstractWidget> widgets,
+		final int deltaY,
+		final int visibleTop,
+		final int visibleBottom
+	) {
+		for (AbstractWidget widget : widgets) {
+			if (deltaY != 0) {
+				widget.setY(widget.getY() + deltaY);
+			}
+			widget.visible = widget.getBottom() > visibleTop && widget.getY() < visibleBottom;
+		}
+	}
+
+	private void openModal(final Modal nextModal) {
+		if (nextModal == Modal.CURSOR
+			&& !CompatibilityIssueManager.isFeatureAvailable(CompatibilityFeature.CURSOR_LANDING)) {
+			return;
+		}
+		this.working = ConfigStore.get().copy();
+		if (nextModal == Modal.CUSTOMIZATION) {
+			this.customizationSmoothScroll.snapTo(0.0);
+			this.customizationScroll = 0;
+			this.backgroundStatus = Component.empty();
+			InventoryTextureManager.invalidateConfiguration();
+		}
+		this.modal = nextModal;
+		this.rebuildWidgets();
+	}
+
+	private void openCustomizationWarning() {
+		this.working = ConfigStore.get().copy();
+		this.modal = Modal.CUSTOMIZATION_WARNING;
+		this.rebuildWidgets();
+	}
+
+	private void openGuiScaler() {
+		this.working = ConfigStore.get().copy();
+		if (this.working.guiScalerWarningDismissed) {
+			this.openGuiScalerCalibration();
+			return;
+		}
+		this.modal = Modal.GUI_SCALER_WARNING;
+		this.rebuildWidgets();
+	}
+
+	private void openGuiScalerCalibration() {
+		this.modal = Modal.NONE;
+		this.minecraft.gui.setScreen(new GuiScalerScreen(this));
+	}
+
+	void reloadConfigurationFromStore() {
+		this.working = ConfigStore.get().copy();
+		this.modal = Modal.NONE;
+	}
+
+	void refreshConfigurationFromStore() {
+		this.working = ConfigStore.get().copy();
+	}
+
+	private void selectTarget(final CursorTarget target) {
+		this.selectedTarget = target;
+		this.calculateModalLayout();
+		this.rebuildWidgets();
+	}
+
+	private void saveAndCloseModal() {
+		this.persistWorking();
+		this.modal = Modal.NONE;
+		this.rebuildWidgets();
+	}
+
+	private void persistWorking() {
+		ConfigStore.replaceAndSave(this.working);
+		this.working = ConfigStore.get().copy();
+		InventoryTextureManager.invalidateConfiguration();
+	}
+
+	private void attemptCloseModal() {
+		if (this.working.sameValues(ConfigStore.get())) {
+			this.modal = Modal.NONE;
+		} else {
+			this.warningReturnModal = this.modal;
+			this.modal = Modal.WARNING;
+		}
+		this.rebuildWidgets();
+	}
+
+	private boolean isChestTarget() {
+		return this.selectedTarget == CursorTarget.CHEST_SINGLE || this.selectedTarget == CursorTarget.CHEST_DOUBLE;
+	}
+
+	private boolean isInsidePreview(final double x, final double y) {
+		return x >= this.previewX && x < this.previewX + this.previewWidth && y >= this.previewY && y < this.previewY + this.previewHeight;
+	}
+
+	private void updateSelectedPosition(final double mouseX, final double mouseY) {
+		double x = (mouseX - this.previewX) / Math.max(1.0, this.previewWidth - 1.0);
+		double y = (mouseY - this.previewY) / Math.max(1.0, this.previewHeight - 1.0);
+		this.working.setPosition(this.selectedTarget, new CursorPoint(x, y));
+	}
+
+	private boolean isSelectedCursorEnabled() {
+		return this.working.isCursorEnabled(this.selectedTarget);
+	}
+
+	private Component cursorToggleLabel() {
+		return Component.translatable(
+			"screen.kohs_inventory_tweaks.cursor_toggle",
+			Component.translatable(this.isSelectedCursorEnabled()
+				? "screen.kohs_inventory_tweaks.enabled"
+				: "screen.kohs_inventory_tweaks.disabled")
+		);
+	}
+
+
+
+
+
+
+
+	private Component guiScalerToggleLabel() {
+		return Component.translatable(this.working.inventoryGuiScalerEnabled
+			? "screen.kohs_inventory_tweaks.gui_scaler.switch.on"
+			: "screen.kohs_inventory_tweaks.gui_scaler.switch.off");
+	}
+
+	private Component menuKeybindLabel() {
+		if (this.awaitingMenuKey) {
+			return Component.translatable("screen.kohs_inventory_tweaks.keybind.prompt");
+		}
+		return Component.translatable(
+			"screen.kohs_inventory_tweaks.keybind",
+			ConfigMenuKeyBinding.mapping().getTranslatedKeyMessage()
+		);
+	}
+
+	private boolean isInsideCustomizationOptions(final double x, final double y) {
+		return x >= this.customizationOptionsX
+			&& x < this.customizationOptionsX + this.customizationOptionsWidth
+			&& y >= this.customizationOptionsY + 21
+			&& y < this.customizationOptionsY + this.customizationOptionsHeight;
+	}
+
+	private Component customizationPreviewLabel() {
+		return Component.translatable(
+			"screen.kohs_inventory_tweaks.customization.preview",
+			Component.translatable(this.customizationPreviewTarget.translationKey())
+		);
+	}
+
+	private void cycleCustomizationPreview(final int direction) {
+		for (int i = 0; i < CUSTOMIZATION_PREVIEWS.length; i++) {
+			if (CUSTOMIZATION_PREVIEWS[i] == this.customizationPreviewTarget) {
+				this.customizationPreviewTarget = CUSTOMIZATION_PREVIEWS[
+					Math.floorMod(i + direction, CUSTOMIZATION_PREVIEWS.length)
+				];
+				this.calculateCustomizationLayout();
+				return;
+			}
+		}
+		this.customizationPreviewTarget = CustomizationPreview.INVENTORY;
+		this.calculateCustomizationLayout();
+	}
+
+	private void setTextureSource(final TextureSource source) {
+		this.working.inventoryTextureSource = source;
+		this.persistWorking();
+		this.rebuildWidgets();
+	}
+
+	private void chooseBackgroundFile() {
+		SdlFileDialog.open(null, "Images, GIF, MP4 or MOV", "png;jpg;jpeg;bmp;gif;mp4;mov", this::useBackgroundFile);
+	}
+
+	private void useBackgroundFile(final String selected) {
+		if (selected == null || selected.isBlank()) {
+			return;
+		}
+
+		this.backgroundBusy = true;
+		this.backgroundStatus = Component.translatable("screen.kohs_inventory_tweaks.crop.preparing");
+		this.rebuildWidgets();
+		BackgroundMediaManager.prepareAsync(Path.of(selected)).whenComplete((result, failure) -> this.minecraft.execute(() -> {
+			this.backgroundBusy = false;
+			if (failure != null) {
+				this.backgroundStatus = Component.translatable("screen.kohs_inventory_tweaks.background.error.decode");
+			} else if (result.success() && result.media() != null) {
+				if (this.minecraft.gui.screen() != this || this.modal != Modal.CUSTOMIZATION) {
+					return;
+				}
+				this.cropMedia = result.media();
+				this.cropFocusX = 0.5;
+				this.cropFocusY = 0.5;
+				this.cropZoom = 1.0;
+				this.cropStatus = Component.empty();
+				this.uploadCropPreview(this.cropMedia);
+				this.modal = Modal.CROP;
+			} else {
+				this.backgroundStatus = Component.translatable(result.messageKey());
+			}
+			if (this.minecraft.gui.screen() == this && (this.modal == Modal.CUSTOMIZATION || this.modal == Modal.CROP)) {
+				this.rebuildWidgets();
+			}
+		}));
+	}
+
+	private void applyCrop() {
+		if (this.cropMedia == null || this.backgroundBusy) {
+			return;
+		}
+		PreparedMedia media = this.cropMedia;
+		CropSettings crop = new CropSettings(this.cropFocusX, this.cropFocusY, this.cropZoom);
+		this.backgroundBusy = true;
+		this.cropStatus = Component.translatable("screen.kohs_inventory_tweaks.crop.processing");
+		this.rebuildWidgets();
+		BackgroundMediaManager.importAsync(media.source(), crop).whenComplete((result, failure) -> this.minecraft.execute(() -> {
+			this.backgroundBusy = false;
+			if (this.minecraft.gui.screen() != this) {
+				return;
+			}
+			if (failure != null) {
+				this.cropStatus = Component.translatable("screen.kohs_inventory_tweaks.background.error.decode");
+			} else if (result.success()) {
+				this.working.customBackgroundFile = result.fileName();
+				this.backgroundStatus = Component.translatable(result.messageKey());
+				this.releaseCropPreview();
+				this.cropMedia = null;
+				this.cropStatus = Component.empty();
+				this.modal = Modal.CUSTOMIZATION;
+				this.persistWorking();
+			} else {
+				this.cropStatus = Component.translatable(result.messageKey());
+			}
+			this.rebuildWidgets();
+		}));
+	}
+
+	private void cancelCrop() {
+		if (this.backgroundBusy) {
+			return;
+		}
+		this.releaseCropPreview();
+		this.cropMedia = null;
+		this.cropStatus = Component.empty();
+		this.cropDragging = false;
+		this.modal = Modal.CUSTOMIZATION;
+		this.rebuildWidgets();
+	}
+
+	private void uploadCropPreview(final PreparedMedia media) {
+		this.releaseCropPreview();
+		NativeImage image = new NativeImage(media.previewWidth(), media.previewHeight(), true);
+		for (int y = 0; y < media.previewHeight(); y++) {
+			for (int x = 0; x < media.previewWidth(); x++) {
+				image.setPixel(x, y, media.previewPixels()[x + y * media.previewWidth()]);
+			}
+		}
+		this.cropPreviewTexture = new DynamicTexture(() -> "KoHs inventory crop preview", image);
+		this.minecraft.getTextureManager().register(CROP_PREVIEW_TEXTURE, this.cropPreviewTexture);
+	}
+
+	private void releaseCropPreview() {
+		if (this.cropPreviewTexture != null) {
+			this.minecraft.getTextureManager().release(CROP_PREVIEW_TEXTURE);
+			this.cropPreviewTexture = null;
+		}
+	}
+
+	private boolean isInsideCropFrame(final double x, final double y) {
+		return x >= this.cropFrameX && x < this.cropFrameX + this.cropFrameWidth
+			&& y >= this.cropFrameY && y < this.cropFrameY + this.cropFrameHeight;
+	}
+
+	private double cropDisplayScale() {
+		if (this.cropMedia == null) {
+			return 1.0;
+		}
+		return Math.max(
+			this.cropFrameWidth / (double) this.cropMedia.previewWidth(),
+			this.cropFrameHeight / (double) this.cropMedia.previewHeight()
+		) * this.cropZoom;
+	}
+
+	private void moveCropBy(final double dx, final double dy) {
+		if (this.cropMedia == null) {
+			return;
+		}
+		double scale = this.cropDisplayScale();
+		this.cropFocusX -= dx / Math.max(1.0, this.cropMedia.previewWidth() * scale);
+		this.cropFocusY -= dy / Math.max(1.0, this.cropMedia.previewHeight() * scale);
+		this.clampCropFocus();
+	}
+
+	private void clampCropFocus() {
+		if (this.cropMedia == null) {
+			this.cropFocusX = 0.5;
+			this.cropFocusY = 0.5;
+			return;
+		}
+		double scale = this.cropDisplayScale();
+		double halfVisibleX = Math.min(0.5, this.cropFrameWidth / Math.max(2.0, 2.0 * this.cropMedia.previewWidth() * scale));
+		double halfVisibleY = Math.min(0.5, this.cropFrameHeight / Math.max(2.0, 2.0 * this.cropMedia.previewHeight() * scale));
+		this.cropFocusX = clamp(this.cropFocusX, halfVisibleX, 1.0 - halfVisibleX);
+		this.cropFocusY = clamp(this.cropFocusY, halfVisibleY, 1.0 - halfVisibleY);
+	}
+
+	private static double clamp(final double value, final double minimum, final double maximum) {
+		return Math.max(minimum, Math.min(maximum, value));
+	}
+
+	private Component currentBackgroundStatus() {
+		return this.working.customBackgroundFile == null
+			? Component.translatable("screen.kohs_inventory_tweaks.background.none")
+			: Component.translatable("screen.kohs_inventory_tweaks.background.selected", this.working.customBackgroundFile);
+	}
+
+	private static int red(final int color) {
+		return color >> 16 & 0xFF;
+	}
+
+	private static int green(final int color) {
+		return color >> 8 & 0xFF;
+	}
+
+	private static int blue(final int color) {
+		return color & 0xFF;
+	}
+
+	private static int withChannel(final int color, final int shift, final int value) {
+		int mask = 0xFF << shift;
+		return color & ~mask | Mth.clamp(value, 0, 255) << shift;
+	}
+}

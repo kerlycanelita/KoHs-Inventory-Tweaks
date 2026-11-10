@@ -4,7 +4,7 @@
 
 # KoHs Inventory Tweaks Wiki
 
-This guide applies to **KoHs Inventory Tweaks 1.0.x for Minecraft 26.2, 26.1.2, 26.1.1, 26.1, and 1.21.11**. The mod is the successor to **KoHs Inv Cursor**.
+This guide applies to **KoHs Inventory Tweaks 1.4.x for Minecraft 26.3, 26.2, 26.1.2, 26.1.1, 26.1, and 1.21.11**. The mod is the successor to **KoHs Inv Cursor**.
 
 Since 26 September 2026 the mod supports Minecraft 1.21.11 and later. The 1.21.10 builds stay downloadable on Modrinth as archived versions but no longer receive fixes.
 
@@ -19,6 +19,7 @@ Since 26 September 2026 the mod supports Minecraft 1.21.11 and later. The 1.21.1
 - [Custom backgrounds](#custom-backgrounds)
 - [GUI Scaler](#gui-scaler)
 - [Item Highlighter](#item-highlighter)
+- [Next Gen KoHs Inventories](#next-gen-kohs-inventories)
 - [Resource packs](#resource-packs)
 - [Player Visibility](#player-visibility)
 - [Saving and files](#saving-and-files)
@@ -26,13 +27,15 @@ Since 26 September 2026 the mod supports Minecraft 1.21.11 and later. The 1.21.1
 
 ## Requirements
 
-- Minecraft Java Edition 26.2, 26.1.2, 26.1.1, 26.1, or 1.21.11.
+- Minecraft Java Edition 26.3, 26.2, 26.1.2, 26.1.1, 26.1, or 1.21.11.
 - Fabric Loader 0.19.3 or newer.
 - Fabric API matching the selected Minecraft version.
 - Java 25 or newer for Minecraft 26.x; Java 21 or newer for Minecraft 1.21.11.
 - Mod Menu is optional but recommended for convenient access to the configuration menu.
 
 KoHs Inventory Tweaks is client-side only. Vanilla servers do not need to install it.
+
+The interface is available in English, Spanish and Russian, including pre-reform Russian. Minecraft's language setting chooses it.
 
 ## Opening the configuration menu
 
@@ -49,7 +52,7 @@ The configuration screen cannot be opened from Minecraft's title screen. A notic
 The player's real inventory is displayed in the center. Features are divided between two scrollable panels:
 
 - **Behavior:** Cursor Landing and Inventory Tweaks.
-- **Appearance:** Customization, Item Highlighter, and GUI Scaler.
+- **Appearance:** Customization, Item Highlighter, GUI Scaler, and Next Gen KoHs Inventories.
 
 The selector at the bottom chooses the base inventory texture:
 
@@ -179,6 +182,16 @@ The **Outside darkness** slider controls the dark overlay rendered behind invent
 
 **Reset** restores colors, opacity values, the texture source, and the custom background to their defaults.
 
+### Tabs, tooltips and buttons
+
+This page carries the inventory's look to the parts around it.
+
+- **Tabs:** **Match all** gives the creative tabs, recipe book tabs, scrollbars (with Fabric's page arrows) and effect panels the inventory's colour and background image. **Match colour** gives them only its colour, **Custom** a colour and opacity of your own, and **Vanilla** leaves them alone. A switch for each part decides which ones follow.
+- **Item tooltips** (on by default): the box and frame behind item tooltips follow a customized inventory, or your own colours. Items with a tooltip style of their own keep it, and text colours never change, because they tell rarity and enchantments apart. **In every menu** also themes tooltips outside containers.
+- **Menu buttons** (off by default): colours Minecraft's own buttons in every menu.
+
+Container titles turn light by themselves when the panel behind them is dark.
+
 ## Custom backgrounds
 
 Select **Choose file** under **Custom inventory background**. Before any file is imported, a mandatory crop screen opens with a **176:166** aspect ratio.
@@ -253,6 +266,56 @@ Detection uses the hovered slot calculated by Minecraft before slots are rendere
 - **Remove item:** removes that item from the highlighter.
 - **Reset All:** removes the entire configured item list.
 
+## Next Gen KoHs Inventories
+
+These inventories move your slots around the screen. Before the page opens, a warning reminds you that some servers may treat that as an unfair advantage and ban you for it, and that Cursor Landing and mods that center the mouse may not work correctly with them. Use them at your own risk.
+
+The page shows your inventory in the middle and the style selector below it. A style applies as soon as you choose it.
+
+| Style | Looks like | Recipe book |
+| --- | --- | --- |
+| **Broken** | Split in half, each half pulled aside with its slots | No |
+| **Visor** | Only the slots, floating over the world | No |
+| **Vertical** | Tall columns of slots beside the player and crafting | Yes |
+| **Compact** | The smallest panel, without the player model | Yes |
+| **Ring** | Two rings of slots around the player | No |
+| **Honeycomb** | Staggered hexagon slots | Yes |
+| **Fan** | Rows opening like a fan, with no panel behind them | No |
+| **Hotbar Up** | The hotbar above the inventory | Yes |
+| **Mirror** | Crafting on the left, the player and armor on the right | Yes |
+| **Flipped** | The inventory on top, the player and crafting below | Yes |
+| **Wide** | The player beside the inventory | No |
+| **Side Hotbar** | The hotbar as a column | Yes |
+| **Custom** | Wherever you put each slot | No |
+
+Every style stays around the middle of the screen and has its own version in the Creative inventory, where the tabs and the scrollbar stay within reach. Styles with a recipe book open it beside the panel, as Vanilla does; the others keep it shut. When the window is too small for a style, the inventory stays Vanilla.
+
+Only the screen changes. Each slot keeps its index, so the server receives exactly what a Vanilla inventory sends for the same clicks.
+
+### Custom
+
+Choose **Custom** and press **Edit layout**:
+
+- Drag the hotbar to move it as one piece, and any other slot to move it alone. Hold **Shift** for the opposite.
+- The player model and the status effects can be placed too. The effects are simulated in the editor, so you can place them without an active effect.
+- **Snap** helps line pieces up as you drag them. A slot dropped on top of another goes back to where it was.
+- **Reset** returns every piece to its starting place.
+
+Each change is saved when you drop the piece. The GUI Scaler leaves a Custom layout at its size, so slots stay exactly where you put them.
+
+### The Visor
+
+The Visor draws only the outline of each slot, floating over the world. The **Opacity** of **Slot frames** in Customization fades the outlines, and they take your colours.
+
+### Hotbar
+
+The same page changes the hotbar on the HUD:
+
+- **Hotbar:** Vanilla, Visor (a curved row of floating slots), Ghost (plain outlines), Split or Vertical.
+- **Movement** (off by default): the hotbar leans and sways as you move, turn and fall.
+- **Reactions** (off by default): it reacts to a popped totem, hearts lost or healed, low health, and hits taken or landed.
+- **Bars** (on by default): health, armor, food and the XP bar move with the hotbar while Movement or Reactions is on. If another mod also moves these elements, it may cause crashes or instability; turning Bars back on shows that warning.
+
 ## Resource packs
 
 Previews and items use the currently active resources:
@@ -311,6 +374,10 @@ The upper limit adapts to the window to prevent slots or buttons from leaving th
 ### Dynamic highlighting is not visible
 
 Confirm that the item was added, **Dynamic** is enabled in its editor, and the pointer is over a slot containing that exact item.
+
+### A Next Gen style looks like the Vanilla inventory
+
+The window is too small for that style. Enlarge the window or lower Minecraft's GUI scale.
 
 ### Reporting a bug
 

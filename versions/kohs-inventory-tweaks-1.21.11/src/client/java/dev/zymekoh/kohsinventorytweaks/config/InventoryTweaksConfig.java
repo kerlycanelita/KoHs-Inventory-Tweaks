@@ -15,6 +15,53 @@ public final class InventoryTweaksConfig {
 		VANILLA
 	}
 
+	/** Where Vanilla starts the effect panels, in the inventory panel's coordinates. */
+	public static final int DEFAULT_EFFECTS_X = 178;
+
+	/** How the tabs and other small parts around the inventory are drawn. */
+	public enum TabStyle {
+		/** The inventory's colour and, on the creative tabs, its background image. */
+		FOLLOW,
+		/** One solid colour taken from what the inventory shows. */
+		COLOR,
+		CUSTOM,
+		VANILLA
+	}
+
+	/** How tooltips and menu buttons are drawn. */
+	public enum PartStyle {
+		VANILLA,
+		INVENTORY,
+		CUSTOM
+	}
+
+	/** A layout of the player's inventory that moves its slots on the screen. */
+	public enum NextGenStyle {
+		OFF,
+		BROKEN,
+		VISOR,
+		VERTICAL,
+		COMPACT,
+		RING,
+		HONEYCOMB,
+		FAN,
+		HOTBAR_TOP,
+		MIRROR,
+		FLIPPED,
+		WIDE,
+		SIDE_HOTBAR,
+		CUSTOM
+	}
+
+	/** The shape of the hotbar on the HUD. */
+	public enum HotbarStyle {
+		VANILLA,
+		VISOR,
+		GHOST,
+		SPLIT,
+		VERTICAL
+	}
+
 	public enum ProfilePreset {
 		CUSTOM,
 		VANILLA,
@@ -68,6 +115,31 @@ public final class InventoryTweaksConfig {
 	public int slotOpacity = 255;
 	public int backgroundOpacity = 255;
 	public int inventoryBackdropOpacity = 208;
+	public TabStyle tabStyle = TabStyle.FOLLOW;
+	public boolean themeCreativeTabs = true;
+	public boolean themeRecipeBookTabs = true;
+	public boolean themeScrollbars = true;
+	public boolean themeEffects = true;
+	public int tabColor = 0xB05CFF;
+	public int tabOpacity = 255;
+	public PartStyle tooltipStyle = PartStyle.INVENTORY;
+	public boolean tooltipEverywhere;
+	public int tooltipBackgroundColor = 0x1A0B2E;
+	public int tooltipFrameColor = 0xB05CFF;
+	public int tooltipOpacity = 240;
+	public PartStyle buttonStyle = PartStyle.VANILLA;
+	public int buttonColor = 0xB05CFF;
+	public NextGenStyle nextGenStyle = NextGenStyle.OFF;
+	public HotbarStyle hotbarStyle = HotbarStyle.VANILLA;
+	public boolean hotbarMotion;
+	public boolean hotbarReactions;
+	public boolean hotbarStatusFollow = true;
+	public int[] customSlotX = new int[0];
+	public int[] customSlotY = new int[0];
+	public int customModelX = 26;
+	public int customModelY = 8;
+	public int customEffectsX = DEFAULT_EFFECTS_X;
+	public int customEffectsY;
 	public int visiblePlayerDepthIntensity = 220;
 	public boolean smartHighlighterEnabled;
 	public boolean smartLowDurabilityEnabled = true;
@@ -142,6 +214,31 @@ public final class InventoryTweaksConfig {
 		copy.slotOpacity = this.slotOpacity;
 		copy.backgroundOpacity = this.backgroundOpacity;
 		copy.inventoryBackdropOpacity = this.inventoryBackdropOpacity;
+		copy.tabStyle = this.tabStyle;
+		copy.themeCreativeTabs = this.themeCreativeTabs;
+		copy.themeRecipeBookTabs = this.themeRecipeBookTabs;
+		copy.themeScrollbars = this.themeScrollbars;
+		copy.themeEffects = this.themeEffects;
+		copy.tabColor = this.tabColor;
+		copy.tabOpacity = this.tabOpacity;
+		copy.tooltipStyle = this.tooltipStyle;
+		copy.tooltipEverywhere = this.tooltipEverywhere;
+		copy.tooltipBackgroundColor = this.tooltipBackgroundColor;
+		copy.tooltipFrameColor = this.tooltipFrameColor;
+		copy.tooltipOpacity = this.tooltipOpacity;
+		copy.buttonStyle = this.buttonStyle;
+		copy.buttonColor = this.buttonColor;
+		copy.nextGenStyle = this.nextGenStyle;
+		copy.hotbarStyle = this.hotbarStyle;
+		copy.hotbarMotion = this.hotbarMotion;
+		copy.hotbarReactions = this.hotbarReactions;
+		copy.hotbarStatusFollow = this.hotbarStatusFollow;
+		copy.customSlotX = this.customSlotX == null ? new int[0] : this.customSlotX.clone();
+		copy.customSlotY = this.customSlotY == null ? new int[0] : this.customSlotY.clone();
+		copy.customModelX = this.customModelX;
+		copy.customModelY = this.customModelY;
+		copy.customEffectsX = this.customEffectsX;
+		copy.customEffectsY = this.customEffectsY;
 		copy.visiblePlayerDepthIntensity = this.visiblePlayerDepthIntensity;
 		copy.smartHighlighterEnabled = this.smartHighlighterEnabled;
 		copy.smartLowDurabilityEnabled = this.smartLowDurabilityEnabled;
@@ -260,6 +357,24 @@ public final class InventoryTweaksConfig {
 		this.inventoryBackdropOpacity = 208;
 		this.visiblePlayerDepthIntensity = 220;
 		this.customBackgroundFile = null;
+		this.resetInterfaceTheme();
+	}
+
+	public void resetInterfaceTheme() {
+		this.tabStyle = TabStyle.FOLLOW;
+		this.themeCreativeTabs = true;
+		this.themeRecipeBookTabs = true;
+		this.themeScrollbars = true;
+		this.themeEffects = true;
+		this.tabColor = 0xB05CFF;
+		this.tabOpacity = 255;
+		this.tooltipStyle = PartStyle.INVENTORY;
+		this.tooltipEverywhere = false;
+		this.tooltipBackgroundColor = 0x1A0B2E;
+		this.tooltipFrameColor = 0xB05CFF;
+		this.tooltipOpacity = 240;
+		this.buttonStyle = PartStyle.VANILLA;
+		this.buttonColor = 0xB05CFF;
 	}
 
 	public void resetGuiScaler() {
@@ -400,6 +515,31 @@ public final class InventoryTweaksConfig {
 			&& this.slotOpacity == other.slotOpacity
 			&& this.backgroundOpacity == other.backgroundOpacity
 			&& this.inventoryBackdropOpacity == other.inventoryBackdropOpacity
+			&& this.tabStyle == other.tabStyle
+			&& this.themeCreativeTabs == other.themeCreativeTabs
+			&& this.themeRecipeBookTabs == other.themeRecipeBookTabs
+			&& this.themeScrollbars == other.themeScrollbars
+			&& this.themeEffects == other.themeEffects
+			&& this.tabColor == other.tabColor
+			&& this.tabOpacity == other.tabOpacity
+			&& this.tooltipStyle == other.tooltipStyle
+			&& this.tooltipEverywhere == other.tooltipEverywhere
+			&& this.tooltipBackgroundColor == other.tooltipBackgroundColor
+			&& this.tooltipFrameColor == other.tooltipFrameColor
+			&& this.tooltipOpacity == other.tooltipOpacity
+			&& this.buttonStyle == other.buttonStyle
+			&& this.buttonColor == other.buttonColor
+			&& this.nextGenStyle == other.nextGenStyle
+			&& this.hotbarStyle == other.hotbarStyle
+			&& this.hotbarMotion == other.hotbarMotion
+			&& this.hotbarReactions == other.hotbarReactions
+			&& this.hotbarStatusFollow == other.hotbarStatusFollow
+			&& java.util.Arrays.equals(this.customSlotX, other.customSlotX)
+			&& java.util.Arrays.equals(this.customSlotY, other.customSlotY)
+			&& this.customModelX == other.customModelX
+			&& this.customModelY == other.customModelY
+			&& this.customEffectsX == other.customEffectsX
+			&& this.customEffectsY == other.customEffectsY
 			&& this.visiblePlayerDepthIntensity == other.visiblePlayerDepthIntensity
 			&& this.smartHighlighterEnabled == other.smartHighlighterEnabled
 			&& this.smartLowDurabilityEnabled == other.smartLowDurabilityEnabled
